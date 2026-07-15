@@ -1,7 +1,7 @@
 // src/core — pure domain logic (no DOM, no React, no I/O).
 // Public API surface; see docs/ARCHITECTURE.md "Core API".
 
-export type { Cell, Translation } from './braille';
+export type { Cell, Translation, TranslationUnit } from './braille';
 export {
   CAPITAL_INDICATOR,
   cellCount,
@@ -20,6 +20,7 @@ export type { Prompt, PromptProps, TutorState, TutorStateProps } from './types';
 export {
   ACTIVE_SKILL_COUNT,
   CORRECT_BONUS,
+  HINT_REVEAL_COOLDOWN_MS,
   LEARNT_THRESHOLD,
   MISTAKE_PENALTY,
   MISTAKES_BEFORE_PENALTY,
@@ -46,6 +47,9 @@ export {
 export type { GeneratedPrompt } from './prompts';
 export { generatePrompt, pickTarget } from './prompts';
 
+export type { HintWord } from './hints';
+export { hintWordForPrompt } from './hints';
+
 export type { SerializedTutorState } from './session';
 export {
   deserialize,
@@ -56,17 +60,3 @@ export {
   serialize,
   startSession,
 } from './session';
-
-import { textToUnicode } from './braille';
-import type { TutorState } from './types';
-
-/**
- * The hint for the current prompt: its answer as braille cells (U+2800
- * string), or null when there is nothing to hint (no prompt, or the qbf
- * challenge, which never shows hints).
- */
-export function hintForPrompt(state: TutorState): string | null {
-  const p = state.prompt;
-  if (!p || p.isQbf) return null;
-  return textToUnicode(p.text);
-}

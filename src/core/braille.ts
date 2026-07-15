@@ -32,6 +32,20 @@ import { skills } from '../data/skills';
 /** One braille cell: ascending dot numbers 1-6. Empty array = blank cell. */
 export type Cell = ReadonlyArray<number>;
 
+/**
+ * One indivisible chunk of a translation: the cells for one print span (a
+ * whole-word sign, an in-word contraction, a single letter/digit/mark, a
+ * space). Indicator cells attach to the unit they precede: a capital
+ * indicator to its letter/sign, the number sign to the first digit of a
+ * run, the capital word indicator to the word's first unit.
+ */
+export interface TranslationUnit {
+  /** Print span [start, end) this unit covers, as indexes into the text. */
+  readonly start: number;
+  readonly end: number;
+  readonly cells: ReadonlyArray<Cell>;
+}
+
 /** Result of translating a print string to braille cells. */
 export interface Translation {
   /** The cells, in order (includes capital/number indicators and blanks). */
@@ -40,6 +54,8 @@ export interface Translation {
    * blank space cell has no skill; capital indicators and the number sign
    * are skills and do appear. */
   readonly skillIds: ReadonlyArray<string>;
+  /** The same cells grouped by print span, tiling the text left to right. */
+  readonly units: ReadonlyArray<TranslationUnit>;
 }
 
 /** The capital letter indicator cell (dot 6). */
@@ -143,21 +159,32 @@ function allowedInWord(skill: Skill, start: number, end: number, len: number): b
 interface MutableTranslation {
   cells: Cell[];
   skillIds: string[];
+  units: TranslationUnit[];
 }
 
-function pushCapLetter(out: MutableTranslation): void {
-  out.cells.push(...capLetter.dots);
-  out.skillIds.push(capLetter.id);
+function emitUnit(
+  out: MutableTranslation,
+  start: number,
+  end: number,
+  cells: Cell[],
+  skillIds: string[],
+): void {
+  out.cells.push(...cells);
+  out.skillIds.push(...skillIds);
+  out.units.push({ start, end, cells });
 }
 
-function translateLetterRun(word: string, out: MutableTranslation): void {
+function translateLetterRun(word: string, base: number, out: MutableTranslation): void {
   const lower = word.toLowerCase();
 
-  // An ALL-CAPS word gets one capital word indicator up front.
+  // An ALL-CAPS word gets one capital word indicator up front, carried by
+  // the word's first unit.
   let rest = word;
+  const leadCells: Cell[] = [];
+  const leadSkillIds: string[] = [];
   if (word.length >= 2 && word !== lower && word === word.toUpperCase()) {
-    out.cells.push(...capWord.dots);
-    out.skillIds.push(capWord.id);
+    leadCells.push(...capWord.dots);
+    leadSkillIds.push(capWord.id);
     rest = lower;
   }
 
@@ -166,9 +193,13 @@ function translateLetterRun(word: string, out: MutableTranslation): void {
   const whole = wholeWordSkills.get(lower);
   const isTitleCase = rest === (rest[0] ?? '').toUpperCase() + lower.slice(1) && rest !== lower;
   if (whole && (rest === lower || isTitleCase)) {
-    if (isTitleCase) pushCapLetter(out);
-    out.cells.push(...whole.dots);
-    out.skillIds.push(whole.id);
+    if (isTitleCase) {
+      leadCells.push(...capLetter.dots);
+      leadSkillIds.push(capLetter.id);
+    }
+    leadCells.push(...whole.dots);
+    leadSkillIds.push(whole.id);
+    emitUnit(out, base, base + word.length, leadCells, leadSkillIds);
     return;
   }
 
@@ -188,23 +219,32 @@ function translateLetterRun(word: string, out: MutableTranslation): void {
       if (!matched) throw new Error(`untranslatable character: ${JSON.stringify(ch)}`);
     }
     const end = i + matched.print.length;
+    const cells: Cell[] = i === 0 ? leadCells : [];
+    const skillIds: string[] = i === 0 ? leadSkillIds : [];
     for (let j = i; j < end; j++) {
-      if (rest[j] !== lower[j]) pushCapLetter(out);
+      if (rest[j] !== lower[j]) {
+        cells.push(...capLetter.dots);
+        skillIds.push(capLetter.id);
+      }
     }
-    out.cells.push(...matched.dots);
-    out.skillIds.push(matched.id);
+    cells.push(...matched.dots);
+    skillIds.push(matched.id);
+    emitUnit(out, base + i, base + end, cells, skillIds);
     i = end;
   }
 }
 
-function translateDigitRun(run: string, out: MutableTranslation): void {
-  out.cells.push(...numberSign.dots);
-  out.skillIds.push(numberSign.id);
+function translateDigitRun(run: string, base: number, out: MutableTranslation): void {
+  let i = 0;
   for (const ch of run) {
     const skill = charSkills.get(ch);
     if (!skill) throw new Error(`untranslatable digit: ${JSON.stringify(ch)}`);
-    out.cells.push(...skill.dots);
-    out.skillIds.push(skill.id);
+    const cells: Cell[] = i === 0 ? [...numberSign.dots] : [];
+    const skillIds: string[] = i === 0 ? [numberSign.id] : [];
+    cells.push(...skill.dots);
+    skillIds.push(skill.id);
+    emitUnit(out, base + i, base + i + 1, cells, skillIds);
+    i += 1;
   }
 }
 
@@ -213,21 +253,23 @@ function translateDigitRun(run: string, out: MutableTranslation): void {
  * Throws on characters the curriculum does not cover.
  */
 export function translate(text: string): Translation {
-  const out: MutableTranslation = { cells: [], skillIds: [] };
+  const out: MutableTranslation = { cells: [], skillIds: [], units: [] };
   const tokens = text.match(/[a-zA-Z]+|[0-9]+|./gs) ?? [];
+  let offset = 0;
   for (const token of tokens) {
     if (/^[a-zA-Z]/.test(token)) {
-      translateLetterRun(token, out);
+      translateLetterRun(token, offset, out);
     } else if (/^[0-9]/.test(token)) {
-      translateDigitRun(token, out);
+      translateDigitRun(token, offset, out);
     } else if (token === ' ') {
-      out.cells.push([]); // blank cell; spaces count toward cell totals
+      // Blank cell; spaces count toward cell totals but carry no skill.
+      emitUnit(out, offset, offset + 1, [[]], []);
     } else {
       const skill = charSkills.get(token);
       if (!skill) throw new Error(`untranslatable character: ${JSON.stringify(token)}`);
-      out.cells.push(...skill.dots);
-      out.skillIds.push(skill.id);
+      emitUnit(out, offset, offset + token.length, [...skill.dots], [skill.id]);
     }
+    offset += token.length;
   }
   return out;
 }

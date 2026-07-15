@@ -1,6 +1,13 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { ChangeEvent } from 'react';
-import { QBF_MIN_CELLS, QBF_SENTENCE, makePrompt, makeTutorState, serialize } from '../core';
+import {
+  HINT_REVEAL_COOLDOWN_MS,
+  QBF_MIN_CELLS,
+  QBF_SENTENCE,
+  makePrompt,
+  makeTutorState,
+  serialize,
+} from '../core';
 import type { StorageLike, TutorStore } from './index';
 import { STORAGE_KEY, createTutorStore } from './index';
 
@@ -58,6 +65,21 @@ function typeInChunks(store: TutorStore, text: string, insertions: number): void
     insert(store, text.slice(0, pos));
   }
   expect(pos).toBe(text.length);
+}
+
+/** Storage whose saved session is mid-prompt on "the dog" (letter-d drill). */
+function midPromptStorage(): MemoryStorage {
+  const storage = memoryStorage();
+  const state = makeTutorState({
+    seed: 7,
+    promptCounter: 1,
+    prompt: makePrompt({ text: 'the dog', targetSkillId: 'letter-d' }),
+  });
+  storage.setItem(
+    STORAGE_KEY,
+    JSON.stringify({ version: 1, tutor: serialize(state), bestQbf: null, introducedSkillIds: [] }),
+  );
+  return storage;
 }
 
 /** Storage whose saved session is one completed prompt away from the qbf. */
@@ -130,6 +152,28 @@ describe('hint timer', () => {
     expect(store.viewModel().hint).toBeNull();
     vi.advanceTimersByTime(1); // 400ms after the keystroke
     expect(store.viewModel().hint).not.toBeNull();
+  });
+});
+
+describe('progressive hint reveal', () => {
+  it('uncovers the caret word one sign at a time on a cooldown', () => {
+    const store = createTutorStore({ storage: midPromptStorage(), seed: 1 });
+    expect(store.viewModel().hint).toBeNull();
+    vi.advanceTimersByTime(400); // score 0 => auto-hint after 400ms
+    expect(store.viewModel().hint).toBe('⠮'); // "the" is a single sign
+
+    typeText(store, 'the ');
+    expect(store.viewModel().hint).toBe('⠙'); // next word restarts at one sign
+    vi.advanceTimersByTime(HINT_REVEAL_COOLDOWN_MS);
+    expect(store.viewModel().hint).toBe('⠙⠕');
+    vi.advanceTimersByTime(HINT_REVEAL_COOLDOWN_MS);
+    expect(store.viewModel().hint).toBe('⠙⠕⠛');
+  });
+
+  it('never uncovers more than the word at the caret', () => {
+    const store = createTutorStore({ storage: midPromptStorage(), seed: 1 });
+    vi.advanceTimersByTime(60_000);
+    expect(store.viewModel().hint).toBe('⠮');
   });
 });
 

@@ -33,6 +33,14 @@ export function hintDelayMs(score: number): number {
   return 400 + 300 * score;
 }
 
+/**
+ * Milliseconds between successive reveal units once the hint is showing:
+ * the hint uncovers the caret word one sign at a time (see hints.ts), and
+ * each further sign waits this long, giving the learner a beat to recall
+ * it unaided.
+ */
+export const HINT_REVEAL_COOLDOWN_MS = 1000;
+
 // --- Prompt ----------------------------------------------------------------
 
 export interface PromptProps {
