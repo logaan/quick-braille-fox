@@ -9,6 +9,7 @@ import skillsJson from './skills.json';
 /** What kind of braille sign a skill teaches. */
 export type SkillKind =
   | 'letter'
+  | 'capital'
   | 'number'
   | 'number-sign'
   | 'punctuation'
@@ -23,6 +24,7 @@ export type SkillKind =
 /** Curriculum groups, in teaching order. */
 export type SkillGroup =
   | 'letters'
+  | 'capitals'
   | 'numbers'
   | 'punctuation'
   | 'alphabetic-wordsigns'
@@ -32,7 +34,8 @@ export type SkillGroup =
   | 'lower-signs'
   | 'initial-letter-contractions'
   | 'final-letter-groupsigns'
-  | 'shortforms';
+  | 'shortforms'
+  | 'symbols';
 
 export interface Skill {
   /** Stable unique id, e.g. "letter-a", "groupsign-ing", "shortform-about". */

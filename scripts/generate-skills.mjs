@@ -93,13 +93,31 @@ const chardefLines = readTableLines('en-ueb-chardefs.uti');
 const g1Lines = readTableLines('en-ueb-g1.ctb');
 const g2Lines = readTableLines('en-ueb-g2.ctb');
 
-/** First rule `opcode <char> <dots>` for the given opcode + character. */
-function findCharRule(lines, opcode, char) {
-  for (const tokens of lines) {
-    if (tokens[0] !== opcode || tokens.length < 3) continue;
+/**
+ * First rule `opcode <char> <dots>` for any of the given opcodes +
+ * character. A `noback` prefix is tolerated (forward dots are still the
+ * canonical print form; some chars — en dash, smart single quotes — are
+ * only defined that way).
+ */
+function findCharRule(lines, opcodes, char) {
+  for (const original of lines) {
+    let tokens = original;
+    if (tokens[0] === 'noback') tokens = tokens.slice(1);
+    if (!opcodes.includes(tokens[0]) || tokens.length < 3) continue;
     if (unescapeChar(tokens[1]) !== char) continue;
     const dots = parseDots(tokens[2]);
     if (dots) return dots;
+  }
+  return null;
+}
+
+/** First rule `opcode <dots>` (e.g. `capsletter 6`, `numsign 3456`). */
+function findOpcodeDots(lines, opcode) {
+  for (const tokens of lines) {
+    if (tokens[0] === opcode && tokens[1]) {
+      const dots = parseDots(tokens[1]);
+      if (dots) return dots;
+    }
   }
   return null;
 }
@@ -127,15 +145,42 @@ const PUNCTUATION = [
   { char: ')', name: 'close-paren' },
 ];
 
-function findNumsign(lines) {
-  for (const tokens of lines) {
-    if (tokens[0] === 'numsign' && tokens[1]) {
-      const dots = parseDots(tokens[1]);
-      if (dots) return dots;
-    }
-  }
-  return null;
-}
+// The rest of the practical symbol set: everything a person typing English
+// on macOS is likely to produce (brackets, slash, dashes, smart quotes,
+// ellipsis, commercial signs, basic math). These are chardef `punctuation`,
+// `sign`, or `math` rules. Pure translation mechanics (grade-1 indicator,
+// seq rules) and non-English characters stay excluded. Taught last, as
+// their own `symbols` group.
+const SYMBOLS = [
+  { char: '[', name: 'open-bracket' },
+  { char: ']', name: 'close-bracket' },
+  { char: '{', name: 'open-brace' },
+  { char: '}', name: 'close-brace' },
+  { char: '/', name: 'slash' },
+  { char: '\\', name: 'backslash' },
+  { char: '–', name: 'en-dash' },
+  { char: '—', name: 'em-dash' },
+  { char: '‘', name: 'open-single-quote' },
+  { char: '’', name: 'close-single-quote' },
+  { char: '“', name: 'open-double-quote' },
+  { char: '”', name: 'close-double-quote' },
+  { char: '…', name: 'ellipsis' },
+  { char: '@', name: 'at-sign' },
+  { char: '&', name: 'ampersand' },
+  { char: '*', name: 'asterisk' },
+  { char: '#', name: 'hash' },
+  { char: '$', name: 'dollar' },
+  { char: '%', name: 'percent' },
+  { char: '_', name: 'underscore' },
+  { char: '|', name: 'vertical-bar' },
+  { char: '+', name: 'plus' },
+  { char: '=', name: 'equals' },
+  { char: '<', name: 'less-than' },
+  { char: '>', name: 'greater-than' },
+  { char: '~', name: 'tilde' },
+  { char: '^', name: 'caret' },
+  { char: '`', name: 'backtick' },
+];
 
 // ---------------------------------------------------------------------------
 // Grade 2: curated print strings, dot patterns looked up in en-ueb-g2.ctb
@@ -257,25 +302,31 @@ function addSkill(id, kind, print, dots, group) {
 
 // 1. Letters a-z
 for (const letter of LETTERS) {
-  addSkill(`letter-${letter}`, 'letter', letter, findCharRule(chardefLines, 'lowercase', letter), 'letters');
+  addSkill(`letter-${letter}`, 'letter', letter, findCharRule(chardefLines, ['lowercase'], letter), 'letters');
 }
 
-// 2. Number sign (its own early skill), then digits 0-9.
+// 2. Capitalisation indicators (their own skills; from en-ueb-g1.ctb).
+//    The capital word indicator has no print character of its own; the
+//    `print` fields are exemplars ("A" = one capital, "AA" = a run).
+addSkill('capital-letter-indicator', 'capital', 'A', findOpcodeDots(g1Lines, 'capsletter'), 'capitals');
+addSkill('capital-word-indicator', 'capital', 'AA', findOpcodeDots(g1Lines, 'begcapsword'), 'capitals');
+
+// 3. Number sign (its own early skill), then digits 0-9.
 //    Digits use `litdigit` (UEB literary/"upper" numbers: 1 = the "a" cell,
 //    preceded in text by the number sign). The `digit` opcode rules in the
 //    chardefs table are lower-cell patterns used for other modes — not UEB.
-addSkill('number-sign', 'number-sign', '#', findNumsign(g1Lines), 'numbers');
+addSkill('number-sign', 'number-sign', '#', findOpcodeDots(g1Lines, 'numsign'), 'numbers');
 for (const digit of DIGITS) {
-  addSkill(`digit-${digit}`, 'number', digit, findCharRule(chardefLines, 'litdigit', digit), 'numbers');
+  addSkill(`digit-${digit}`, 'number', digit, findCharRule(chardefLines, ['litdigit'], digit), 'numbers');
 }
 
-// 3. Punctuation
+// 4. Common punctuation
 for (const { char, name, dotsOverride } of PUNCTUATION) {
-  const dots = dotsOverride ?? findCharRule(chardefLines, 'punctuation', char);
+  const dots = dotsOverride ?? findCharRule(chardefLines, ['punctuation'], char);
   addSkill(`punct-${name}`, 'punctuation', char, dots, 'punctuation');
 }
 
-// 4. Grade 2 groups, in curriculum order
+// 5. Grade 2 groups, in curriculum order
 const G2_GROUPS = [
   ['alphabetic-wordsigns', 'wordsign', 'wordsign', ALPHABETIC_WORDSIGNS],
   ['strong-contractions', 'contraction', 'contraction', STRONG_CONTRACTIONS],
@@ -293,6 +344,13 @@ for (const [group, kind, idPrefix, words] of G2_GROUPS) {
   }
 }
 
+// 6. Extended symbols, taught last. Looked up across the chardef
+//    punctuation/sign/math opcodes (e.g. `/` and `+` are math, `$` a sign).
+for (const { char, name } of SYMBOLS) {
+  const dots = findCharRule(chardefLines, ['punctuation', 'sign', 'math'], char);
+  addSkill(`punct-${name}`, 'punctuation', char, dots, 'symbols');
+}
+
 // ---------------------------------------------------------------------------
 // Verify and write
 // ---------------------------------------------------------------------------
@@ -305,6 +363,12 @@ if (errors.length > 0) {
 
 const EXPECTED = {
   'letter-a': '1',
+  'capital-letter-indicator': '6',
+  'capital-word-indicator': '6-6',
+  'punct-ellipsis': '256-256-256',
+  'punct-em-dash': '6-36',
+  'punct-dollar': '4-234',
+  'punct-slash': '456-34',
   'contraction-and': '12346',
   'groupsign-ing': '346',
   'contraction-the': '2346',

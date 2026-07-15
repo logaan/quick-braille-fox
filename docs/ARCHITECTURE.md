@@ -56,7 +56,12 @@ The generator is plain Node with no dependencies. It parses:
     cell, preceded in text by the number sign). The `digit` opcode rules in
     the same file are lower-cell patterns for other modes; do not use them.
   - punctuation: `punctuation <char> <dots>`
-- `data/en-ueb-g1.ctb`: `numsign 3456` (the numeric indicator).
+  - extended symbols: looked up across the `punctuation`, `sign`, and `math`
+    opcodes (e.g. `/` and `+` are `math`, `$` a `sign`); a `noback` prefix is
+    tolerated (en dash and the smart single quotes are only defined that way)
+- `data/en-ueb-g1.ctb`: `numsign 3456` (the numeric indicator),
+  `capsletter 6` and `begcapsword 6-6` (the capitalisation indicators —
+  their own curriculum skills).
 - `data/en-ueb-g2.ctb`: grade 2. This table is a full translation ruleset —
   thousands of exception rules (proper nouns, compound words, `noback pass2`
   fixups) — so the generator does **not** emit every rule. It carries a
@@ -77,8 +82,10 @@ The generator is plain Node with no dependencies. It parses:
   dots 7/8) are rejected.
 
   The script hard-fails (exit 1) if any curated string cannot be resolved or
-  if built-in sanity checks fail ("a"=1, "and"=12346, "ing"=346, "the"=2346,
-  numsign=3456, "be"=23, "there"=5-2346, "ance"=46-15, "about"=1-12).
+  if built-in sanity checks fail ("a"=1, capsletter=6, begcapsword=6-6,
+  "and"=12346, "ing"=346, "the"=2346, numsign=3456, "be"=23,
+  "there"=5-2346, "ance"=46-15, "about"=1-12, ellipsis=256-256-256,
+  em dash=6-36, "$"=4-234, "/"=456-34).
 
 ## Skill record format
 
@@ -88,10 +95,10 @@ The generator is plain Node with no dependencies. It parses:
 interface Skill {
   id: string;        // stable unique id, e.g. "letter-a", "groupsign-ing",
                      // "initial-day", "shortform-about", "punct-comma"
-  kind: SkillKind;   // "letter" | "number" | "number-sign" | "punctuation"
-                     // | "wordsign" | "contraction" | "groupsign"
-                     // | "lowersign" | "initial-letter" | "final-letter"
-                     // | "shortform"
+  kind: SkillKind;   // "letter" | "capital" | "number" | "number-sign"
+                     // | "punctuation" | "wordsign" | "contraction"
+                     // | "groupsign" | "lowersign" | "initial-letter"
+                     // | "final-letter" | "shortform"
   print: string;     // print form: "a", "7", ",", "and", "ing", "about"
   dots: number[][];  // braille cells; each cell = ascending dot numbers 1-6
                      // "ing" -> [[3,4,6]]; "about" -> [[1],[1,2]]
@@ -105,11 +112,12 @@ interface Skill {
 Import via `src/data/skills.ts` (`import { skills } from '../data/skills'`),
 which types the JSON and documents the invariants.
 
-### Curriculum groups, in order (228 skills total)
+### Curriculum groups, in order (258 skills total)
 
 | group | count | contents |
 |---|---|---|
 | `letters` | 26 | a–z, alphabetical |
+| `capitals` | 2 | capital letter indicator ⠠ (id `capital-letter-indicator`, print "A") and capital word indicator ⠠⠠ (id `capital-word-indicator`, print "AA") |
 | `numbers` | 11 | number sign (⠼, its own skill, print "#"), then digits 0–9 |
 | `punctuation` | 11 | . , ; : ? ! ' " - ( ) |
 | `alphabetic-wordsigns` | 23 | but can do … you, plus "as" |
@@ -120,6 +128,172 @@ which types the JSON and documents the invariants.
 | `initial-letter-contractions` | 33 | dot-5 (day … there), dots-45 (these those upon whose word), dots-456 (cannot had many spirit their world) |
 | `final-letter-groupsigns` | 12 | ound ance sion less ount ence ong ful tion ness ment ity |
 | `shortforms` | 75 | about above … yourselves |
+| `symbols` | 28 | the rest of what English typing on macOS needs: [ ] { } / \ – — ‘ ’ “ ” … @ & * # $ % _ \| + = < > ~ ^ ` (kind `punctuation`, taught last) |
+
+## Core API (`src/core`)
+
+Pure domain logic: no DOM, no timers, no storage, no React. All state is
+Immutable.js (`Record`, `Map`); every transition returns a new state. Import
+everything from `src/core` (`import { startSession, keystroke } from
+'../core'`) — the submodules are implementation detail.
+
+### Game rules implemented
+
+- Every skill has a score (default 0). Score **> 10 ⇒ learnt**
+  (`LEARNT_THRESHOLD = 10`, `isLearntScore`).
+- Exactly the 5 unlearnt skills earliest in curriculum order are **active**
+  (`ACTIVE_SKILL_COUNT = 5`). When one crosses the threshold the next
+  unlearnt skill takes its place; a learnt skill knocked back below the
+  threshold rejoins the pool automatically.
+- Correct answer **before the hint is shown**: +2 (`CORRECT_BONUS`).
+- One mistake is free; the **second consecutive mistake on the current
+  item** costs 1 point (`MISTAKE_PENALTY`, floored at 0 — this can drop
+  learnt skills below the threshold) and force-shows the hint. A "mistake"
+  is the transition from matching-prefix to diverged; typing further while
+  already diverged is the same mistake, and a fresh divergence after
+  backspacing to a correct prefix is a new one.
+- Unlearnt skills auto-show the hint after `hintDelayMs(score)` =
+  400 + 300 × score ms (the state layer runs the timer and calls
+  `revealHint`). Learnt skills get **no** time-based hint (`hintDelayFor`
+  returns null); their hint appears only via the two-mistake rule.
+- Every 100th completed prompt (`QBF_INTERVAL`) is the qbf challenge — the
+  fixed sentence `QBF_SENTENCE`, no hints ever, any first wrong character
+  fails it instantly and moves on.
+
+### State shapes (`types.ts`)
+
+```ts
+TutorState = Record<{
+  scores: Map<string, number>;  // skill id -> score (missing = 0)
+  promptCounter: number;        // completed prompts ever (incl. failed qbf)
+  prompt: Prompt | null;        // what's on screen
+  seed: number;                 // PRNG seed; consumed/replaced by nextPrompt
+}>
+Prompt = Record<{
+  text: string;                 // print text to type, matched exactly
+  targetSkillId: string | null; // null for qbf
+  isQbf: boolean;
+  typed: string;                // latest typed text fed to keystroke()
+  mistakesInARow: number;       // consecutive mistakes on this item
+  hintShown: boolean;
+  diverged: boolean;            // typed currently diverges from the text
+  completed: boolean;           // finished (typed correctly, or qbf failed)
+  failed: boolean;              // qbf only
+}>
+```
+
+Factories `makeTutorState(props?)` / `makePrompt(props?)` are exported for
+the state layer and tests. `answerBeforeHintPossible(prompt)` says whether a
+correct answer can still earn the +2.
+
+### Session flow (`session.ts`)
+
+| function | behaviour |
+|---|---|
+| `startSession(seed?)` | fresh state with the first prompt generated; pass e.g. `Date.now()` for variety (defaults to 1, fully deterministic) |
+| `nextPrompt(state)` | replace the current prompt with a new one (call after completion, or to skip). Serves the qbf challenge when `(promptCounter + 1) % 100 === 0`. Consumes and refreshes `seed` |
+| `keystroke(state, typed)` | feed the full *resulting* typed text after an input event (not a single key). Handles progressive prefix matching, mistake events, scoring, qbf instant-fail, completion, and `promptCounter`. Ignores input once completed |
+| `revealHint(state)` | mark the hint as shown (state layer calls this when the `hintDelayFor` timer fires). No-op for qbf |
+| `isPromptComplete(state)` | whether to move on (then call `nextPrompt`) |
+| `serialize(state)` | plain `SerializedTutorState` object, JSON-safe (versioned, `version: 1`) |
+| `deserialize(obj)` | rebuild a `TutorState`; lenient about missing fields, throws `TypeError` on garbage/unknown version |
+
+### Progress views (`progress.ts`)
+
+| function | returns |
+|---|---|
+| `scoreFor(state, skillId)` | current score (0 default) |
+| `isSkillLearnt(state, skillId)` | score > 10 |
+| `learntSkills(state)` / `activeSkills(state)` | `Skill[]` in curriculum order |
+| `knownSkillIds(state)` | `Set` of learnt ∪ active ids |
+| `progressSummary(state)` | `{ totalSkills, learntCount, promptsCompleted, active: [{ id, print, score }] }` |
+| `hintDelayFor(state)` | ms until auto-hint for the current prompt, or `null` (no prompt / hint already shown / qbf / learnt-skill revision) |
+
+### Prompt generation (`prompts.ts`, `corpus.ts`)
+
+`generatePrompt(state, targetSkill) => { text, targetSkillId }` —
+deterministic given `state.seed`. Prompts are **monkeytype-style: sequences
+of 1..N real English words** (N grows by one word per 15 learnt skills, up
+to 5); they need not be sensible sentences, but every word is real —
+nonsense letter clusters are never emitted. A text is only used if its
+greedy grade-2 translation succeeds **and uses only known (learnt ∪ active)
+skills**, so e.g. "bed" is never asked before the "ed" groupsign is known
+(a braille display would render it ⠃⠫), and capitalised words wait for the
+capital indicator skill.
+
+Per target kind:
+
+- **letters** and every contraction kind: a word sequence in which one word
+  exercises the target. A single letter is only ever prompted alone when it
+  is a real standalone word ("a"; "I" once capitals are known) — letters
+  that are grade-2 wordsigns (b=but, c=can, …) never appear alone, because
+  typed standalone they would translate to the contraction word.
+- **digits**: digit strings (1–3 digits) containing the target digit.
+- **number sign**: a known digit; if it activates before any digit is known
+  (the window can be full of letters/capitals) it temporarily gets a plain
+  gated word prompt until the first digit activates.
+- **capitals**: a sequence containing a Capitalised word
+  (capital-letter-indicator, or "I") or an ALL-CAPS word
+  (capital-word-indicator).
+- **punctuation/symbols**: in context — terminal marks end a word sequence
+  (`bad cab.`), separators sit between words (`hat, top`), enclosures wrap
+  a word (`[dog]`, `“cat”`), joiners join two (`day/if`, `cat — dog`),
+  commercial/math signs use digits (`$7`, `3+4`, `5%`).
+
+`pickTarget(state, rng)` — used internally by `nextPrompt`: usually one of
+the 5 active skills; with probability 1/3 (`REVISION_PROBABILITY`, once
+anything is learnt) a revision item, half uniform over learnt skills, half
+from the 5 lowest-scoring learnt skills.
+
+`corpus.ts` exports the built-in `WORDS` list (real words only, lowercase).
+Every entry translates cleanly, and **every skill has at least one
+generatable prompt at the moment it becomes active** (all earlier skills
+learnt, 5-skill window) — both properties are enforced by tests, including
+per-letter words for the earliest windows ("bad"/"cab"/"dab" when only
+a–e are known).
+
+### Braille rendering (`braille.ts`)
+
+| function | behaviour |
+|---|---|
+| `translate(text)` | greedy grade-2 translation: `{ cells, skillIds }`. Throws on characters outside the curriculum |
+| `textToCells(text)` / `textToUnicode(text)` | cells / U+2800 string for hint display |
+| `cellCount(text)` | number of cells (spaces count as one blank cell each) |
+| `dotsToUnicode(cells)` | dot-number arrays → U+2800 string |
+| `hintForPrompt(state)` | current prompt's answer as braille (U+2800 string), `null` for qbf/no prompt |
+| `CAPITAL_INDICATOR` | the dot-6 capital letter indicator cell |
+
+The translator applies the canonical patterns from skills.json with
+approximate positional rules (wordsigns/shortforms standalone only; strong
+and initial-letter contractions anywhere; "ing" and final-letter groupsigns
+never word-initial; ea/bb/cc/ff/gg strictly interior; be/con/dis word-initial
+with ≥ 3 letters following; en/in anywhere; number sign before digit runs).
+Capitalisation uses the capital skills: one `capital-letter-indicator` cell
+per capital letter, or a single `capital-word-indicator` (⠠⠠) before an
+ALL-CAPS word — both appear in `skillIds`, so gating counts them. It is
+deliberately not liblouis — good enough for hints, prompt gating, and the
+qbf minimum, per the caveats below.
+
+### qbf challenge (`qbf.ts`)
+
+- `QBF_SENTENCE` — `The quick brown fox jumped over the lazy dog.`
+- `QBF_MIN_CELLS` — minimum grade-2 cell count, derived from the skills data
+  at module load. It is **36**, not the 39 sketched in early planning:
+  "quick" is itself a UEB shortform (⠟⠅, 2 cells rather than 5).
+  Breakdown: The 2, quick 2, brown 4, fox 3, jumped 5, over 3, the 1,
+  lazy 4, dog 3, period 1, spaces 8.
+- `qbfResult(cellsTyped)` — for a flawless run, `{ kind: 'crown' }` at
+  exactly the minimum, else `{ kind: 'badge', percentAbove }` (percentage
+  above minimum, unrounded); counts below the minimum (or non-finite) are
+  `{ kind: 'failed' }`. The state layer counts cells typed (input insertion
+  events) and reports the number; a run that hit a wrong character is
+  already failed by `keystroke` without consulting this.
+
+### Determinism & persistence
+
+All randomness flows through the `seed` field (mulberry32). Same serialized
+state ⇒ same future prompts. `serialize`/`deserialize` round-trip through
+`JSON.stringify`/`parse` for localStorage (phase 3).
 
 ## Table-parsing caveats (for future phases)
 
@@ -128,9 +302,9 @@ which types the JSON and documents the invariants.
   opening quote in grade 2 context). The symbol itself is 236, which is what
   we teach; the generator has an explicit override matching the table's own
   back-translation rule.
-- **Double quote** is the *nonspecific* quote 6-2356. Directional quotes
-  (open 236 / close 356) are context-dependent `match` rules we don't teach
-  yet.
+- **Double quote** (`"`) is the *nonspecific* quote 6-2356. The directional
+  Unicode quotes “ ” ‘ ’ are separate skills in the `symbols` group (the
+  ASCII `"` never back-translates to them).
 - **Digits look like letters**: digit cells equal a–j cells; only the
   preceding number sign distinguishes them. Any quiz rendering digits should
   show/require the number sign.
@@ -144,9 +318,11 @@ which types the JSON and documents the invariants.
 - **`be`, `there`, `those`** have no simple one-line rule in the g2 table —
   only `match` rules. The generator handles this; keep it in mind if adding
   strings to the curated lists.
-- **Capitalisation is untaught mechanics** so far: the capital indicator
-  (dot 6) etc. are deliberately excluded, as are other pure translation
-  mechanics (`seq` rules, `attribute` declarations, `noback pass2` fixups).
+- **Capitalisation is taught**: the capital letter indicator (dot 6) and
+  capital word indicator (⠠⠠) are their own skills in the `capitals` group.
+  Other pure translation mechanics (the grade-1 indicator, `seq` rules,
+  `attribute` declarations, `noback pass2` fixups, `endcapsword`) remain
+  deliberately excluded.
 - The dots operand grammar allows `=` ("spell out, no contraction"),
   virtual-dot suffixes (`46-15b`), and dots 7/8; the generator rejects all
   of these as "not a teachable 6-dot pattern".
