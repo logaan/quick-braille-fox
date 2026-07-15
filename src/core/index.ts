@@ -20,6 +20,7 @@ export type { Prompt, PromptProps, TutorState, TutorStateProps } from './types';
 export {
   ACTIVE_SKILL_COUNT,
   CORRECT_BONUS,
+  HINTED_BONUS,
   HINT_REVEAL_COOLDOWN_MS,
   LEARNT_THRESHOLD,
   MISTAKE_PENALTY,

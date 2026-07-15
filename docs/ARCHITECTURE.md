@@ -150,7 +150,11 @@ everything from `src/core` (`import { startSession, keystroke } from
   (`ACTIVE_SKILL_COUNT = 5`). When one crosses the threshold the next
   unlearnt skill takes its place; a learnt skill knocked back below the
   threshold rejoins the pool automatically.
-- Correct answer **before the hint is shown**: +2 (`CORRECT_BONUS`).
+- A correct answer always scores the target skill: +2 (`CORRECT_BONUS`)
+  when typed **before the hint is shown**, +1 (`HINTED_BONUS`) after it —
+  hinted progress is real progress, just half as fast, so scores climb (and
+  the hint delay below lengthens) even while the learner still leans on the
+  hint.
 - One mistake is free; the **second consecutive mistake on the current
   item** costs 1 point (`MISTAKE_PENALTY`, floored at 0 — this can drop
   learnt skills below the threshold) and force-shows the hint. A "mistake"

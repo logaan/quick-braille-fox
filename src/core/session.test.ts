@@ -103,12 +103,12 @@ describe('keystroke', () => {
     expect(state.promptCounter).toBe(1);
   });
 
-  it('awards no bonus when the hint was shown first', () => {
+  it('awards +1 when the hint was shown first', () => {
     let state = withPrompt(makeTutorState(), 'cat', 'letter-c');
     state = revealHint(state);
     state = keystroke(state, 'cat');
     expect(isPromptComplete(state)).toBe(true);
-    expect(scoreFor(state, 'letter-c')).toBe(0);
+    expect(scoreFor(state, 'letter-c')).toBe(1);
     expect(state.promptCounter).toBe(1);
   });
 
@@ -132,10 +132,10 @@ describe('keystroke', () => {
     expect(state.prompt?.mistakesInARow).toBe(2);
     expect(state.prompt?.hintShown).toBe(true);
     expect(scoreFor(state, 'letter-c')).toBe(4);
-    // completing now earns no bonus
+    // completing now earns only the hinted bonus
     state = keystroke(state, '');
     state = keystroke(state, 'cat');
-    expect(scoreFor(state, 'letter-c')).toBe(4);
+    expect(scoreFor(state, 'letter-c')).toBe(5);
   });
 
   it('typing further while diverged is still one mistake', () => {
