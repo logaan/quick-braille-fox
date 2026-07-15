@@ -17,7 +17,11 @@ function commonPrefixLength(a: string, b: string): number {
   return i;
 }
 
-/** Monkeytype-style prompt colouring: correct prefix / wrong / untyped. */
+/**
+ * Monkeytype-style prompt colouring: correct prefix / wrong / untyped.
+ * Diverged positions show the character actually typed (not the target one),
+ * so a mistake is visible as what it was; backspacing restores the target.
+ */
 function PromptText(props: { readonly text: string; readonly typed: string }): ReactElement {
   const { text, typed } = props;
   const match = commonPrefixLength(text, typed);
@@ -25,8 +29,9 @@ function PromptText(props: { readonly text: string; readonly typed: string }): R
   const parts: ReactElement[] = [];
   for (let i = 0; i < text.length; i += 1) {
     if (i === caretAt) parts.push(e('span', { key: 'caret', className: 'caret' }));
-    const cls = i < match ? 'char-correct' : i < typed.length ? 'char-wrong' : 'char-untyped';
-    parts.push(e('span', { key: i, className: cls }, text[i] ?? ''));
+    const wrong = i >= match && i < typed.length;
+    const cls = wrong ? 'char-wrong' : i < match ? 'char-correct' : 'char-untyped';
+    parts.push(e('span', { key: i, className: cls }, (wrong ? typed[i] : text[i]) ?? ''));
   }
   if (caretAt === text.length) parts.push(e('span', { key: 'caret', className: 'caret' }));
   if (typed.length > text.length) {

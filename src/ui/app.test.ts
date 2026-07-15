@@ -76,6 +76,16 @@ describe('App rendering', () => {
     expect(html).toContain(firstHintCell);
   });
 
+  it('shows the actually-typed character where typing diverged', () => {
+    const store = createTutorStore({ seed: 1 });
+    const text = store.viewModel().promptText;
+    const wrong = text.startsWith('z') ? 'q' : 'z';
+    type(store, wrong);
+    const html = render(store);
+    expect(html).toContain(`class="char-wrong">${wrong}</span>`);
+    expect(html).not.toContain(`class="char-wrong">${text[0] ?? ''}</span>`);
+  });
+
   it('renders the qbf challenge and its result screen', () => {
     const store = qbfReadyStore();
     let html = render(store);

@@ -378,7 +378,10 @@ or effects — `main.ts` re-renders the root on every store notification.
   "qbf"), the persisted best qbf result (👑 or `+N%`), and the two-step
   reset-progress control.
 - `drill.ts` — the prompt with monkeytype-style progressive colouring
-  (correct prefix / wrong / untyped, plus a caret), wrapped in a `<label>`
+  (correct prefix / wrong / untyped, plus a caret); diverged positions show
+  the character actually typed rather than the target one, so the learner
+  can see what their mistake was (backspacing restores the target chars),
+  wrapped in a `<label>`
   for the input; the autofocused monospace input; the hint area (an
   `aria-live=polite` region that fills with the caret word's braille as
   large segmented cells, one sign at a time); the new-skill introduction
