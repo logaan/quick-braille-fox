@@ -140,7 +140,7 @@ export class TutorStore {
   private handleInput(event: ChangeEvent<HTMLInputElement>): void {
     const prompt = this.tutor.prompt;
     if (prompt === null || prompt.completed) return;
-    const value = event.currentTarget.value;
+    const value = stripUnexpectedTrailingSpaces(event.currentTarget.value, prompt.text);
     const native = event.nativeEvent as Partial<InputEvent>;
     const inserted =
       typeof native.inputType === 'string'
@@ -149,8 +149,10 @@ export class TutorStore {
 
     // qbf cell counting: one cell per insertion event — VoiceOver braille
     // screen input commits a whole contraction as a single insertion, a
-    // regular keypress inserts one char. Deletions never decrement.
-    if (prompt.isQbf && inserted) this.qbfCellsTyped += 1;
+    // regular keypress inserts one char. Deletions never decrement. An
+    // event whose value was normalised back to what was already typed (a
+    // stripped VoiceOver space) is not a cell.
+    if (prompt.isQbf && inserted && value !== prompt.typed) this.qbfCellsTyped += 1;
 
     this.tutor = keystroke(this.tutor, value);
 
@@ -256,6 +258,20 @@ export class TutorStore {
       introducedSkillIds: this.introduced,
     });
   }
+}
+
+/**
+ * VoiceOver braille screen input commits a trailing space after each word —
+ * including the last word of a prompt, and sometimes as its own event that
+ * lands on the next prompt. A space the expected text doesn't have coming is
+ * an input-method artifact, not a mistake: strip trailing spaces whenever
+ * doing so turns a non-matching value back into a prefix of (or all of) the
+ * expected text. Expected mid-prompt spaces and real mistakes pass through.
+ */
+function stripUnexpectedTrailingSpaces(value: string, text: string): string {
+  if (text.startsWith(value)) return value;
+  const trimmed = value.replace(/ +$/u, '');
+  return trimmed !== value && text.startsWith(trimmed) ? trimmed : value;
 }
 
 export function createTutorStore(options: TutorStoreOptions = {}): TutorStore {

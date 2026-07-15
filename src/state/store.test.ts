@@ -255,3 +255,69 @@ describe('qbf challenge', () => {
     expect(next.viewModel().bestQbf).toEqual({ kind: 'crown' });
   });
 });
+
+describe('VoiceOver trailing spaces', () => {
+  /** Storage whose saved session resumes on an in-flight prompt of `text`. */
+  function promptStorage(text: string): MemoryStorage {
+    const storage = memoryStorage();
+    const state = makeTutorState({ seed: 7, promptCounter: 1, prompt: makePrompt({ text }) });
+    storage.setItem(
+      STORAGE_KEY,
+      JSON.stringify({ version: 1, tutor: serialize(state), bestQbf: null, introducedSkillIds: [] }),
+    );
+    return storage;
+  }
+
+  it('completes the prompt when the final word commit carries a trailing space', () => {
+    const store = createTutorStore({ seed: 1 });
+    const text = store.viewModel().promptText;
+    insert(store, `${text} `);
+    const vm = store.viewModel();
+    expect(vm.promptsCompleted).toBe(1);
+    expect(vm.typed).toBe('');
+  });
+
+  it('ignores a stray space landing on a fresh prompt', () => {
+    const store = createTutorStore({ seed: 1 });
+    insert(store, `${store.viewModel().promptText} `);
+    expect(store.viewModel().promptsCompleted).toBe(1);
+    insert(store, ' '); // the space arriving as its own event, after advancing
+    expect(store.viewModel().typed).toBe('');
+    expect(store.viewModel().promptsCompleted).toBe(1);
+  });
+
+  it('keeps a space the prompt actually expects', () => {
+    const store = createTutorStore({ storage: promptStorage('x y'), seed: 1 });
+    insert(store, 'x');
+    insert(store, 'x ');
+    expect(store.viewModel().typed).toBe('x ');
+    insert(store, 'x y');
+    expect(store.viewModel().promptsCompleted).toBe(2);
+  });
+
+  it('still registers a mistake when the wrong text ends with a space', () => {
+    const store = createTutorStore({ storage: promptStorage('x y'), seed: 1 });
+    insert(store, 'z ');
+    expect(store.viewModel().typed).toBe('z ');
+  });
+
+  it('does not fail a qbf run on the final trailing space', () => {
+    const store = createTutorStore({ storage: qbfReadyStorage(), seed: 1 });
+    for (let i = 1; i < QBF_SENTENCE.length; i += 1) insert(store, QBF_SENTENCE.slice(0, i));
+    insert(store, `${QBF_SENTENCE} `);
+    const expectedPercent = ((QBF_SENTENCE.length - QBF_MIN_CELLS) / QBF_MIN_CELLS) * 100;
+    expect(store.viewModel().qbfResult).toEqual({ kind: 'badge', percentAbove: expectedPercent });
+  });
+
+  it('does not count a stripped stray space as a qbf cell', () => {
+    const store = createTutorStore({ storage: qbfReadyStorage(), seed: 1 });
+    insert(store, 'T');
+    insert(store, 'Th');
+    insert(store, 'Th '); // stray: expected next char is 'e', space is stripped
+    expect(store.viewModel().typed).toBe('Th');
+    for (let i = 3; i <= QBF_SENTENCE.length; i += 1) insert(store, QBF_SENTENCE.slice(0, i));
+    // The stripped space must not have counted: still one cell per character.
+    const expectedPercent = ((QBF_SENTENCE.length - QBF_MIN_CELLS) / QBF_MIN_CELLS) * 100;
+    expect(store.viewModel().qbfResult).toEqual({ kind: 'badge', percentAbove: expectedPercent });
+  });
+});
