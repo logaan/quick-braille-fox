@@ -218,8 +218,9 @@ correct answer can still earn the +2.
 
 `generatePrompt(state, targetSkill) => { text, targetSkillId }` —
 deterministic given `state.seed`. Prompts are **monkeytype-style: sequences
-of 1..N real English words** (N grows by one word per 15 learnt skills, up
-to 5); they need not be sensible sentences, but every word is real —
+of 3..N real English words** (N starts at 3 and grows by one word per 15
+learnt skills, up to 5), so the learner types a few words at a time from the
+very first prompt; they need not be sensible sentences, but every word is real —
 nonsense letter clusters are never emitted. A text is only used if its
 greedy grade-2 translation succeeds **and uses only known (learnt ∪ active)
 skills**, so e.g. "bed" is never asked before the "ed" groupsign is known

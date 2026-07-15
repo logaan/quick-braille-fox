@@ -2,8 +2,10 @@
 // for it that only uses cells the learner has learnt or is actively
 // learning.
 //
-// Prompts are monkeytype-style: sequences of 1..N real English words (N
-// grows with progress). Nonsense letter clusters are never emitted, and a
+// Prompts are monkeytype-style: sequences of a few real English words —
+// 3..N, where N grows with progress — so the learner types several words
+// at a time from the very first prompt. Nonsense letter clusters are never
+// emitted, and a
 // single letter is only ever prompted alone if it is a real standalone word
 // ("a", "I") — letters that are grade-2 wordsigns (b=but, c=can, ...) are
 // drilled inside real words instead, because typed standalone they would
@@ -30,6 +32,8 @@ export interface GeneratedPrompt {
   readonly targetSkillId: string;
 }
 
+/** Shortest word sequence a prompt aims for (a few words from the start). */
+const MIN_SEQUENCE_WORDS = 3;
 /** Longest word sequence a prompt will ever grow to. */
 const MAX_SEQUENCE_WORDS = 5;
 /** One more word of maximum sequence length per this many learnt skills. */
@@ -98,27 +102,36 @@ function targetWords(known: ReadonlySet<string>, requiredId: string): string[] {
 
 function maxSequenceLength(state: TutorState): number {
   const learnt = learntSkills(state).length;
-  return Math.min(MAX_SEQUENCE_WORDS, 1 + Math.floor(learnt / LEARNT_PER_EXTRA_WORD));
+  return Math.min(
+    MAX_SEQUENCE_WORDS,
+    MIN_SEQUENCE_WORDS + Math.floor(learnt / LEARNT_PER_EXTRA_WORD),
+  );
 }
 
-/** A 1..max word sequence containing `targetWord` at a random position. */
+/** A sequence length drawn uniformly from MIN_SEQUENCE_WORDS..max. */
+function sequenceLength(rng: Rng, max: number): number {
+  const min = Math.min(MIN_SEQUENCE_WORDS, max);
+  return min + Math.floor(rng() * (max - min + 1));
+}
+
+/** A min..max word sequence containing `targetWord` at a random position. */
 function wordSequence(
   targetWord: string,
   filler: ReadonlyArray<string>,
   rng: Rng,
   max: number,
 ): string {
-  const n = 1 + Math.floor(rng() * max);
+  const n = sequenceLength(rng, max);
   if (n <= 1 || filler.length === 0) return targetWord;
   const words = Array.from({ length: n }, () => choice(filler, rng) as string);
   words[Math.floor(rng() * n)] = targetWord;
   return words.join(' ');
 }
 
-/** A 1..max word sequence of filler words only. */
+/** A min..max word sequence of filler words only. */
 function fillerSequence(filler: ReadonlyArray<string>, rng: Rng, max: number): string | null {
   if (filler.length === 0) return null;
-  const n = 1 + Math.floor(rng() * max);
+  const n = sequenceLength(rng, max);
   return Array.from({ length: n }, () => choice(filler, rng) as string).join(' ');
 }
 
