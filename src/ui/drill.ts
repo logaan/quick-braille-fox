@@ -1,5 +1,6 @@
-// The main drill view: prompt with progressive match colouring, the real
-// text input (VoiceOver braille screen input types into it), the hint area,
+// The main drill view: prompt with progressive match colouring, a visually
+// hidden text input (VoiceOver braille screen input types into it; the
+// prompt's own caret is the only visible cursor), the hint area,
 // new-skill introductions, and the qbf challenge/result presentation.
 // Pure render functions of props — all behaviour lives in src/state.
 
@@ -111,7 +112,7 @@ export function Drill(props: DrillProps): ReactElement {
   const showResult = vm.qbfResult !== null;
 
   const input = e('input', {
-    className: vm.diverged ? 'drill-input input-diverged' : 'drill-input',
+    className: 'drill-input',
     id: 'drill-input',
     type: 'text',
     value: vm.typed,
