@@ -335,6 +335,7 @@ input:focus-visible {
 /* --- Drill ------------------------------------------------------------- */
 
 .drill {
+  position: relative; /* anchors the hidden input so focusing it can't scroll away */
   display: flex;
   flex-direction: column;
   gap: 1.4rem;
@@ -395,28 +396,21 @@ input:focus-visible {
   }
 }
 
+/* The input is visually hidden — the prompt renders the caret and typed
+ * state, so showing the field would put a second cursor on screen. It stays
+ * in the DOM, focusable and 1×1, so VoiceOver braille screen input and
+ * keyboards still type into it (never display:none). */
 .drill-input {
-  width: 100%;
-  font-family: var(--mono);
-  font-size: 1.35rem;
-  color: var(--text);
-  background: var(--bg);
-  border: 1.5px solid var(--line);
-  border-radius: var(--radius);
-  padding: 0.6rem 0.9rem;
-}
-
-.drill-input:focus {
-  border-color: var(--accent);
-  background: var(--surface);
-  box-shadow: 0 0 0 3px var(--accent-tint);
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  border: 0;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
   outline: none;
-}
-
-.drill-input.input-diverged,
-.drill-input.input-diverged:focus {
-  border-color: var(--wrong);
-  box-shadow: 0 0 0 3px var(--wrong-bg);
 }
 
 /* Hint area: space is reserved so the answer appearing never shifts layout. */
