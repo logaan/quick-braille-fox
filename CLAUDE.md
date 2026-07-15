@@ -15,6 +15,22 @@ When work on a worktree branch is complete:
    to repopulate `data/`).
 4. Delete the merged branch and remove the worktree.
 
+## Lot vault
+
+`.lot-vault/` is committed to git like any other content. Branches commit
+their lot vault, including any updates `lot` writes while the session works.
+Update files within a Thing's folder are numbered (`001.md`, `002.md`, …);
+if both main and a branch added updates to the same Thing, renumber before
+merging so filenames don't collide and numbering follows the updates'
+timestamps.
+
+## Commands
+
+Any command commonly run in this project (build, dev server, tests, data
+generation, …) lives as a script in `scripts/`, so commands are discovered
+by listing that folder rather than remembered. When a new common command
+appears, add a script for it instead of documenting the raw invocation.
+
 ## Data files
 
 `data/` is gitignored. It holds the liblouis braille tables copied from macOS

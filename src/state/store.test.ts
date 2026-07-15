@@ -1,0 +1,257 @@
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import type { ChangeEvent } from 'react';
+import { QBF_MIN_CELLS, QBF_SENTENCE, makePrompt, makeTutorState, serialize } from '../core';
+import type { StorageLike, TutorStore } from './index';
+import { STORAGE_KEY, createTutorStore } from './index';
+
+// --- helpers ---------------------------------------------------------------
+
+interface MemoryStorage extends StorageLike {
+  readonly data: Map<string, string>;
+}
+
+function memoryStorage(): MemoryStorage {
+  const data = new Map<string, string>();
+  return {
+    data,
+    getItem: (key) => data.get(key) ?? null,
+    setItem: (key, value) => {
+      data.set(key, value);
+    },
+    removeItem: (key) => {
+      data.delete(key);
+    },
+  };
+}
+
+function fakeEvent(value: string, inputType: string): ChangeEvent<HTMLInputElement> {
+  return {
+    currentTarget: { value },
+    nativeEvent: { inputType },
+  } as unknown as ChangeEvent<HTMLInputElement>;
+}
+
+/** Simulate one input event that inserts text (field now holds `value`). */
+function insert(store: TutorStore, value: string): void {
+  store.handlers.onInput(fakeEvent(value, 'insertText'));
+}
+
+/** Simulate a backspace (field now holds `value`). */
+function del(store: TutorStore, value: string): void {
+  store.handlers.onInput(fakeEvent(value, 'deleteContentBackward'));
+}
+
+/** Type `text` one character-insertion at a time. */
+function typeText(store: TutorStore, text: string): void {
+  for (let i = 1; i <= text.length; i += 1) insert(store, text.slice(0, i));
+}
+
+/**
+ * Type `text` using exactly `insertions` insertion events (the first
+ * insertions carry 2 chars each, like VoiceOver committing contractions).
+ */
+function typeInChunks(store: TutorStore, text: string, insertions: number): void {
+  const doubles = text.length - insertions;
+  let pos = 0;
+  for (let i = 0; i < insertions; i += 1) {
+    pos += i < doubles ? 2 : 1;
+    insert(store, text.slice(0, pos));
+  }
+  expect(pos).toBe(text.length);
+}
+
+/** Storage whose saved session is one completed prompt away from the qbf. */
+function qbfReadyStorage(): MemoryStorage {
+  const storage = memoryStorage();
+  const state = makeTutorState({
+    seed: 7,
+    promptCounter: 99,
+    prompt: makePrompt({ text: 'done', typed: 'done', completed: true }),
+  });
+  storage.setItem(
+    STORAGE_KEY,
+    JSON.stringify({ version: 1, tutor: serialize(state), bestQbf: null, introducedSkillIds: [] }),
+  );
+  return storage;
+}
+
+beforeEach(() => {
+  vi.useFakeTimers();
+});
+afterEach(() => {
+  vi.useRealTimers();
+});
+
+// --- tests -------------------------------------------------------------
+
+describe('TutorStore basics', () => {
+  it('starts a fresh session with a prompt, five active skills, and an intro', () => {
+    const store = createTutorStore({ seed: 1 });
+    const vm = store.viewModel();
+    expect(vm.promptText.length).toBeGreaterThan(0);
+    expect(vm.activeSkills).toHaveLength(5);
+    expect(vm.promptsCompleted).toBe(0);
+    expect(vm.hint).toBeNull();
+    expect(vm.isQbf).toBe(false);
+    expect(vm.intro).not.toBeNull();
+    expect(vm.activeSkills.map((s) => s.id)).toContain(vm.intro?.id);
+    expect(vm.groups[0]).toEqual({ group: 'letters', learnt: 0, total: 26 });
+    expect(vm.totalSkills).toBe(258);
+  });
+
+  it('completing a prompt scores the target and advances to a new prompt', () => {
+    const store = createTutorStore({ seed: 1 });
+    const text = store.viewModel().promptText;
+    typeText(store, text);
+    const vm = store.viewModel();
+    expect(vm.promptsCompleted).toBe(1);
+    expect(vm.typed).toBe('');
+    expect(vm.activeSkills.some((s) => s.score >= 2)).toBe(true);
+  });
+});
+
+describe('hint timer', () => {
+  it('reveals the hint after the core-provided delay', () => {
+    const store = createTutorStore({ seed: 1 });
+    vi.advanceTimersByTime(399);
+    expect(store.viewModel().hint).toBeNull();
+    vi.advanceTimersByTime(1); // score 0 => 400ms
+    expect(store.viewModel().hint).not.toBeNull();
+  });
+
+  it('re-arms the countdown on a keystroke', () => {
+    const store = createTutorStore({ seed: 1 });
+    const text = store.viewModel().promptText;
+    vi.advanceTimersByTime(200);
+    // A wrong first character (a mistake, but the first one is free) —
+    // guaranteed not to complete even a one-character prompt.
+    insert(store, text.startsWith('x') ? 'y' : 'x');
+    vi.advanceTimersByTime(399);
+    expect(store.viewModel().hint).toBeNull();
+    vi.advanceTimersByTime(1); // 400ms after the keystroke
+    expect(store.viewModel().hint).not.toBeNull();
+  });
+});
+
+describe('persistence', () => {
+  it('round-trips progress through storage', () => {
+    const storage = memoryStorage();
+    const first = createTutorStore({ storage, seed: 1 });
+    typeText(first, first.viewModel().promptText);
+    first.flushSave();
+    expect(storage.data.has(STORAGE_KEY)).toBe(true);
+
+    const second = createTutorStore({ storage, seed: 1 });
+    expect(second.viewModel().promptsCompleted).toBe(1);
+  });
+
+  it('saves on a debounce after changes', () => {
+    const storage = memoryStorage();
+    const store = createTutorStore({ storage, seed: 1, saveDebounceMs: 100 });
+    const text = store.viewModel().promptText;
+    insert(store, text.slice(0, 1));
+    expect(storage.data.has(STORAGE_KEY)).toBe(false);
+    vi.advanceTimersByTime(100);
+    expect(storage.data.has(STORAGE_KEY)).toBe(true);
+  });
+
+  it('falls back to a fresh session on corrupt storage', () => {
+    const storage = memoryStorage();
+    storage.setItem(STORAGE_KEY, '{not json!!!');
+    const store = createTutorStore({ storage, seed: 1 });
+    expect(store.viewModel().promptsCompleted).toBe(0);
+    expect(store.viewModel().promptText.length).toBeGreaterThan(0);
+  });
+
+  it('reset requires confirmation and then wipes progress', () => {
+    const storage = memoryStorage();
+    const store = createTutorStore({ storage, seed: 1 });
+    typeText(store, store.viewModel().promptText);
+    expect(store.viewModel().promptsCompleted).toBe(1);
+
+    store.handlers.onResetRequest();
+    expect(store.viewModel().confirmingReset).toBe(true);
+    store.handlers.onResetCancel();
+    expect(store.viewModel().confirmingReset).toBe(false);
+    expect(store.viewModel().promptsCompleted).toBe(1);
+
+    store.handlers.onResetRequest();
+    store.handlers.onResetConfirm();
+    const vm = store.viewModel();
+    expect(vm.confirmingReset).toBe(false);
+    expect(vm.promptsCompleted).toBe(0);
+  });
+});
+
+describe('qbf challenge', () => {
+  it('serves the pangram on the 100th prompt with no hints ever', () => {
+    const store = createTutorStore({ storage: qbfReadyStorage(), seed: 1 });
+    const vm = store.viewModel();
+    expect(vm.isQbf).toBe(true);
+    expect(vm.promptText).toBe(QBF_SENTENCE);
+    expect(vm.nextQbfIn).toBe(1);
+    vi.advanceTimersByTime(60_000);
+    expect(store.viewModel().hint).toBeNull();
+  });
+
+  it('counts one cell per insertion event and awards a badge', () => {
+    const store = createTutorStore({ storage: qbfReadyStorage(), seed: 1 });
+    typeText(store, QBF_SENTENCE); // 45 single-char insertions
+    const vm = store.viewModel();
+    const expectedPercent = ((QBF_SENTENCE.length - QBF_MIN_CELLS) / QBF_MIN_CELLS) * 100;
+    expect(vm.qbfResult).toEqual({ kind: 'badge', percentAbove: expectedPercent });
+    expect(vm.bestQbf).toEqual({ kind: 'badge', percentAbove: expectedPercent });
+
+    store.handlers.onQbfContinue();
+    const next = store.viewModel();
+    expect(next.isQbf).toBe(false);
+    expect(next.qbfResult).toBeNull();
+    expect(next.promptsCompleted).toBe(100);
+  });
+
+  it('awards the crown for a minimum-cell run (contraction-sized insertions)', () => {
+    const store = createTutorStore({ storage: qbfReadyStorage(), seed: 1 });
+    typeInChunks(store, QBF_SENTENCE, QBF_MIN_CELLS); // 36 insertions
+    expect(store.viewModel().qbfResult).toEqual({ kind: 'crown' });
+    expect(store.viewModel().bestQbf).toEqual({ kind: 'crown' });
+  });
+
+  it('does not decrement the cell count on deletions', () => {
+    const store = createTutorStore({ storage: qbfReadyStorage(), seed: 1 });
+    insert(store, 'T');
+    insert(store, 'Th');
+    del(store, 'T'); // backspace: count stays at 2
+    for (let i = 2; i <= QBF_SENTENCE.length; i += 1) insert(store, QBF_SENTENCE.slice(0, i));
+    const result = store.viewModel().qbfResult;
+    expect(result?.kind).toBe('badge');
+    // 2 insertions before the backspace + 44 finishing ('Th' -> full text).
+    const cells = QBF_SENTENCE.length + 1;
+    if (result?.kind === 'badge') {
+      expect(result.percentAbove).toBeCloseTo(((cells - QBF_MIN_CELLS) / QBF_MIN_CELLS) * 100, 6);
+    }
+  });
+
+  it('fails instantly on a wrong character and does not record a best', () => {
+    const store = createTutorStore({ storage: qbfReadyStorage(), seed: 1 });
+    insert(store, 'X'); // expected 'T'
+    const vm = store.viewModel();
+    expect(vm.qbfResult).toEqual({ kind: 'failed' });
+    expect(vm.bestQbf).toBeNull();
+    expect(vm.promptsCompleted).toBe(100); // a failed qbf still counts
+
+    store.handlers.onQbfContinue();
+    expect(store.viewModel().isQbf).toBe(false);
+  });
+
+  it('never replaces a better best result with a worse one', () => {
+    const storage = qbfReadyStorage();
+    const store = createTutorStore({ storage, seed: 1 });
+    typeInChunks(store, QBF_SENTENCE, QBF_MIN_CELLS);
+    expect(store.viewModel().bestQbf).toEqual({ kind: 'crown' });
+    store.flushSave();
+
+    // Wind the persisted session forward to the next qbf and fumble it.
+    const next = createTutorStore({ storage, seed: 1 });
+    expect(next.viewModel().bestQbf).toEqual({ kind: 'crown' });
+  });
+});

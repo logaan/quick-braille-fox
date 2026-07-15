@@ -1,0 +1,4799 @@
+[
+  {
+    "id": "letter-a",
+    "kind": "letter",
+    "print": "a",
+    "dots": [
+      [
+        1
+      ]
+    ],
+    "unicode": "⠁",
+    "group": "letters",
+    "order": 0
+  },
+  {
+    "id": "letter-b",
+    "kind": "letter",
+    "print": "b",
+    "dots": [
+      [
+        1,
+        2
+      ]
+    ],
+    "unicode": "⠃",
+    "group": "letters",
+    "order": 1
+  },
+  {
+    "id": "letter-c",
+    "kind": "letter",
+    "print": "c",
+    "dots": [
+      [
+        1,
+        4
+      ]
+    ],
+    "unicode": "⠉",
+    "group": "letters",
+    "order": 2
+  },
+  {
+    "id": "letter-d",
+    "kind": "letter",
+    "print": "d",
+    "dots": [
+      [
+        1,
+        4,
+        5
+      ]
+    ],
+    "unicode": "⠙",
+    "group": "letters",
+    "order": 3
+  },
+  {
+    "id": "letter-e",
+    "kind": "letter",
+    "print": "e",
+    "dots": [
+      [
+        1,
+        5
+      ]
+    ],
+    "unicode": "⠑",
+    "group": "letters",
+    "order": 4
+  },
+  {
+    "id": "letter-f",
+    "kind": "letter",
+    "print": "f",
+    "dots": [
+      [
+        1,
+        2,
+        4
+      ]
+    ],
+    "unicode": "⠋",
+    "group": "letters",
+    "order": 5
+  },
+  {
+    "id": "letter-g",
+    "kind": "letter",
+    "print": "g",
+    "dots": [
+      [
+        1,
+        2,
+        4,
+        5
+      ]
+    ],
+    "unicode": "⠛",
+    "group": "letters",
+    "order": 6
+  },
+  {
+    "id": "letter-h",
+    "kind": "letter",
+    "print": "h",
+    "dots": [
+      [
+        1,
+        2,
+        5
+      ]
+    ],
+    "unicode": "⠓",
+    "group": "letters",
+    "order": 7
+  },
+  {
+    "id": "letter-i",
+    "kind": "letter",
+    "print": "i",
+    "dots": [
+      [
+        2,
+        4
+      ]
+    ],
+    "unicode": "⠊",
+    "group": "letters",
+    "order": 8
+  },
+  {
+    "id": "letter-j",
+    "kind": "letter",
+    "print": "j",
+    "dots": [
+      [
+        2,
+        4,
+        5
+      ]
+    ],
+    "unicode": "⠚",
+    "group": "letters",
+    "order": 9
+  },
+  {
+    "id": "letter-k",
+    "kind": "letter",
+    "print": "k",
+    "dots": [
+      [
+        1,
+        3
+      ]
+    ],
+    "unicode": "⠅",
+    "group": "letters",
+    "order": 10
+  },
+  {
+    "id": "letter-l",
+    "kind": "letter",
+    "print": "l",
+    "dots": [
+      [
+        1,
+        2,
+        3
+      ]
+    ],
+    "unicode": "⠇",
+    "group": "letters",
+    "order": 11
+  },
+  {
+    "id": "letter-m",
+    "kind": "letter",
+    "print": "m",
+    "dots": [
+      [
+        1,
+        3,
+        4
+      ]
+    ],
+    "unicode": "⠍",
+    "group": "letters",
+    "order": 12
+  },
+  {
+    "id": "letter-n",
+    "kind": "letter",
+    "print": "n",
+    "dots": [
+      [
+        1,
+        3,
+        4,
+        5
+      ]
+    ],
+    "unicode": "⠝",
+    "group": "letters",
+    "order": 13
+  },
+  {
+    "id": "letter-o",
+    "kind": "letter",
+    "print": "o",
+    "dots": [
+      [
+        1,
+        3,
+        5
+      ]
+    ],
+    "unicode": "⠕",
+    "group": "letters",
+    "order": 14
+  },
+  {
+    "id": "letter-p",
+    "kind": "letter",
+    "print": "p",
+    "dots": [
+      [
+        1,
+        2,
+        3,
+        4
+      ]
+    ],
+    "unicode": "⠏",
+    "group": "letters",
+    "order": 15
+  },
+  {
+    "id": "letter-q",
+    "kind": "letter",
+    "print": "q",
+    "dots": [
+      [
+        1,
+        2,
+        3,
+        4,
+        5
+      ]
+    ],
+    "unicode": "⠟",
+    "group": "letters",
+    "order": 16
+  },
+  {
+    "id": "letter-r",
+    "kind": "letter",
+    "print": "r",
+    "dots": [
+      [
+        1,
+        2,
+        3,
+        5
+      ]
+    ],
+    "unicode": "⠗",
+    "group": "letters",
+    "order": 17
+  },
+  {
+    "id": "letter-s",
+    "kind": "letter",
+    "print": "s",
+    "dots": [
+      [
+        2,
+        3,
+        4
+      ]
+    ],
+    "unicode": "⠎",
+    "group": "letters",
+    "order": 18
+  },
+  {
+    "id": "letter-t",
+    "kind": "letter",
+    "print": "t",
+    "dots": [
+      [
+        2,
+        3,
+        4,
+        5
+      ]
+    ],
+    "unicode": "⠞",
+    "group": "letters",
+    "order": 19
+  },
+  {
+    "id": "letter-u",
+    "kind": "letter",
+    "print": "u",
+    "dots": [
+      [
+        1,
+        3,
+        6
+      ]
+    ],
+    "unicode": "⠥",
+    "group": "letters",
+    "order": 20
+  },
+  {
+    "id": "letter-v",
+    "kind": "letter",
+    "print": "v",
+    "dots": [
+      [
+        1,
+        2,
+        3,
+        6
+      ]
+    ],
+    "unicode": "⠧",
+    "group": "letters",
+    "order": 21
+  },
+  {
+    "id": "letter-w",
+    "kind": "letter",
+    "print": "w",
+    "dots": [
+      [
+        2,
+        4,
+        5,
+        6
+      ]
+    ],
+    "unicode": "⠺",
+    "group": "letters",
+    "order": 22
+  },
+  {
+    "id": "letter-x",
+    "kind": "letter",
+    "print": "x",
+    "dots": [
+      [
+        1,
+        3,
+        4,
+        6
+      ]
+    ],
+    "unicode": "⠭",
+    "group": "letters",
+    "order": 23
+  },
+  {
+    "id": "letter-y",
+    "kind": "letter",
+    "print": "y",
+    "dots": [
+      [
+        1,
+        3,
+        4,
+        5,
+        6
+      ]
+    ],
+    "unicode": "⠽",
+    "group": "letters",
+    "order": 24
+  },
+  {
+    "id": "letter-z",
+    "kind": "letter",
+    "print": "z",
+    "dots": [
+      [
+        1,
+        3,
+        5,
+        6
+      ]
+    ],
+    "unicode": "⠵",
+    "group": "letters",
+    "order": 25
+  },
+  {
+    "id": "capital-letter-indicator",
+    "kind": "capital",
+    "print": "A",
+    "dots": [
+      [
+        6
+      ]
+    ],
+    "unicode": "⠠",
+    "group": "capitals",
+    "order": 26
+  },
+  {
+    "id": "capital-word-indicator",
+    "kind": "capital",
+    "print": "AA",
+    "dots": [
+      [
+        6
+      ],
+      [
+        6
+      ]
+    ],
+    "unicode": "⠠⠠",
+    "group": "capitals",
+    "order": 27
+  },
+  {
+    "id": "number-sign",
+    "kind": "number-sign",
+    "print": "#",
+    "dots": [
+      [
+        3,
+        4,
+        5,
+        6
+      ]
+    ],
+    "unicode": "⠼",
+    "group": "numbers",
+    "order": 28
+  },
+  {
+    "id": "digit-0",
+    "kind": "number",
+    "print": "0",
+    "dots": [
+      [
+        2,
+        4,
+        5
+      ]
+    ],
+    "unicode": "⠚",
+    "group": "numbers",
+    "order": 29
+  },
+  {
+    "id": "digit-1",
+    "kind": "number",
+    "print": "1",
+    "dots": [
+      [
+        1
+      ]
+    ],
+    "unicode": "⠁",
+    "group": "numbers",
+    "order": 30
+  },
+  {
+    "id": "digit-2",
+    "kind": "number",
+    "print": "2",
+    "dots": [
+      [
+        1,
+        2
+      ]
+    ],
+    "unicode": "⠃",
+    "group": "numbers",
+    "order": 31
+  },
+  {
+    "id": "digit-3",
+    "kind": "number",
+    "print": "3",
+    "dots": [
+      [
+        1,
+        4
+      ]
+    ],
+    "unicode": "⠉",
+    "group": "numbers",
+    "order": 32
+  },
+  {
+    "id": "digit-4",
+    "kind": "number",
+    "print": "4",
+    "dots": [
+      [
+        1,
+        4,
+        5
+      ]
+    ],
+    "unicode": "⠙",
+    "group": "numbers",
+    "order": 33
+  },
+  {
+    "id": "digit-5",
+    "kind": "number",
+    "print": "5",
+    "dots": [
+      [
+        1,
+        5
+      ]
+    ],
+    "unicode": "⠑",
+    "group": "numbers",
+    "order": 34
+  },
+  {
+    "id": "digit-6",
+    "kind": "number",
+    "print": "6",
+    "dots": [
+      [
+        1,
+        2,
+        4
+      ]
+    ],
+    "unicode": "⠋",
+    "group": "numbers",
+    "order": 35
+  },
+  {
+    "id": "digit-7",
+    "kind": "number",
+    "print": "7",
+    "dots": [
+      [
+        1,
+        2,
+        4,
+        5
+      ]
+    ],
+    "unicode": "⠛",
+    "group": "numbers",
+    "order": 36
+  },
+  {
+    "id": "digit-8",
+    "kind": "number",
+    "print": "8",
+    "dots": [
+      [
+        1,
+        2,
+        5
+      ]
+    ],
+    "unicode": "⠓",
+    "group": "numbers",
+    "order": 37
+  },
+  {
+    "id": "digit-9",
+    "kind": "number",
+    "print": "9",
+    "dots": [
+      [
+        2,
+        4
+      ]
+    ],
+    "unicode": "⠊",
+    "group": "numbers",
+    "order": 38
+  },
+  {
+    "id": "punct-period",
+    "kind": "punctuation",
+    "print": ".",
+    "dots": [
+      [
+        2,
+        5,
+        6
+      ]
+    ],
+    "unicode": "⠲",
+    "group": "punctuation",
+    "order": 39
+  },
+  {
+    "id": "punct-comma",
+    "kind": "punctuation",
+    "print": ",",
+    "dots": [
+      [
+        2
+      ]
+    ],
+    "unicode": "⠂",
+    "group": "punctuation",
+    "order": 40
+  },
+  {
+    "id": "punct-semicolon",
+    "kind": "punctuation",
+    "print": ";",
+    "dots": [
+      [
+        2,
+        3
+      ]
+    ],
+    "unicode": "⠆",
+    "group": "punctuation",
+    "order": 41
+  },
+  {
+    "id": "punct-colon",
+    "kind": "punctuation",
+    "print": ":",
+    "dots": [
+      [
+        2,
+        5
+      ]
+    ],
+    "unicode": "⠒",
+    "group": "punctuation",
+    "order": 42
+  },
+  {
+    "id": "punct-question-mark",
+    "kind": "punctuation",
+    "print": "?",
+    "dots": [
+      [
+        2,
+        3,
+        6
+      ]
+    ],
+    "unicode": "⠦",
+    "group": "punctuation",
+    "order": 43
+  },
+  {
+    "id": "punct-exclamation-mark",
+    "kind": "punctuation",
+    "print": "!",
+    "dots": [
+      [
+        2,
+        3,
+        5
+      ]
+    ],
+    "unicode": "⠖",
+    "group": "punctuation",
+    "order": 44
+  },
+  {
+    "id": "punct-apostrophe",
+    "kind": "punctuation",
+    "print": "'",
+    "dots": [
+      [
+        3
+      ]
+    ],
+    "unicode": "⠄",
+    "group": "punctuation",
+    "order": 45
+  },
+  {
+    "id": "punct-quote",
+    "kind": "punctuation",
+    "print": "\"",
+    "dots": [
+      [
+        6
+      ],
+      [
+        2,
+        3,
+        5,
+        6
+      ]
+    ],
+    "unicode": "⠠⠶",
+    "group": "punctuation",
+    "order": 46
+  },
+  {
+    "id": "punct-hyphen",
+    "kind": "punctuation",
+    "print": "-",
+    "dots": [
+      [
+        3,
+        6
+      ]
+    ],
+    "unicode": "⠤",
+    "group": "punctuation",
+    "order": 47
+  },
+  {
+    "id": "punct-open-paren",
+    "kind": "punctuation",
+    "print": "(",
+    "dots": [
+      [
+        5
+      ],
+      [
+        1,
+        2,
+        6
+      ]
+    ],
+    "unicode": "⠐⠣",
+    "group": "punctuation",
+    "order": 48
+  },
+  {
+    "id": "punct-close-paren",
+    "kind": "punctuation",
+    "print": ")",
+    "dots": [
+      [
+        5
+      ],
+      [
+        3,
+        4,
+        5
+      ]
+    ],
+    "unicode": "⠐⠜",
+    "group": "punctuation",
+    "order": 49
+  },
+  {
+    "id": "wordsign-but",
+    "kind": "wordsign",
+    "print": "but",
+    "dots": [
+      [
+        1,
+        2
+      ]
+    ],
+    "unicode": "⠃",
+    "group": "alphabetic-wordsigns",
+    "order": 50
+  },
+  {
+    "id": "wordsign-can",
+    "kind": "wordsign",
+    "print": "can",
+    "dots": [
+      [
+        1,
+        4
+      ]
+    ],
+    "unicode": "⠉",
+    "group": "alphabetic-wordsigns",
+    "order": 51
+  },
+  {
+    "id": "wordsign-do",
+    "kind": "wordsign",
+    "print": "do",
+    "dots": [
+      [
+        1,
+        4,
+        5
+      ]
+    ],
+    "unicode": "⠙",
+    "group": "alphabetic-wordsigns",
+    "order": 52
+  },
+  {
+    "id": "wordsign-every",
+    "kind": "wordsign",
+    "print": "every",
+    "dots": [
+      [
+        1,
+        5
+      ]
+    ],
+    "unicode": "⠑",
+    "group": "alphabetic-wordsigns",
+    "order": 53
+  },
+  {
+    "id": "wordsign-from",
+    "kind": "wordsign",
+    "print": "from",
+    "dots": [
+      [
+        1,
+        2,
+        4
+      ]
+    ],
+    "unicode": "⠋",
+    "group": "alphabetic-wordsigns",
+    "order": 54
+  },
+  {
+    "id": "wordsign-go",
+    "kind": "wordsign",
+    "print": "go",
+    "dots": [
+      [
+        1,
+        2,
+        4,
+        5
+      ]
+    ],
+    "unicode": "⠛",
+    "group": "alphabetic-wordsigns",
+    "order": 55
+  },
+  {
+    "id": "wordsign-have",
+    "kind": "wordsign",
+    "print": "have",
+    "dots": [
+      [
+        1,
+        2,
+        5
+      ]
+    ],
+    "unicode": "⠓",
+    "group": "alphabetic-wordsigns",
+    "order": 56
+  },
+  {
+    "id": "wordsign-it",
+    "kind": "wordsign",
+    "print": "it",
+    "dots": [
+      [
+        1,
+        3,
+        4,
+        6
+      ]
+    ],
+    "unicode": "⠭",
+    "group": "alphabetic-wordsigns",
+    "order": 57
+  },
+  {
+    "id": "wordsign-just",
+    "kind": "wordsign",
+    "print": "just",
+    "dots": [
+      [
+        2,
+        4,
+        5
+      ]
+    ],
+    "unicode": "⠚",
+    "group": "alphabetic-wordsigns",
+    "order": 58
+  },
+  {
+    "id": "wordsign-knowledge",
+    "kind": "wordsign",
+    "print": "knowledge",
+    "dots": [
+      [
+        1,
+        3
+      ]
+    ],
+    "unicode": "⠅",
+    "group": "alphabetic-wordsigns",
+    "order": 59
+  },
+  {
+    "id": "wordsign-like",
+    "kind": "wordsign",
+    "print": "like",
+    "dots": [
+      [
+        1,
+        2,
+        3
+      ]
+    ],
+    "unicode": "⠇",
+    "group": "alphabetic-wordsigns",
+    "order": 60
+  },
+  {
+    "id": "wordsign-more",
+    "kind": "wordsign",
+    "print": "more",
+    "dots": [
+      [
+        1,
+        3,
+        4
+      ]
+    ],
+    "unicode": "⠍",
+    "group": "alphabetic-wordsigns",
+    "order": 61
+  },
+  {
+    "id": "wordsign-not",
+    "kind": "wordsign",
+    "print": "not",
+    "dots": [
+      [
+        1,
+        3,
+        4,
+        5
+      ]
+    ],
+    "unicode": "⠝",
+    "group": "alphabetic-wordsigns",
+    "order": 62
+  },
+  {
+    "id": "wordsign-people",
+    "kind": "wordsign",
+    "print": "people",
+    "dots": [
+      [
+        1,
+        2,
+        3,
+        4
+      ]
+    ],
+    "unicode": "⠏",
+    "group": "alphabetic-wordsigns",
+    "order": 63
+  },
+  {
+    "id": "wordsign-quite",
+    "kind": "wordsign",
+    "print": "quite",
+    "dots": [
+      [
+        1,
+        2,
+        3,
+        4,
+        5
+      ]
+    ],
+    "unicode": "⠟",
+    "group": "alphabetic-wordsigns",
+    "order": 64
+  },
+  {
+    "id": "wordsign-rather",
+    "kind": "wordsign",
+    "print": "rather",
+    "dots": [
+      [
+        1,
+        2,
+        3,
+        5
+      ]
+    ],
+    "unicode": "⠗",
+    "group": "alphabetic-wordsigns",
+    "order": 65
+  },
+  {
+    "id": "wordsign-so",
+    "kind": "wordsign",
+    "print": "so",
+    "dots": [
+      [
+        2,
+        3,
+        4
+      ]
+    ],
+    "unicode": "⠎",
+    "group": "alphabetic-wordsigns",
+    "order": 66
+  },
+  {
+    "id": "wordsign-that",
+    "kind": "wordsign",
+    "print": "that",
+    "dots": [
+      [
+        2,
+        3,
+        4,
+        5
+      ]
+    ],
+    "unicode": "⠞",
+    "group": "alphabetic-wordsigns",
+    "order": 67
+  },
+  {
+    "id": "wordsign-us",
+    "kind": "wordsign",
+    "print": "us",
+    "dots": [
+      [
+        1,
+        3,
+        6
+      ]
+    ],
+    "unicode": "⠥",
+    "group": "alphabetic-wordsigns",
+    "order": 68
+  },
+  {
+    "id": "wordsign-very",
+    "kind": "wordsign",
+    "print": "very",
+    "dots": [
+      [
+        1,
+        2,
+        3,
+        6
+      ]
+    ],
+    "unicode": "⠧",
+    "group": "alphabetic-wordsigns",
+    "order": 69
+  },
+  {
+    "id": "wordsign-will",
+    "kind": "wordsign",
+    "print": "will",
+    "dots": [
+      [
+        2,
+        4,
+        5,
+        6
+      ]
+    ],
+    "unicode": "⠺",
+    "group": "alphabetic-wordsigns",
+    "order": 70
+  },
+  {
+    "id": "wordsign-you",
+    "kind": "wordsign",
+    "print": "you",
+    "dots": [
+      [
+        1,
+        3,
+        4,
+        5,
+        6
+      ]
+    ],
+    "unicode": "⠽",
+    "group": "alphabetic-wordsigns",
+    "order": 71
+  },
+  {
+    "id": "wordsign-as",
+    "kind": "wordsign",
+    "print": "as",
+    "dots": [
+      [
+        1,
+        3,
+        5,
+        6
+      ]
+    ],
+    "unicode": "⠵",
+    "group": "alphabetic-wordsigns",
+    "order": 72
+  },
+  {
+    "id": "contraction-and",
+    "kind": "contraction",
+    "print": "and",
+    "dots": [
+      [
+        1,
+        2,
+        3,
+        4,
+        6
+      ]
+    ],
+    "unicode": "⠯",
+    "group": "strong-contractions",
+    "order": 73
+  },
+  {
+    "id": "contraction-for",
+    "kind": "contraction",
+    "print": "for",
+    "dots": [
+      [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6
+      ]
+    ],
+    "unicode": "⠿",
+    "group": "strong-contractions",
+    "order": 74
+  },
+  {
+    "id": "contraction-of",
+    "kind": "contraction",
+    "print": "of",
+    "dots": [
+      [
+        1,
+        2,
+        3,
+        5,
+        6
+      ]
+    ],
+    "unicode": "⠷",
+    "group": "strong-contractions",
+    "order": 75
+  },
+  {
+    "id": "contraction-the",
+    "kind": "contraction",
+    "print": "the",
+    "dots": [
+      [
+        2,
+        3,
+        4,
+        6
+      ]
+    ],
+    "unicode": "⠮",
+    "group": "strong-contractions",
+    "order": 76
+  },
+  {
+    "id": "contraction-with",
+    "kind": "contraction",
+    "print": "with",
+    "dots": [
+      [
+        2,
+        3,
+        4,
+        5,
+        6
+      ]
+    ],
+    "unicode": "⠾",
+    "group": "strong-contractions",
+    "order": 77
+  },
+  {
+    "id": "wordsign-child",
+    "kind": "wordsign",
+    "print": "child",
+    "dots": [
+      [
+        1,
+        6
+      ]
+    ],
+    "unicode": "⠡",
+    "group": "strong-wordsigns",
+    "order": 78
+  },
+  {
+    "id": "wordsign-shall",
+    "kind": "wordsign",
+    "print": "shall",
+    "dots": [
+      [
+        1,
+        4,
+        6
+      ]
+    ],
+    "unicode": "⠩",
+    "group": "strong-wordsigns",
+    "order": 79
+  },
+  {
+    "id": "wordsign-this",
+    "kind": "wordsign",
+    "print": "this",
+    "dots": [
+      [
+        1,
+        4,
+        5,
+        6
+      ]
+    ],
+    "unicode": "⠹",
+    "group": "strong-wordsigns",
+    "order": 80
+  },
+  {
+    "id": "wordsign-which",
+    "kind": "wordsign",
+    "print": "which",
+    "dots": [
+      [
+        1,
+        5,
+        6
+      ]
+    ],
+    "unicode": "⠱",
+    "group": "strong-wordsigns",
+    "order": 81
+  },
+  {
+    "id": "wordsign-out",
+    "kind": "wordsign",
+    "print": "out",
+    "dots": [
+      [
+        1,
+        2,
+        5,
+        6
+      ]
+    ],
+    "unicode": "⠳",
+    "group": "strong-wordsigns",
+    "order": 82
+  },
+  {
+    "id": "wordsign-still",
+    "kind": "wordsign",
+    "print": "still",
+    "dots": [
+      [
+        3,
+        4
+      ]
+    ],
+    "unicode": "⠌",
+    "group": "strong-wordsigns",
+    "order": 83
+  },
+  {
+    "id": "groupsign-ch",
+    "kind": "groupsign",
+    "print": "ch",
+    "dots": [
+      [
+        1,
+        6
+      ]
+    ],
+    "unicode": "⠡",
+    "group": "strong-groupsigns",
+    "order": 84
+  },
+  {
+    "id": "groupsign-gh",
+    "kind": "groupsign",
+    "print": "gh",
+    "dots": [
+      [
+        1,
+        2,
+        6
+      ]
+    ],
+    "unicode": "⠣",
+    "group": "strong-groupsigns",
+    "order": 85
+  },
+  {
+    "id": "groupsign-sh",
+    "kind": "groupsign",
+    "print": "sh",
+    "dots": [
+      [
+        1,
+        4,
+        6
+      ]
+    ],
+    "unicode": "⠩",
+    "group": "strong-groupsigns",
+    "order": 86
+  },
+  {
+    "id": "groupsign-th",
+    "kind": "groupsign",
+    "print": "th",
+    "dots": [
+      [
+        1,
+        4,
+        5,
+        6
+      ]
+    ],
+    "unicode": "⠹",
+    "group": "strong-groupsigns",
+    "order": 87
+  },
+  {
+    "id": "groupsign-wh",
+    "kind": "groupsign",
+    "print": "wh",
+    "dots": [
+      [
+        1,
+        5,
+        6
+      ]
+    ],
+    "unicode": "⠱",
+    "group": "strong-groupsigns",
+    "order": 88
+  },
+  {
+    "id": "groupsign-ed",
+    "kind": "groupsign",
+    "print": "ed",
+    "dots": [
+      [
+        1,
+        2,
+        4,
+        6
+      ]
+    ],
+    "unicode": "⠫",
+    "group": "strong-groupsigns",
+    "order": 89
+  },
+  {
+    "id": "groupsign-er",
+    "kind": "groupsign",
+    "print": "er",
+    "dots": [
+      [
+        1,
+        2,
+        4,
+        5,
+        6
+      ]
+    ],
+    "unicode": "⠻",
+    "group": "strong-groupsigns",
+    "order": 90
+  },
+  {
+    "id": "groupsign-ou",
+    "kind": "groupsign",
+    "print": "ou",
+    "dots": [
+      [
+        1,
+        2,
+        5,
+        6
+      ]
+    ],
+    "unicode": "⠳",
+    "group": "strong-groupsigns",
+    "order": 91
+  },
+  {
+    "id": "groupsign-ow",
+    "kind": "groupsign",
+    "print": "ow",
+    "dots": [
+      [
+        2,
+        4,
+        6
+      ]
+    ],
+    "unicode": "⠪",
+    "group": "strong-groupsigns",
+    "order": 92
+  },
+  {
+    "id": "groupsign-st",
+    "kind": "groupsign",
+    "print": "st",
+    "dots": [
+      [
+        3,
+        4
+      ]
+    ],
+    "unicode": "⠌",
+    "group": "strong-groupsigns",
+    "order": 93
+  },
+  {
+    "id": "groupsign-ar",
+    "kind": "groupsign",
+    "print": "ar",
+    "dots": [
+      [
+        3,
+        4,
+        5
+      ]
+    ],
+    "unicode": "⠜",
+    "group": "strong-groupsigns",
+    "order": 94
+  },
+  {
+    "id": "groupsign-ing",
+    "kind": "groupsign",
+    "print": "ing",
+    "dots": [
+      [
+        3,
+        4,
+        6
+      ]
+    ],
+    "unicode": "⠬",
+    "group": "strong-groupsigns",
+    "order": 95
+  },
+  {
+    "id": "lower-ea",
+    "kind": "lowersign",
+    "print": "ea",
+    "dots": [
+      [
+        2
+      ]
+    ],
+    "unicode": "⠂",
+    "group": "lower-signs",
+    "order": 96
+  },
+  {
+    "id": "lower-bb",
+    "kind": "lowersign",
+    "print": "bb",
+    "dots": [
+      [
+        2,
+        3
+      ]
+    ],
+    "unicode": "⠆",
+    "group": "lower-signs",
+    "order": 97
+  },
+  {
+    "id": "lower-cc",
+    "kind": "lowersign",
+    "print": "cc",
+    "dots": [
+      [
+        2,
+        5
+      ]
+    ],
+    "unicode": "⠒",
+    "group": "lower-signs",
+    "order": 98
+  },
+  {
+    "id": "lower-ff",
+    "kind": "lowersign",
+    "print": "ff",
+    "dots": [
+      [
+        2,
+        3,
+        5
+      ]
+    ],
+    "unicode": "⠖",
+    "group": "lower-signs",
+    "order": 99
+  },
+  {
+    "id": "lower-gg",
+    "kind": "lowersign",
+    "print": "gg",
+    "dots": [
+      [
+        2,
+        3,
+        5,
+        6
+      ]
+    ],
+    "unicode": "⠶",
+    "group": "lower-signs",
+    "order": 100
+  },
+  {
+    "id": "lower-be",
+    "kind": "lowersign",
+    "print": "be",
+    "dots": [
+      [
+        2,
+        3
+      ]
+    ],
+    "unicode": "⠆",
+    "group": "lower-signs",
+    "order": 101
+  },
+  {
+    "id": "lower-con",
+    "kind": "lowersign",
+    "print": "con",
+    "dots": [
+      [
+        2,
+        5
+      ]
+    ],
+    "unicode": "⠒",
+    "group": "lower-signs",
+    "order": 102
+  },
+  {
+    "id": "lower-dis",
+    "kind": "lowersign",
+    "print": "dis",
+    "dots": [
+      [
+        2,
+        5,
+        6
+      ]
+    ],
+    "unicode": "⠲",
+    "group": "lower-signs",
+    "order": 103
+  },
+  {
+    "id": "lower-en",
+    "kind": "lowersign",
+    "print": "en",
+    "dots": [
+      [
+        2,
+        6
+      ]
+    ],
+    "unicode": "⠢",
+    "group": "lower-signs",
+    "order": 104
+  },
+  {
+    "id": "lower-in",
+    "kind": "lowersign",
+    "print": "in",
+    "dots": [
+      [
+        3,
+        5
+      ]
+    ],
+    "unicode": "⠔",
+    "group": "lower-signs",
+    "order": 105
+  },
+  {
+    "id": "lower-enough",
+    "kind": "lowersign",
+    "print": "enough",
+    "dots": [
+      [
+        2,
+        6
+      ]
+    ],
+    "unicode": "⠢",
+    "group": "lower-signs",
+    "order": 106
+  },
+  {
+    "id": "lower-his",
+    "kind": "lowersign",
+    "print": "his",
+    "dots": [
+      [
+        2,
+        3,
+        6
+      ]
+    ],
+    "unicode": "⠦",
+    "group": "lower-signs",
+    "order": 107
+  },
+  {
+    "id": "lower-was",
+    "kind": "lowersign",
+    "print": "was",
+    "dots": [
+      [
+        3,
+        5,
+        6
+      ]
+    ],
+    "unicode": "⠴",
+    "group": "lower-signs",
+    "order": 108
+  },
+  {
+    "id": "lower-were",
+    "kind": "lowersign",
+    "print": "were",
+    "dots": [
+      [
+        2,
+        3,
+        5,
+        6
+      ]
+    ],
+    "unicode": "⠶",
+    "group": "lower-signs",
+    "order": 109
+  },
+  {
+    "id": "initial-day",
+    "kind": "initial-letter",
+    "print": "day",
+    "dots": [
+      [
+        5
+      ],
+      [
+        1,
+        4,
+        5
+      ]
+    ],
+    "unicode": "⠐⠙",
+    "group": "initial-letter-contractions",
+    "order": 110
+  },
+  {
+    "id": "initial-ever",
+    "kind": "initial-letter",
+    "print": "ever",
+    "dots": [
+      [
+        5
+      ],
+      [
+        1,
+        5
+      ]
+    ],
+    "unicode": "⠐⠑",
+    "group": "initial-letter-contractions",
+    "order": 111
+  },
+  {
+    "id": "initial-father",
+    "kind": "initial-letter",
+    "print": "father",
+    "dots": [
+      [
+        5
+      ],
+      [
+        1,
+        2,
+        4
+      ]
+    ],
+    "unicode": "⠐⠋",
+    "group": "initial-letter-contractions",
+    "order": 112
+  },
+  {
+    "id": "initial-here",
+    "kind": "initial-letter",
+    "print": "here",
+    "dots": [
+      [
+        5
+      ],
+      [
+        1,
+        2,
+        5
+      ]
+    ],
+    "unicode": "⠐⠓",
+    "group": "initial-letter-contractions",
+    "order": 113
+  },
+  {
+    "id": "initial-know",
+    "kind": "initial-letter",
+    "print": "know",
+    "dots": [
+      [
+        5
+      ],
+      [
+        1,
+        3
+      ]
+    ],
+    "unicode": "⠐⠅",
+    "group": "initial-letter-contractions",
+    "order": 114
+  },
+  {
+    "id": "initial-lord",
+    "kind": "initial-letter",
+    "print": "lord",
+    "dots": [
+      [
+        5
+      ],
+      [
+        1,
+        2,
+        3
+      ]
+    ],
+    "unicode": "⠐⠇",
+    "group": "initial-letter-contractions",
+    "order": 115
+  },
+  {
+    "id": "initial-mother",
+    "kind": "initial-letter",
+    "print": "mother",
+    "dots": [
+      [
+        5
+      ],
+      [
+        1,
+        3,
+        4
+      ]
+    ],
+    "unicode": "⠐⠍",
+    "group": "initial-letter-contractions",
+    "order": 116
+  },
+  {
+    "id": "initial-name",
+    "kind": "initial-letter",
+    "print": "name",
+    "dots": [
+      [
+        5
+      ],
+      [
+        1,
+        3,
+        4,
+        5
+      ]
+    ],
+    "unicode": "⠐⠝",
+    "group": "initial-letter-contractions",
+    "order": 117
+  },
+  {
+    "id": "initial-one",
+    "kind": "initial-letter",
+    "print": "one",
+    "dots": [
+      [
+        5
+      ],
+      [
+        1,
+        3,
+        5
+      ]
+    ],
+    "unicode": "⠐⠕",
+    "group": "initial-letter-contractions",
+    "order": 118
+  },
+  {
+    "id": "initial-part",
+    "kind": "initial-letter",
+    "print": "part",
+    "dots": [
+      [
+        5
+      ],
+      [
+        1,
+        2,
+        3,
+        4
+      ]
+    ],
+    "unicode": "⠐⠏",
+    "group": "initial-letter-contractions",
+    "order": 119
+  },
+  {
+    "id": "initial-question",
+    "kind": "initial-letter",
+    "print": "question",
+    "dots": [
+      [
+        5
+      ],
+      [
+        1,
+        2,
+        3,
+        4,
+        5
+      ]
+    ],
+    "unicode": "⠐⠟",
+    "group": "initial-letter-contractions",
+    "order": 120
+  },
+  {
+    "id": "initial-right",
+    "kind": "initial-letter",
+    "print": "right",
+    "dots": [
+      [
+        5
+      ],
+      [
+        1,
+        2,
+        3,
+        5
+      ]
+    ],
+    "unicode": "⠐⠗",
+    "group": "initial-letter-contractions",
+    "order": 121
+  },
+  {
+    "id": "initial-some",
+    "kind": "initial-letter",
+    "print": "some",
+    "dots": [
+      [
+        5
+      ],
+      [
+        2,
+        3,
+        4
+      ]
+    ],
+    "unicode": "⠐⠎",
+    "group": "initial-letter-contractions",
+    "order": 122
+  },
+  {
+    "id": "initial-time",
+    "kind": "initial-letter",
+    "print": "time",
+    "dots": [
+      [
+        5
+      ],
+      [
+        2,
+        3,
+        4,
+        5
+      ]
+    ],
+    "unicode": "⠐⠞",
+    "group": "initial-letter-contractions",
+    "order": 123
+  },
+  {
+    "id": "initial-under",
+    "kind": "initial-letter",
+    "print": "under",
+    "dots": [
+      [
+        5
+      ],
+      [
+        1,
+        3,
+        6
+      ]
+    ],
+    "unicode": "⠐⠥",
+    "group": "initial-letter-contractions",
+    "order": 124
+  },
+  {
+    "id": "initial-work",
+    "kind": "initial-letter",
+    "print": "work",
+    "dots": [
+      [
+        5
+      ],
+      [
+        2,
+        4,
+        5,
+        6
+      ]
+    ],
+    "unicode": "⠐⠺",
+    "group": "initial-letter-contractions",
+    "order": 125
+  },
+  {
+    "id": "initial-young",
+    "kind": "initial-letter",
+    "print": "young",
+    "dots": [
+      [
+        5
+      ],
+      [
+        1,
+        3,
+        4,
+        5,
+        6
+      ]
+    ],
+    "unicode": "⠐⠽",
+    "group": "initial-letter-contractions",
+    "order": 126
+  },
+  {
+    "id": "initial-character",
+    "kind": "initial-letter",
+    "print": "character",
+    "dots": [
+      [
+        5
+      ],
+      [
+        1,
+        6
+      ]
+    ],
+    "unicode": "⠐⠡",
+    "group": "initial-letter-contractions",
+    "order": 127
+  },
+  {
+    "id": "initial-through",
+    "kind": "initial-letter",
+    "print": "through",
+    "dots": [
+      [
+        5
+      ],
+      [
+        1,
+        4,
+        5,
+        6
+      ]
+    ],
+    "unicode": "⠐⠹",
+    "group": "initial-letter-contractions",
+    "order": 128
+  },
+  {
+    "id": "initial-where",
+    "kind": "initial-letter",
+    "print": "where",
+    "dots": [
+      [
+        5
+      ],
+      [
+        1,
+        5,
+        6
+      ]
+    ],
+    "unicode": "⠐⠱",
+    "group": "initial-letter-contractions",
+    "order": 129
+  },
+  {
+    "id": "initial-ought",
+    "kind": "initial-letter",
+    "print": "ought",
+    "dots": [
+      [
+        5
+      ],
+      [
+        1,
+        2,
+        5,
+        6
+      ]
+    ],
+    "unicode": "⠐⠳",
+    "group": "initial-letter-contractions",
+    "order": 130
+  },
+  {
+    "id": "initial-there",
+    "kind": "initial-letter",
+    "print": "there",
+    "dots": [
+      [
+        5
+      ],
+      [
+        2,
+        3,
+        4,
+        6
+      ]
+    ],
+    "unicode": "⠐⠮",
+    "group": "initial-letter-contractions",
+    "order": 131
+  },
+  {
+    "id": "initial-these",
+    "kind": "initial-letter",
+    "print": "these",
+    "dots": [
+      [
+        4,
+        5
+      ],
+      [
+        2,
+        3,
+        4,
+        6
+      ]
+    ],
+    "unicode": "⠘⠮",
+    "group": "initial-letter-contractions",
+    "order": 132
+  },
+  {
+    "id": "initial-those",
+    "kind": "initial-letter",
+    "print": "those",
+    "dots": [
+      [
+        4,
+        5
+      ],
+      [
+        1,
+        4,
+        5,
+        6
+      ]
+    ],
+    "unicode": "⠘⠹",
+    "group": "initial-letter-contractions",
+    "order": 133
+  },
+  {
+    "id": "initial-upon",
+    "kind": "initial-letter",
+    "print": "upon",
+    "dots": [
+      [
+        4,
+        5
+      ],
+      [
+        1,
+        3,
+        6
+      ]
+    ],
+    "unicode": "⠘⠥",
+    "group": "initial-letter-contractions",
+    "order": 134
+  },
+  {
+    "id": "initial-whose",
+    "kind": "initial-letter",
+    "print": "whose",
+    "dots": [
+      [
+        4,
+        5
+      ],
+      [
+        1,
+        5,
+        6
+      ]
+    ],
+    "unicode": "⠘⠱",
+    "group": "initial-letter-contractions",
+    "order": 135
+  },
+  {
+    "id": "initial-word",
+    "kind": "initial-letter",
+    "print": "word",
+    "dots": [
+      [
+        4,
+        5
+      ],
+      [
+        2,
+        4,
+        5,
+        6
+      ]
+    ],
+    "unicode": "⠘⠺",
+    "group": "initial-letter-contractions",
+    "order": 136
+  },
+  {
+    "id": "initial-cannot",
+    "kind": "initial-letter",
+    "print": "cannot",
+    "dots": [
+      [
+        4,
+        5,
+        6
+      ],
+      [
+        1,
+        4
+      ]
+    ],
+    "unicode": "⠸⠉",
+    "group": "initial-letter-contractions",
+    "order": 137
+  },
+  {
+    "id": "initial-had",
+    "kind": "initial-letter",
+    "print": "had",
+    "dots": [
+      [
+        4,
+        5,
+        6
+      ],
+      [
+        1,
+        2,
+        5
+      ]
+    ],
+    "unicode": "⠸⠓",
+    "group": "initial-letter-contractions",
+    "order": 138
+  },
+  {
+    "id": "initial-many",
+    "kind": "initial-letter",
+    "print": "many",
+    "dots": [
+      [
+        4,
+        5,
+        6
+      ],
+      [
+        1,
+        3,
+        4
+      ]
+    ],
+    "unicode": "⠸⠍",
+    "group": "initial-letter-contractions",
+    "order": 139
+  },
+  {
+    "id": "initial-spirit",
+    "kind": "initial-letter",
+    "print": "spirit",
+    "dots": [
+      [
+        4,
+        5,
+        6
+      ],
+      [
+        2,
+        3,
+        4
+      ]
+    ],
+    "unicode": "⠸⠎",
+    "group": "initial-letter-contractions",
+    "order": 140
+  },
+  {
+    "id": "initial-their",
+    "kind": "initial-letter",
+    "print": "their",
+    "dots": [
+      [
+        4,
+        5,
+        6
+      ],
+      [
+        2,
+        3,
+        4,
+        6
+      ]
+    ],
+    "unicode": "⠸⠮",
+    "group": "initial-letter-contractions",
+    "order": 141
+  },
+  {
+    "id": "initial-world",
+    "kind": "initial-letter",
+    "print": "world",
+    "dots": [
+      [
+        4,
+        5,
+        6
+      ],
+      [
+        2,
+        4,
+        5,
+        6
+      ]
+    ],
+    "unicode": "⠸⠺",
+    "group": "initial-letter-contractions",
+    "order": 142
+  },
+  {
+    "id": "final-ound",
+    "kind": "final-letter",
+    "print": "ound",
+    "dots": [
+      [
+        4,
+        6
+      ],
+      [
+        1,
+        4,
+        5
+      ]
+    ],
+    "unicode": "⠨⠙",
+    "group": "final-letter-groupsigns",
+    "order": 143
+  },
+  {
+    "id": "final-ance",
+    "kind": "final-letter",
+    "print": "ance",
+    "dots": [
+      [
+        4,
+        6
+      ],
+      [
+        1,
+        5
+      ]
+    ],
+    "unicode": "⠨⠑",
+    "group": "final-letter-groupsigns",
+    "order": 144
+  },
+  {
+    "id": "final-sion",
+    "kind": "final-letter",
+    "print": "sion",
+    "dots": [
+      [
+        4,
+        6
+      ],
+      [
+        1,
+        3,
+        4,
+        5
+      ]
+    ],
+    "unicode": "⠨⠝",
+    "group": "final-letter-groupsigns",
+    "order": 145
+  },
+  {
+    "id": "final-less",
+    "kind": "final-letter",
+    "print": "less",
+    "dots": [
+      [
+        4,
+        6
+      ],
+      [
+        2,
+        3,
+        4
+      ]
+    ],
+    "unicode": "⠨⠎",
+    "group": "final-letter-groupsigns",
+    "order": 146
+  },
+  {
+    "id": "final-ount",
+    "kind": "final-letter",
+    "print": "ount",
+    "dots": [
+      [
+        4,
+        6
+      ],
+      [
+        2,
+        3,
+        4,
+        5
+      ]
+    ],
+    "unicode": "⠨⠞",
+    "group": "final-letter-groupsigns",
+    "order": 147
+  },
+  {
+    "id": "final-ence",
+    "kind": "final-letter",
+    "print": "ence",
+    "dots": [
+      [
+        5,
+        6
+      ],
+      [
+        1,
+        5
+      ]
+    ],
+    "unicode": "⠰⠑",
+    "group": "final-letter-groupsigns",
+    "order": 148
+  },
+  {
+    "id": "final-ong",
+    "kind": "final-letter",
+    "print": "ong",
+    "dots": [
+      [
+        5,
+        6
+      ],
+      [
+        1,
+        2,
+        4,
+        5
+      ]
+    ],
+    "unicode": "⠰⠛",
+    "group": "final-letter-groupsigns",
+    "order": 149
+  },
+  {
+    "id": "final-ful",
+    "kind": "final-letter",
+    "print": "ful",
+    "dots": [
+      [
+        5,
+        6
+      ],
+      [
+        1,
+        2,
+        3
+      ]
+    ],
+    "unicode": "⠰⠇",
+    "group": "final-letter-groupsigns",
+    "order": 150
+  },
+  {
+    "id": "final-tion",
+    "kind": "final-letter",
+    "print": "tion",
+    "dots": [
+      [
+        5,
+        6
+      ],
+      [
+        1,
+        3,
+        4,
+        5
+      ]
+    ],
+    "unicode": "⠰⠝",
+    "group": "final-letter-groupsigns",
+    "order": 151
+  },
+  {
+    "id": "final-ness",
+    "kind": "final-letter",
+    "print": "ness",
+    "dots": [
+      [
+        5,
+        6
+      ],
+      [
+        2,
+        3,
+        4
+      ]
+    ],
+    "unicode": "⠰⠎",
+    "group": "final-letter-groupsigns",
+    "order": 152
+  },
+  {
+    "id": "final-ment",
+    "kind": "final-letter",
+    "print": "ment",
+    "dots": [
+      [
+        5,
+        6
+      ],
+      [
+        2,
+        3,
+        4,
+        5
+      ]
+    ],
+    "unicode": "⠰⠞",
+    "group": "final-letter-groupsigns",
+    "order": 153
+  },
+  {
+    "id": "final-ity",
+    "kind": "final-letter",
+    "print": "ity",
+    "dots": [
+      [
+        5,
+        6
+      ],
+      [
+        1,
+        3,
+        4,
+        5,
+        6
+      ]
+    ],
+    "unicode": "⠰⠽",
+    "group": "final-letter-groupsigns",
+    "order": 154
+  },
+  {
+    "id": "shortform-about",
+    "kind": "shortform",
+    "print": "about",
+    "dots": [
+      [
+        1
+      ],
+      [
+        1,
+        2
+      ]
+    ],
+    "unicode": "⠁⠃",
+    "group": "shortforms",
+    "order": 155
+  },
+  {
+    "id": "shortform-above",
+    "kind": "shortform",
+    "print": "above",
+    "dots": [
+      [
+        1
+      ],
+      [
+        1,
+        2
+      ],
+      [
+        1,
+        2,
+        3,
+        6
+      ]
+    ],
+    "unicode": "⠁⠃⠧",
+    "group": "shortforms",
+    "order": 156
+  },
+  {
+    "id": "shortform-according",
+    "kind": "shortform",
+    "print": "according",
+    "dots": [
+      [
+        1
+      ],
+      [
+        1,
+        4
+      ]
+    ],
+    "unicode": "⠁⠉",
+    "group": "shortforms",
+    "order": 157
+  },
+  {
+    "id": "shortform-across",
+    "kind": "shortform",
+    "print": "across",
+    "dots": [
+      [
+        1
+      ],
+      [
+        1,
+        4
+      ],
+      [
+        1,
+        2,
+        3,
+        5
+      ]
+    ],
+    "unicode": "⠁⠉⠗",
+    "group": "shortforms",
+    "order": 158
+  },
+  {
+    "id": "shortform-after",
+    "kind": "shortform",
+    "print": "after",
+    "dots": [
+      [
+        1
+      ],
+      [
+        1,
+        2,
+        4
+      ]
+    ],
+    "unicode": "⠁⠋",
+    "group": "shortforms",
+    "order": 159
+  },
+  {
+    "id": "shortform-afternoon",
+    "kind": "shortform",
+    "print": "afternoon",
+    "dots": [
+      [
+        1
+      ],
+      [
+        1,
+        2,
+        4
+      ],
+      [
+        1,
+        3,
+        4,
+        5
+      ]
+    ],
+    "unicode": "⠁⠋⠝",
+    "group": "shortforms",
+    "order": 160
+  },
+  {
+    "id": "shortform-afterward",
+    "kind": "shortform",
+    "print": "afterward",
+    "dots": [
+      [
+        1
+      ],
+      [
+        1,
+        2,
+        4
+      ],
+      [
+        2,
+        4,
+        5,
+        6
+      ]
+    ],
+    "unicode": "⠁⠋⠺",
+    "group": "shortforms",
+    "order": 161
+  },
+  {
+    "id": "shortform-again",
+    "kind": "shortform",
+    "print": "again",
+    "dots": [
+      [
+        1
+      ],
+      [
+        1,
+        2,
+        4,
+        5
+      ]
+    ],
+    "unicode": "⠁⠛",
+    "group": "shortforms",
+    "order": 162
+  },
+  {
+    "id": "shortform-against",
+    "kind": "shortform",
+    "print": "against",
+    "dots": [
+      [
+        1
+      ],
+      [
+        1,
+        2,
+        4,
+        5
+      ],
+      [
+        3,
+        4
+      ]
+    ],
+    "unicode": "⠁⠛⠌",
+    "group": "shortforms",
+    "order": 163
+  },
+  {
+    "id": "shortform-almost",
+    "kind": "shortform",
+    "print": "almost",
+    "dots": [
+      [
+        1
+      ],
+      [
+        1,
+        2,
+        3
+      ],
+      [
+        1,
+        3,
+        4
+      ]
+    ],
+    "unicode": "⠁⠇⠍",
+    "group": "shortforms",
+    "order": 164
+  },
+  {
+    "id": "shortform-already",
+    "kind": "shortform",
+    "print": "already",
+    "dots": [
+      [
+        1
+      ],
+      [
+        1,
+        2,
+        3
+      ],
+      [
+        1,
+        2,
+        3,
+        5
+      ]
+    ],
+    "unicode": "⠁⠇⠗",
+    "group": "shortforms",
+    "order": 165
+  },
+  {
+    "id": "shortform-also",
+    "kind": "shortform",
+    "print": "also",
+    "dots": [
+      [
+        1
+      ],
+      [
+        1,
+        2,
+        3
+      ]
+    ],
+    "unicode": "⠁⠇",
+    "group": "shortforms",
+    "order": 166
+  },
+  {
+    "id": "shortform-although",
+    "kind": "shortform",
+    "print": "although",
+    "dots": [
+      [
+        1
+      ],
+      [
+        1,
+        2,
+        3
+      ],
+      [
+        1,
+        4,
+        5,
+        6
+      ]
+    ],
+    "unicode": "⠁⠇⠹",
+    "group": "shortforms",
+    "order": 167
+  },
+  {
+    "id": "shortform-altogether",
+    "kind": "shortform",
+    "print": "altogether",
+    "dots": [
+      [
+        1
+      ],
+      [
+        1,
+        2,
+        3
+      ],
+      [
+        2,
+        3,
+        4,
+        5
+      ]
+    ],
+    "unicode": "⠁⠇⠞",
+    "group": "shortforms",
+    "order": 168
+  },
+  {
+    "id": "shortform-always",
+    "kind": "shortform",
+    "print": "always",
+    "dots": [
+      [
+        1
+      ],
+      [
+        1,
+        2,
+        3
+      ],
+      [
+        2,
+        4,
+        5,
+        6
+      ]
+    ],
+    "unicode": "⠁⠇⠺",
+    "group": "shortforms",
+    "order": 169
+  },
+  {
+    "id": "shortform-because",
+    "kind": "shortform",
+    "print": "because",
+    "dots": [
+      [
+        2,
+        3
+      ],
+      [
+        1,
+        4
+      ]
+    ],
+    "unicode": "⠆⠉",
+    "group": "shortforms",
+    "order": 170
+  },
+  {
+    "id": "shortform-before",
+    "kind": "shortform",
+    "print": "before",
+    "dots": [
+      [
+        2,
+        3
+      ],
+      [
+        1,
+        2,
+        4
+      ]
+    ],
+    "unicode": "⠆⠋",
+    "group": "shortforms",
+    "order": 171
+  },
+  {
+    "id": "shortform-behind",
+    "kind": "shortform",
+    "print": "behind",
+    "dots": [
+      [
+        2,
+        3
+      ],
+      [
+        1,
+        2,
+        5
+      ]
+    ],
+    "unicode": "⠆⠓",
+    "group": "shortforms",
+    "order": 172
+  },
+  {
+    "id": "shortform-below",
+    "kind": "shortform",
+    "print": "below",
+    "dots": [
+      [
+        2,
+        3
+      ],
+      [
+        1,
+        2,
+        3
+      ]
+    ],
+    "unicode": "⠆⠇",
+    "group": "shortforms",
+    "order": 173
+  },
+  {
+    "id": "shortform-beneath",
+    "kind": "shortform",
+    "print": "beneath",
+    "dots": [
+      [
+        2,
+        3
+      ],
+      [
+        1,
+        3,
+        4,
+        5
+      ]
+    ],
+    "unicode": "⠆⠝",
+    "group": "shortforms",
+    "order": 174
+  },
+  {
+    "id": "shortform-beside",
+    "kind": "shortform",
+    "print": "beside",
+    "dots": [
+      [
+        2,
+        3
+      ],
+      [
+        2,
+        3,
+        4
+      ]
+    ],
+    "unicode": "⠆⠎",
+    "group": "shortforms",
+    "order": 175
+  },
+  {
+    "id": "shortform-between",
+    "kind": "shortform",
+    "print": "between",
+    "dots": [
+      [
+        2,
+        3
+      ],
+      [
+        2,
+        3,
+        4,
+        5
+      ]
+    ],
+    "unicode": "⠆⠞",
+    "group": "shortforms",
+    "order": 176
+  },
+  {
+    "id": "shortform-beyond",
+    "kind": "shortform",
+    "print": "beyond",
+    "dots": [
+      [
+        2,
+        3
+      ],
+      [
+        1,
+        3,
+        4,
+        5,
+        6
+      ]
+    ],
+    "unicode": "⠆⠽",
+    "group": "shortforms",
+    "order": 177
+  },
+  {
+    "id": "shortform-blind",
+    "kind": "shortform",
+    "print": "blind",
+    "dots": [
+      [
+        1,
+        2
+      ],
+      [
+        1,
+        2,
+        3
+      ]
+    ],
+    "unicode": "⠃⠇",
+    "group": "shortforms",
+    "order": 178
+  },
+  {
+    "id": "shortform-braille",
+    "kind": "shortform",
+    "print": "braille",
+    "dots": [
+      [
+        1,
+        2
+      ],
+      [
+        1,
+        2,
+        3,
+        5
+      ],
+      [
+        1,
+        2,
+        3
+      ]
+    ],
+    "unicode": "⠃⠗⠇",
+    "group": "shortforms",
+    "order": 179
+  },
+  {
+    "id": "shortform-children",
+    "kind": "shortform",
+    "print": "children",
+    "dots": [
+      [
+        1,
+        6
+      ],
+      [
+        1,
+        3,
+        4,
+        5
+      ]
+    ],
+    "unicode": "⠡⠝",
+    "group": "shortforms",
+    "order": 180
+  },
+  {
+    "id": "shortform-conceive",
+    "kind": "shortform",
+    "print": "conceive",
+    "dots": [
+      [
+        2,
+        5
+      ],
+      [
+        1,
+        4
+      ],
+      [
+        1,
+        2,
+        3,
+        6
+      ]
+    ],
+    "unicode": "⠒⠉⠧",
+    "group": "shortforms",
+    "order": 181
+  },
+  {
+    "id": "shortform-conceiving",
+    "kind": "shortform",
+    "print": "conceiving",
+    "dots": [
+      [
+        2,
+        5
+      ],
+      [
+        1,
+        4
+      ],
+      [
+        1,
+        2,
+        3,
+        6
+      ],
+      [
+        1,
+        2,
+        4,
+        5
+      ]
+    ],
+    "unicode": "⠒⠉⠧⠛",
+    "group": "shortforms",
+    "order": 182
+  },
+  {
+    "id": "shortform-could",
+    "kind": "shortform",
+    "print": "could",
+    "dots": [
+      [
+        1,
+        4
+      ],
+      [
+        1,
+        4,
+        5
+      ]
+    ],
+    "unicode": "⠉⠙",
+    "group": "shortforms",
+    "order": 183
+  },
+  {
+    "id": "shortform-deceive",
+    "kind": "shortform",
+    "print": "deceive",
+    "dots": [
+      [
+        1,
+        4,
+        5
+      ],
+      [
+        1,
+        4
+      ],
+      [
+        1,
+        2,
+        3,
+        6
+      ]
+    ],
+    "unicode": "⠙⠉⠧",
+    "group": "shortforms",
+    "order": 184
+  },
+  {
+    "id": "shortform-deceiving",
+    "kind": "shortform",
+    "print": "deceiving",
+    "dots": [
+      [
+        1,
+        4,
+        5
+      ],
+      [
+        1,
+        4
+      ],
+      [
+        1,
+        2,
+        3,
+        6
+      ],
+      [
+        1,
+        2,
+        4,
+        5
+      ]
+    ],
+    "unicode": "⠙⠉⠧⠛",
+    "group": "shortforms",
+    "order": 185
+  },
+  {
+    "id": "shortform-declare",
+    "kind": "shortform",
+    "print": "declare",
+    "dots": [
+      [
+        1,
+        4,
+        5
+      ],
+      [
+        1,
+        4
+      ],
+      [
+        1,
+        2,
+        3
+      ]
+    ],
+    "unicode": "⠙⠉⠇",
+    "group": "shortforms",
+    "order": 186
+  },
+  {
+    "id": "shortform-declaring",
+    "kind": "shortform",
+    "print": "declaring",
+    "dots": [
+      [
+        1,
+        4,
+        5
+      ],
+      [
+        1,
+        4
+      ],
+      [
+        1,
+        2,
+        3
+      ],
+      [
+        1,
+        2,
+        4,
+        5
+      ]
+    ],
+    "unicode": "⠙⠉⠇⠛",
+    "group": "shortforms",
+    "order": 187
+  },
+  {
+    "id": "shortform-either",
+    "kind": "shortform",
+    "print": "either",
+    "dots": [
+      [
+        1,
+        5
+      ],
+      [
+        2,
+        4
+      ]
+    ],
+    "unicode": "⠑⠊",
+    "group": "shortforms",
+    "order": 188
+  },
+  {
+    "id": "shortform-first",
+    "kind": "shortform",
+    "print": "first",
+    "dots": [
+      [
+        1,
+        2,
+        4
+      ],
+      [
+        3,
+        4
+      ]
+    ],
+    "unicode": "⠋⠌",
+    "group": "shortforms",
+    "order": 189
+  },
+  {
+    "id": "shortform-friend",
+    "kind": "shortform",
+    "print": "friend",
+    "dots": [
+      [
+        1,
+        2,
+        4
+      ],
+      [
+        1,
+        2,
+        3,
+        5
+      ]
+    ],
+    "unicode": "⠋⠗",
+    "group": "shortforms",
+    "order": 190
+  },
+  {
+    "id": "shortform-good",
+    "kind": "shortform",
+    "print": "good",
+    "dots": [
+      [
+        1,
+        2,
+        4,
+        5
+      ],
+      [
+        1,
+        4,
+        5
+      ]
+    ],
+    "unicode": "⠛⠙",
+    "group": "shortforms",
+    "order": 191
+  },
+  {
+    "id": "shortform-great",
+    "kind": "shortform",
+    "print": "great",
+    "dots": [
+      [
+        1,
+        2,
+        4,
+        5
+      ],
+      [
+        1,
+        2,
+        3,
+        5
+      ],
+      [
+        2,
+        3,
+        4,
+        5
+      ]
+    ],
+    "unicode": "⠛⠗⠞",
+    "group": "shortforms",
+    "order": 192
+  },
+  {
+    "id": "shortform-herself",
+    "kind": "shortform",
+    "print": "herself",
+    "dots": [
+      [
+        1,
+        2,
+        5
+      ],
+      [
+        1,
+        2,
+        4,
+        5,
+        6
+      ],
+      [
+        1,
+        2,
+        4
+      ]
+    ],
+    "unicode": "⠓⠻⠋",
+    "group": "shortforms",
+    "order": 193
+  },
+  {
+    "id": "shortform-him",
+    "kind": "shortform",
+    "print": "him",
+    "dots": [
+      [
+        1,
+        2,
+        5
+      ],
+      [
+        1,
+        3,
+        4
+      ]
+    ],
+    "unicode": "⠓⠍",
+    "group": "shortforms",
+    "order": 194
+  },
+  {
+    "id": "shortform-himself",
+    "kind": "shortform",
+    "print": "himself",
+    "dots": [
+      [
+        1,
+        2,
+        5
+      ],
+      [
+        1,
+        3,
+        4
+      ],
+      [
+        1,
+        2,
+        4
+      ]
+    ],
+    "unicode": "⠓⠍⠋",
+    "group": "shortforms",
+    "order": 195
+  },
+  {
+    "id": "shortform-immediate",
+    "kind": "shortform",
+    "print": "immediate",
+    "dots": [
+      [
+        2,
+        4
+      ],
+      [
+        1,
+        3,
+        4
+      ],
+      [
+        1,
+        3,
+        4
+      ]
+    ],
+    "unicode": "⠊⠍⠍",
+    "group": "shortforms",
+    "order": 196
+  },
+  {
+    "id": "shortform-its",
+    "kind": "shortform",
+    "print": "its",
+    "dots": [
+      [
+        1,
+        3,
+        4,
+        6
+      ],
+      [
+        2,
+        3,
+        4
+      ]
+    ],
+    "unicode": "⠭⠎",
+    "group": "shortforms",
+    "order": 197
+  },
+  {
+    "id": "shortform-itself",
+    "kind": "shortform",
+    "print": "itself",
+    "dots": [
+      [
+        1,
+        3,
+        4,
+        6
+      ],
+      [
+        1,
+        2,
+        4
+      ]
+    ],
+    "unicode": "⠭⠋",
+    "group": "shortforms",
+    "order": 198
+  },
+  {
+    "id": "shortform-letter",
+    "kind": "shortform",
+    "print": "letter",
+    "dots": [
+      [
+        1,
+        2,
+        3
+      ],
+      [
+        1,
+        2,
+        3,
+        5
+      ]
+    ],
+    "unicode": "⠇⠗",
+    "group": "shortforms",
+    "order": 199
+  },
+  {
+    "id": "shortform-little",
+    "kind": "shortform",
+    "print": "little",
+    "dots": [
+      [
+        1,
+        2,
+        3
+      ],
+      [
+        1,
+        2,
+        3
+      ]
+    ],
+    "unicode": "⠇⠇",
+    "group": "shortforms",
+    "order": 200
+  },
+  {
+    "id": "shortform-much",
+    "kind": "shortform",
+    "print": "much",
+    "dots": [
+      [
+        1,
+        3,
+        4
+      ],
+      [
+        1,
+        6
+      ]
+    ],
+    "unicode": "⠍⠡",
+    "group": "shortforms",
+    "order": 201
+  },
+  {
+    "id": "shortform-must",
+    "kind": "shortform",
+    "print": "must",
+    "dots": [
+      [
+        1,
+        3,
+        4
+      ],
+      [
+        3,
+        4
+      ]
+    ],
+    "unicode": "⠍⠌",
+    "group": "shortforms",
+    "order": 202
+  },
+  {
+    "id": "shortform-myself",
+    "kind": "shortform",
+    "print": "myself",
+    "dots": [
+      [
+        1,
+        3,
+        4
+      ],
+      [
+        1,
+        3,
+        4,
+        5,
+        6
+      ],
+      [
+        1,
+        2,
+        4
+      ]
+    ],
+    "unicode": "⠍⠽⠋",
+    "group": "shortforms",
+    "order": 203
+  },
+  {
+    "id": "shortform-necessary",
+    "kind": "shortform",
+    "print": "necessary",
+    "dots": [
+      [
+        1,
+        3,
+        4,
+        5
+      ],
+      [
+        1,
+        5
+      ],
+      [
+        1,
+        4
+      ]
+    ],
+    "unicode": "⠝⠑⠉",
+    "group": "shortforms",
+    "order": 204
+  },
+  {
+    "id": "shortform-neither",
+    "kind": "shortform",
+    "print": "neither",
+    "dots": [
+      [
+        1,
+        3,
+        4,
+        5
+      ],
+      [
+        1,
+        5
+      ],
+      [
+        2,
+        4
+      ]
+    ],
+    "unicode": "⠝⠑⠊",
+    "group": "shortforms",
+    "order": 205
+  },
+  {
+    "id": "shortform-oneself",
+    "kind": "shortform",
+    "print": "oneself",
+    "dots": [
+      [
+        5
+      ],
+      [
+        1,
+        3,
+        5
+      ],
+      [
+        1,
+        2,
+        4
+      ]
+    ],
+    "unicode": "⠐⠕⠋",
+    "group": "shortforms",
+    "order": 206
+  },
+  {
+    "id": "shortform-ourselves",
+    "kind": "shortform",
+    "print": "ourselves",
+    "dots": [
+      [
+        1,
+        2,
+        5,
+        6
+      ],
+      [
+        1,
+        2,
+        3,
+        5
+      ],
+      [
+        1,
+        2,
+        3,
+        6
+      ],
+      [
+        2,
+        3,
+        4
+      ]
+    ],
+    "unicode": "⠳⠗⠧⠎",
+    "group": "shortforms",
+    "order": 207
+  },
+  {
+    "id": "shortform-paid",
+    "kind": "shortform",
+    "print": "paid",
+    "dots": [
+      [
+        1,
+        2,
+        3,
+        4
+      ],
+      [
+        1,
+        4,
+        5
+      ]
+    ],
+    "unicode": "⠏⠙",
+    "group": "shortforms",
+    "order": 208
+  },
+  {
+    "id": "shortform-perceive",
+    "kind": "shortform",
+    "print": "perceive",
+    "dots": [
+      [
+        1,
+        2,
+        3,
+        4
+      ],
+      [
+        1,
+        2,
+        4,
+        5,
+        6
+      ],
+      [
+        1,
+        4
+      ],
+      [
+        1,
+        2,
+        3,
+        6
+      ]
+    ],
+    "unicode": "⠏⠻⠉⠧",
+    "group": "shortforms",
+    "order": 209
+  },
+  {
+    "id": "shortform-perceiving",
+    "kind": "shortform",
+    "print": "perceiving",
+    "dots": [
+      [
+        1,
+        2,
+        3,
+        4
+      ],
+      [
+        1,
+        2,
+        4,
+        5,
+        6
+      ],
+      [
+        1,
+        4
+      ],
+      [
+        1,
+        2,
+        3,
+        6
+      ],
+      [
+        1,
+        2,
+        4,
+        5
+      ]
+    ],
+    "unicode": "⠏⠻⠉⠧⠛",
+    "group": "shortforms",
+    "order": 210
+  },
+  {
+    "id": "shortform-perhaps",
+    "kind": "shortform",
+    "print": "perhaps",
+    "dots": [
+      [
+        1,
+        2,
+        3,
+        4
+      ],
+      [
+        1,
+        2,
+        4,
+        5,
+        6
+      ],
+      [
+        1,
+        2,
+        5
+      ]
+    ],
+    "unicode": "⠏⠻⠓",
+    "group": "shortforms",
+    "order": 211
+  },
+  {
+    "id": "shortform-quick",
+    "kind": "shortform",
+    "print": "quick",
+    "dots": [
+      [
+        1,
+        2,
+        3,
+        4,
+        5
+      ],
+      [
+        1,
+        3
+      ]
+    ],
+    "unicode": "⠟⠅",
+    "group": "shortforms",
+    "order": 212
+  },
+  {
+    "id": "shortform-receive",
+    "kind": "shortform",
+    "print": "receive",
+    "dots": [
+      [
+        1,
+        2,
+        3,
+        5
+      ],
+      [
+        1,
+        4
+      ],
+      [
+        1,
+        2,
+        3,
+        6
+      ]
+    ],
+    "unicode": "⠗⠉⠧",
+    "group": "shortforms",
+    "order": 213
+  },
+  {
+    "id": "shortform-receiving",
+    "kind": "shortform",
+    "print": "receiving",
+    "dots": [
+      [
+        1,
+        2,
+        3,
+        5
+      ],
+      [
+        1,
+        4
+      ],
+      [
+        1,
+        2,
+        3,
+        6
+      ],
+      [
+        1,
+        2,
+        4,
+        5
+      ]
+    ],
+    "unicode": "⠗⠉⠧⠛",
+    "group": "shortforms",
+    "order": 214
+  },
+  {
+    "id": "shortform-rejoice",
+    "kind": "shortform",
+    "print": "rejoice",
+    "dots": [
+      [
+        1,
+        2,
+        3,
+        5
+      ],
+      [
+        2,
+        4,
+        5
+      ],
+      [
+        1,
+        4
+      ]
+    ],
+    "unicode": "⠗⠚⠉",
+    "group": "shortforms",
+    "order": 215
+  },
+  {
+    "id": "shortform-rejoicing",
+    "kind": "shortform",
+    "print": "rejoicing",
+    "dots": [
+      [
+        1,
+        2,
+        3,
+        5
+      ],
+      [
+        2,
+        4,
+        5
+      ],
+      [
+        1,
+        4
+      ],
+      [
+        1,
+        2,
+        4,
+        5
+      ]
+    ],
+    "unicode": "⠗⠚⠉⠛",
+    "group": "shortforms",
+    "order": 216
+  },
+  {
+    "id": "shortform-said",
+    "kind": "shortform",
+    "print": "said",
+    "dots": [
+      [
+        2,
+        3,
+        4
+      ],
+      [
+        1,
+        4,
+        5
+      ]
+    ],
+    "unicode": "⠎⠙",
+    "group": "shortforms",
+    "order": 217
+  },
+  {
+    "id": "shortform-should",
+    "kind": "shortform",
+    "print": "should",
+    "dots": [
+      [
+        1,
+        4,
+        6
+      ],
+      [
+        1,
+        4,
+        5
+      ]
+    ],
+    "unicode": "⠩⠙",
+    "group": "shortforms",
+    "order": 218
+  },
+  {
+    "id": "shortform-such",
+    "kind": "shortform",
+    "print": "such",
+    "dots": [
+      [
+        2,
+        3,
+        4
+      ],
+      [
+        1,
+        6
+      ]
+    ],
+    "unicode": "⠎⠡",
+    "group": "shortforms",
+    "order": 219
+  },
+  {
+    "id": "shortform-themselves",
+    "kind": "shortform",
+    "print": "themselves",
+    "dots": [
+      [
+        2,
+        3,
+        4,
+        6
+      ],
+      [
+        1,
+        3,
+        4
+      ],
+      [
+        1,
+        2,
+        3,
+        6
+      ],
+      [
+        2,
+        3,
+        4
+      ]
+    ],
+    "unicode": "⠮⠍⠧⠎",
+    "group": "shortforms",
+    "order": 220
+  },
+  {
+    "id": "shortform-thyself",
+    "kind": "shortform",
+    "print": "thyself",
+    "dots": [
+      [
+        1,
+        4,
+        5,
+        6
+      ],
+      [
+        1,
+        3,
+        4,
+        5,
+        6
+      ],
+      [
+        1,
+        2,
+        4
+      ]
+    ],
+    "unicode": "⠹⠽⠋",
+    "group": "shortforms",
+    "order": 221
+  },
+  {
+    "id": "shortform-today",
+    "kind": "shortform",
+    "print": "today",
+    "dots": [
+      [
+        2,
+        3,
+        4,
+        5
+      ],
+      [
+        1,
+        4,
+        5
+      ]
+    ],
+    "unicode": "⠞⠙",
+    "group": "shortforms",
+    "order": 222
+  },
+  {
+    "id": "shortform-together",
+    "kind": "shortform",
+    "print": "together",
+    "dots": [
+      [
+        2,
+        3,
+        4,
+        5
+      ],
+      [
+        1,
+        2,
+        4,
+        5
+      ],
+      [
+        1,
+        2,
+        3,
+        5
+      ]
+    ],
+    "unicode": "⠞⠛⠗",
+    "group": "shortforms",
+    "order": 223
+  },
+  {
+    "id": "shortform-tomorrow",
+    "kind": "shortform",
+    "print": "tomorrow",
+    "dots": [
+      [
+        2,
+        3,
+        4,
+        5
+      ],
+      [
+        1,
+        3,
+        4
+      ]
+    ],
+    "unicode": "⠞⠍",
+    "group": "shortforms",
+    "order": 224
+  },
+  {
+    "id": "shortform-tonight",
+    "kind": "shortform",
+    "print": "tonight",
+    "dots": [
+      [
+        2,
+        3,
+        4,
+        5
+      ],
+      [
+        1,
+        3,
+        4,
+        5
+      ]
+    ],
+    "unicode": "⠞⠝",
+    "group": "shortforms",
+    "order": 225
+  },
+  {
+    "id": "shortform-would",
+    "kind": "shortform",
+    "print": "would",
+    "dots": [
+      [
+        2,
+        4,
+        5,
+        6
+      ],
+      [
+        1,
+        4,
+        5
+      ]
+    ],
+    "unicode": "⠺⠙",
+    "group": "shortforms",
+    "order": 226
+  },
+  {
+    "id": "shortform-your",
+    "kind": "shortform",
+    "print": "your",
+    "dots": [
+      [
+        1,
+        3,
+        4,
+        5,
+        6
+      ],
+      [
+        1,
+        2,
+        3,
+        5
+      ]
+    ],
+    "unicode": "⠽⠗",
+    "group": "shortforms",
+    "order": 227
+  },
+  {
+    "id": "shortform-yourself",
+    "kind": "shortform",
+    "print": "yourself",
+    "dots": [
+      [
+        1,
+        3,
+        4,
+        5,
+        6
+      ],
+      [
+        1,
+        2,
+        3,
+        5
+      ],
+      [
+        1,
+        2,
+        4
+      ]
+    ],
+    "unicode": "⠽⠗⠋",
+    "group": "shortforms",
+    "order": 228
+  },
+  {
+    "id": "shortform-yourselves",
+    "kind": "shortform",
+    "print": "yourselves",
+    "dots": [
+      [
+        1,
+        3,
+        4,
+        5,
+        6
+      ],
+      [
+        1,
+        2,
+        3,
+        5
+      ],
+      [
+        1,
+        2,
+        3,
+        6
+      ],
+      [
+        2,
+        3,
+        4
+      ]
+    ],
+    "unicode": "⠽⠗⠧⠎",
+    "group": "shortforms",
+    "order": 229
+  },
+  {
+    "id": "punct-open-bracket",
+    "kind": "punctuation",
+    "print": "[",
+    "dots": [
+      [
+        4,
+        6
+      ],
+      [
+        1,
+        2,
+        6
+      ]
+    ],
+    "unicode": "⠨⠣",
+    "group": "symbols",
+    "order": 230
+  },
+  {
+    "id": "punct-close-bracket",
+    "kind": "punctuation",
+    "print": "]",
+    "dots": [
+      [
+        4,
+        6
+      ],
+      [
+        3,
+        4,
+        5
+      ]
+    ],
+    "unicode": "⠨⠜",
+    "group": "symbols",
+    "order": 231
+  },
+  {
+    "id": "punct-open-brace",
+    "kind": "punctuation",
+    "print": "{",
+    "dots": [
+      [
+        4,
+        5,
+        6
+      ],
+      [
+        1,
+        2,
+        6
+      ]
+    ],
+    "unicode": "⠸⠣",
+    "group": "symbols",
+    "order": 232
+  },
+  {
+    "id": "punct-close-brace",
+    "kind": "punctuation",
+    "print": "}",
+    "dots": [
+      [
+        4,
+        5,
+        6
+      ],
+      [
+        3,
+        4,
+        5
+      ]
+    ],
+    "unicode": "⠸⠜",
+    "group": "symbols",
+    "order": 233
+  },
+  {
+    "id": "punct-slash",
+    "kind": "punctuation",
+    "print": "/",
+    "dots": [
+      [
+        4,
+        5,
+        6
+      ],
+      [
+        3,
+        4
+      ]
+    ],
+    "unicode": "⠸⠌",
+    "group": "symbols",
+    "order": 234
+  },
+  {
+    "id": "punct-backslash",
+    "kind": "punctuation",
+    "print": "\\",
+    "dots": [
+      [
+        4,
+        5,
+        6
+      ],
+      [
+        1,
+        6
+      ]
+    ],
+    "unicode": "⠸⠡",
+    "group": "symbols",
+    "order": 235
+  },
+  {
+    "id": "punct-en-dash",
+    "kind": "punctuation",
+    "print": "–",
+    "dots": [
+      [
+        6
+      ],
+      [
+        3,
+        6
+      ]
+    ],
+    "unicode": "⠠⠤",
+    "group": "symbols",
+    "order": 236
+  },
+  {
+    "id": "punct-em-dash",
+    "kind": "punctuation",
+    "print": "—",
+    "dots": [
+      [
+        6
+      ],
+      [
+        3,
+        6
+      ]
+    ],
+    "unicode": "⠠⠤",
+    "group": "symbols",
+    "order": 237
+  },
+  {
+    "id": "punct-open-single-quote",
+    "kind": "punctuation",
+    "print": "‘",
+    "dots": [
+      [
+        6
+      ],
+      [
+        2,
+        3,
+        6
+      ]
+    ],
+    "unicode": "⠠⠦",
+    "group": "symbols",
+    "order": 238
+  },
+  {
+    "id": "punct-close-single-quote",
+    "kind": "punctuation",
+    "print": "’",
+    "dots": [
+      [
+        6
+      ],
+      [
+        3,
+        5,
+        6
+      ]
+    ],
+    "unicode": "⠠⠴",
+    "group": "symbols",
+    "order": 239
+  },
+  {
+    "id": "punct-open-double-quote",
+    "kind": "punctuation",
+    "print": "“",
+    "dots": [
+      [
+        2,
+        3,
+        6
+      ]
+    ],
+    "unicode": "⠦",
+    "group": "symbols",
+    "order": 240
+  },
+  {
+    "id": "punct-close-double-quote",
+    "kind": "punctuation",
+    "print": "”",
+    "dots": [
+      [
+        3,
+        5,
+        6
+      ]
+    ],
+    "unicode": "⠴",
+    "group": "symbols",
+    "order": 241
+  },
+  {
+    "id": "punct-ellipsis",
+    "kind": "punctuation",
+    "print": "…",
+    "dots": [
+      [
+        2,
+        5,
+        6
+      ],
+      [
+        2,
+        5,
+        6
+      ],
+      [
+        2,
+        5,
+        6
+      ]
+    ],
+    "unicode": "⠲⠲⠲",
+    "group": "symbols",
+    "order": 242
+  },
+  {
+    "id": "punct-at-sign",
+    "kind": "punctuation",
+    "print": "@",
+    "dots": [
+      [
+        4
+      ],
+      [
+        1
+      ]
+    ],
+    "unicode": "⠈⠁",
+    "group": "symbols",
+    "order": 243
+  },
+  {
+    "id": "punct-ampersand",
+    "kind": "punctuation",
+    "print": "&",
+    "dots": [
+      [
+        4
+      ],
+      [
+        1,
+        2,
+        3,
+        4,
+        6
+      ]
+    ],
+    "unicode": "⠈⠯",
+    "group": "symbols",
+    "order": 244
+  },
+  {
+    "id": "punct-asterisk",
+    "kind": "punctuation",
+    "print": "*",
+    "dots": [
+      [
+        5
+      ],
+      [
+        3,
+        5
+      ]
+    ],
+    "unicode": "⠐⠔",
+    "group": "symbols",
+    "order": 245
+  },
+  {
+    "id": "punct-hash",
+    "kind": "punctuation",
+    "print": "#",
+    "dots": [
+      [
+        4,
+        5,
+        6
+      ],
+      [
+        1,
+        4,
+        5,
+        6
+      ]
+    ],
+    "unicode": "⠸⠹",
+    "group": "symbols",
+    "order": 246
+  },
+  {
+    "id": "punct-dollar",
+    "kind": "punctuation",
+    "print": "$",
+    "dots": [
+      [
+        4
+      ],
+      [
+        2,
+        3,
+        4
+      ]
+    ],
+    "unicode": "⠈⠎",
+    "group": "symbols",
+    "order": 247
+  },
+  {
+    "id": "punct-percent",
+    "kind": "punctuation",
+    "print": "%",
+    "dots": [
+      [
+        4,
+        6
+      ],
+      [
+        3,
+        5,
+        6
+      ]
+    ],
+    "unicode": "⠨⠴",
+    "group": "symbols",
+    "order": 248
+  },
+  {
+    "id": "punct-underscore",
+    "kind": "punctuation",
+    "print": "_",
+    "dots": [
+      [
+        4,
+        6
+      ],
+      [
+        3,
+        6
+      ]
+    ],
+    "unicode": "⠨⠤",
+    "group": "symbols",
+    "order": 249
+  },
+  {
+    "id": "punct-vertical-bar",
+    "kind": "punctuation",
+    "print": "|",
+    "dots": [
+      [
+        4,
+        5,
+        6
+      ],
+      [
+        1,
+        2,
+        5,
+        6
+      ]
+    ],
+    "unicode": "⠸⠳",
+    "group": "symbols",
+    "order": 250
+  },
+  {
+    "id": "punct-plus",
+    "kind": "punctuation",
+    "print": "+",
+    "dots": [
+      [
+        5
+      ],
+      [
+        2,
+        3,
+        5
+      ]
+    ],
+    "unicode": "⠐⠖",
+    "group": "symbols",
+    "order": 251
+  },
+  {
+    "id": "punct-equals",
+    "kind": "punctuation",
+    "print": "=",
+    "dots": [
+      [
+        5
+      ],
+      [
+        2,
+        3,
+        5,
+        6
+      ]
+    ],
+    "unicode": "⠐⠶",
+    "group": "symbols",
+    "order": 252
+  },
+  {
+    "id": "punct-less-than",
+    "kind": "punctuation",
+    "print": "<",
+    "dots": [
+      [
+        4
+      ],
+      [
+        1,
+        2,
+        6
+      ]
+    ],
+    "unicode": "⠈⠣",
+    "group": "symbols",
+    "order": 253
+  },
+  {
+    "id": "punct-greater-than",
+    "kind": "punctuation",
+    "print": ">",
+    "dots": [
+      [
+        4
+      ],
+      [
+        3,
+        4,
+        5
+      ]
+    ],
+    "unicode": "⠈⠜",
+    "group": "symbols",
+    "order": 254
+  },
+  {
+    "id": "punct-tilde",
+    "kind": "punctuation",
+    "print": "~",
+    "dots": [
+      [
+        4
+      ],
+      [
+        3,
+        5
+      ]
+    ],
+    "unicode": "⠈⠔",
+    "group": "symbols",
+    "order": 255
+  },
+  {
+    "id": "punct-caret",
+    "kind": "punctuation",
+    "print": "^",
+    "dots": [
+      [
+        4
+      ],
+      [
+        2,
+        6
+      ]
+    ],
+    "unicode": "⠈⠢",
+    "group": "symbols",
+    "order": 256
+  },
+  {
+    "id": "punct-backtick",
+    "kind": "punctuation",
+    "print": "`",
+    "dots": [
+      [
+        4,
+        6
+      ],
+      [
+        1,
+        6
+      ]
+    ],
+    "unicode": "⠨⠡",
+    "group": "symbols",
+    "order": 257
+  }
+]

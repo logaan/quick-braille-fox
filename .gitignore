@@ -4,3 +4,10 @@
 
 # Claude Code worktrees (see CLAUDE.md worktree workflow).
 /.claude/worktrees/
+
+# Node / Vite
+node_modules/
+dist/
+
+# src/data/skills.json is generated (npm run generate) but IS committed,
+# so the app builds without the macOS-only data/ tables present.
