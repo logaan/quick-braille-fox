@@ -1,19 +1,7 @@
 // src/ui — presentation layer. No JSX: components are built with
-// `import { createElement as e } from 'react'`.
+// `import { createElement as e } from 'react'`. Components are pure render
+// functions of props; all behaviour lives in src/state.
 
-import { createElement as e, type ReactElement } from 'react';
-import { skills } from '../data/skills';
-
-export function App(): ReactElement {
-  return e(
-    'main',
-    null,
-    e('h1', null, 'Braille Tutor'),
-    e(
-      'p',
-      null,
-      `Curriculum loaded: ${skills.length} skills, ` +
-        `from "${skills[0]?.print ?? '?'}" to "${skills[skills.length - 1]?.print ?? '?'}".`,
-    ),
-  );
-}
+export type { AppProps } from './app';
+export { App } from './app';
+export { BrailleCells } from './braille';

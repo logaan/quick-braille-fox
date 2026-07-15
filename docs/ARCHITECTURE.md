@@ -19,16 +19,21 @@ where macOS differs from other sources, macOS wins.
 ```
 index.html                  Vite entry, loads src/main.ts
 src/
-  main.ts                   bootstraps React root
+  main.ts                   creates the store, renders the UI on each change
   core/                     pure domain logic (no DOM, no React, no I/O)
-  state/                    state management + persistence (Immutable.js)
+  state/                    interaction store, timers, persistence
   ui/                       presentation; createElement only, no JSX
+    styles.css              the app stylesheet (imported from main.ts)
   data/
     skills.json             GENERATED curriculum data (committed)
     skills.ts               types + typed export of skills.json
 scripts/
   copy-braille-tables.sh    copies liblouis tables from macOS into data/
   generate-skills.mjs       parses data/ tables -> src/data/skills.json
+  generate-skills.sh        copy-braille-tables.sh (if needed) + generator
+  dev.sh / preview.sh       vite dev server / serve the production build
+  test.sh / typecheck.sh    vitest run / tsc --noEmit
+  build.sh                  typecheck + production build
 data/                       gitignored; the copied liblouis tables
 docs/ARCHITECTURE.md        this file
 ```
@@ -294,6 +299,88 @@ qbf minimum, per the caveats below.
 All randomness flows through the `seed` field (mulberry32). Same serialized
 state ⇒ same future prompts. `serialize`/`deserialize` round-trip through
 `JSON.stringify`/`parse` for localStorage (phase 3).
+
+## State layer (`src/state`)
+
+Everything impure that isn't rendering: event handling, timers, and storage.
+The UI never calls core transitions directly.
+
+### `TutorStore` (`store.ts`)
+
+A tiny subscribe/notify store (no reducer indirection — methods dispatch
+straight to core transition functions and call `notify()`):
+
+- `viewModel(): AppViewModel` — a plain-data snapshot of everything the UI
+  renders (prompt/typed/diverged, hint unicode, active skills with scores,
+  per-group progress, best qbf, intro skill, reset-confirm flag, …). Built
+  by `view.ts` from the core's read-only views.
+- `handlers: AppHandlers` — a stable object of DOM event handlers the UI
+  wires up: `onInput`, `onQbfContinue`, `onResetRequest/Confirm/Cancel`.
+- `subscribe(listener)` — `main.ts` subscribes and re-renders the React
+  root with a fresh view model on every change.
+
+**Input capture.** The drill input is a real `<input type="text">` (required
+so macOS VoiceOver braille screen input works — raw keydown is never the
+only path). `onInput` (wired to React's `onChange`, i.e. the DOM `input`
+event) feeds the field's full current value to core `keystroke`. For qbf
+cell counting, each input event whose `inputType` starts with `insert`
+counts as **one cell** (VoiceOver commits a whole contraction as a single
+insertion; a keypress inserts one char); deletions never decrement. On a
+flawless qbf completion the count goes to core `qbfResult`; the best
+crown/badge result is kept (crown beats badge, lower `percentAbove` beats
+higher) and persisted.
+
+**Hint timer.** After every state change the store cancels and re-arms a
+single `setTimeout` from core `hintDelayFor(state)` — so a new prompt, any
+keystroke, or a mistake restarts the countdown, and qbf prompts,
+learnt-skill revision, and already-shown hints (null delay) have no timer.
+When it fires it dispatches core `revealHint`.
+
+**Persistence (`persistence.ts`).** A versioned envelope
+(`qbf-progress-v1`) in localStorage: `{ version, tutor: serialize(state),
+bestQbf, introducedSkillIds }`. Saves are debounced (250 ms) after every
+change and flushed on `pagehide`. On boot: absent/corrupt/unknown-version
+data ⇒ fresh `startSession(Date.now())`; an in-flight prompt resumes as-is;
+a completed prompt (or half-typed qbf, whose cell count wasn't persisted)
+moves on via `nextPrompt`. "Reset progress" (confirm step in the UI) clears
+storage and starts over.
+
+**New-skill introductions.** `introducedSkillIds` records every skill that
+has ever been a prompt target; when a prompt targets a skill not yet in the
+set, the store flags it (`intro` in the view model) so the UI shows its
+braille cells + print + group alongside that first prompt.
+
+## UI (`src/ui`)
+
+Pure render functions of `AppViewModel` + `AppHandlers` (both defined in
+`src/state/view.ts`; dependency direction stays ui → state → core). No JSX;
+every component uses `createElement as e`. No component owns state, timers,
+or effects — `main.ts` re-renders the root on every store notification.
+
+- `app.ts` — layout: header, drill view, skill panel.
+- `header.ts` — the brand "qbf" as three braille cells ⠟⠃⠋ (aria-label
+  "qbf"), the persisted best qbf result (👑 or `+N%`), and the two-step
+  reset-progress control.
+- `drill.ts` — the prompt with monkeytype-style progressive colouring
+  (correct prefix / wrong / untyped, plus a caret), wrapped in a `<label>`
+  for the input; the autofocused monospace input; the hint area (an
+  `aria-live=polite` region that fills with the answer as large segmented
+  braille cells); the new-skill introduction banner; the qbf challenge
+  styling (gold, no hint area) and result screen (crown / `+N%` badge /
+  failed, in an `aria-live=assertive` region, with a Continue button).
+- `skills.ts` — the 5 active skills (cells, print, score bar toward 10) and
+  overall/per-group progress.
+- `braille.ts` — `BrailleCells`: renders a U+2800 string as large,
+  individually boxed cells. The braille characters stay accessible (not
+  aria-hidden) on purpose: a connected braille display renders them as
+  real dots, which is exactly what a hint should do.
+- `styles.css` — dark, high-contrast, responsive (CSS grid collapses to one
+  column under 52rem; `100dvh` keeps the input visible with the on-screen
+  keyboard up; no horizontal page scroll).
+
+Rendering tests (`app.test.ts`) render the full App through
+`react-dom/server` for the fresh-session, hint-showing, qbf-challenge, and
+qbf-result states.
 
 ## Table-parsing caveats (for future phases)
 
