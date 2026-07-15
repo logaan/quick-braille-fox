@@ -1,3 +1,6 @@
 # Braille tables copied from macOS by scripts/copy-braille-tables.sh.
 # Apple-shipped liblouis files; regenerate locally rather than committing.
 /data/
+
+# Claude Code worktrees (see CLAUDE.md worktree workflow).
+/.claude/worktrees/
