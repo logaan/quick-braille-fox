@@ -374,9 +374,16 @@ or effects — `main.ts` re-renders the root on every store notification.
   individually boxed cells. The braille characters stay accessible (not
   aria-hidden) on purpose: a connected braille display renders them as
   real dots, which is exactly what a hint should do.
-- `styles.css` — dark, high-contrast, responsive (CSS grid collapses to one
-  column under 52rem; `100dvh` keeps the input visible with the on-screen
-  keyboard up; no horizontal page scroll).
+- `styles.css` — warm, clean, modern, soft. A cream/terracotta light theme
+  is the primary look, with a warm-dark (charcoal/brown) variant via
+  `prefers-color-scheme: dark`; all tokens are CSS custom properties on
+  `:root`. Soft = rounded corners and gentle warm-tinted shadows instead of
+  hard borders, with transitions disabled under `prefers-reduced-motion`.
+  Every text/background pair holds WCAG AA (the deliberately dim untyped
+  prompt chars are large text, ≥ 3:1), and wrong chars keep an underline so
+  the monkeytype colouring never relies on hue alone. Responsive: CSS grid
+  collapses to one column under 52rem; `100dvh` keeps the input visible
+  with the on-screen keyboard up; no horizontal page scroll.
 
 Rendering tests (`app.test.ts`) render the full App through
 `react-dom/server` for the fresh-session, hint-showing, qbf-challenge, and
