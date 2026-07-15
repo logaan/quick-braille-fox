@@ -121,3 +121,38 @@ describe('translate', () => {
     expect(textToUnicode('The cat')).toBe('⠠⠮⠀⠉⠁⠞');
   });
 });
+
+describe('translation units', () => {
+  it('tiles the text with print spans whose cells concatenate to the cells', () => {
+    const t = translate('The dog');
+    expect(t.units.map((u) => [u.start, u.end])).toEqual([
+      [0, 3], // "The" -> capital indicator + ⠮, one unit
+      [3, 4], // space
+      [4, 5],
+      [5, 6],
+      [6, 7],
+    ]);
+    expect(t.units.flatMap((u) => u.cells)).toEqual(t.cells);
+  });
+
+  it('attaches the capital indicator to the sign it capitalises', () => {
+    expect(translate('The').units[0]?.cells).toEqual([[6], [2, 3, 4, 6]]);
+  });
+
+  it('attaches the number sign to the first digit of a run', () => {
+    const units = translate('12').units;
+    expect(units.map((u) => [u.start, u.end])).toEqual([
+      [0, 1],
+      [1, 2],
+    ]);
+    expect(units[0]?.cells).toEqual([[3, 4, 5, 6], [1]]);
+    expect(units[1]?.cells).toEqual([[1, 2]]);
+  });
+
+  it('attaches the capital word indicator to an ALL-CAPS word’s first unit', () => {
+    const units = translate('DOG').units;
+    expect(units[0]?.cells).toEqual([[6], [6], [1, 4, 5]]);
+    expect(units[1]?.cells).toEqual([[1, 3, 5]]);
+    expect(units[2]?.cells).toEqual([[1, 2, 4, 5]]);
+  });
+});

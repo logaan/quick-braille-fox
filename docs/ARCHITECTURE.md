@@ -161,6 +161,13 @@ everything from `src/core` (`import { startSession, keystroke } from
   400 + 300 × score ms (the state layer runs the timer and calls
   `revealHint`). Learnt skills get **no** time-based hint (`hintDelayFor`
   returns null); their hint appears only via the two-mistake rule.
+- A showing hint never dumps the whole answer: it covers only the **word at
+  the caret** (VoiceOver braille screen input commits whole words), revealed
+  **one sign at a time** — one reveal unit immediately, then one more every
+  `HINT_REVEAL_COOLDOWN_MS` (1000 ms) until the word is uncovered
+  (`hintWordForPrompt` in `hints.ts` supplies the units; the state layer
+  paces the reveal and restarts it at one unit when the caret enters a new
+  word).
 - Every 100th completed prompt (`QBF_INTERVAL`) is the qbf challenge — the
   fixed sentence `QBF_SENTENCE`, no hints ever, any first wrong character
   fails it instantly and moves on.
@@ -262,11 +269,11 @@ a–e are known).
 
 | function | behaviour |
 |---|---|
-| `translate(text)` | greedy grade-2 translation: `{ cells, skillIds }`. Throws on characters outside the curriculum |
-| `textToCells(text)` / `textToUnicode(text)` | cells / U+2800 string for hint display |
+| `translate(text)` | greedy grade-2 translation: `{ cells, skillIds, units }`. `units` groups the cells by print span (indicators attach to the sign they precede). Throws on characters outside the curriculum |
+| `textToCells(text)` / `textToUnicode(text)` | cells / U+2800 string for braille display |
 | `cellCount(text)` | number of cells (spaces count as one blank cell each) |
 | `dotsToUnicode(cells)` | dot-number arrays → U+2800 string |
-| `hintForPrompt(state)` | current prompt's answer as braille (U+2800 string), `null` for qbf/no prompt |
+| `hintWordForPrompt(state)` (`hints.ts`) | the caret word's braille as reveal units: `{ wordStart, units: string[] }`, `null` for qbf/no prompt/nothing after the caret |
 | `CAPITAL_INDICATOR` | the dot-6 capital letter indicator cell |
 
 The translator applies the canonical patterns from skills.json with
@@ -337,6 +344,14 @@ keystroke, or a mistake restarts the countdown, and qbf prompts,
 learnt-skill revision, and already-shown hints (null delay) have no timer.
 When it fires it dispatches core `revealHint`.
 
+**Hint reveal cooldown.** Once the hint is showing, a second timer paces
+what it contains: one reveal unit of the caret word (from core
+`hintWordForPrompt`) is uncovered immediately and one more every
+`HINT_REVEAL_COOLDOWN_MS` until the word is fully uncovered. The uncovered
+count is store-local (not persisted) and resets to one whenever the reveal
+moves to a different word — a new prompt, or the caret crossing into the
+next word; keystrokes within the word leave the running cooldown alone.
+
 **Persistence (`persistence.ts`).** A versioned envelope
 (`qbf-progress-v1`) in localStorage: `{ version, tutor: serialize(state),
 bestQbf, introducedSkillIds }`. Saves are debounced (250 ms) after every
@@ -365,8 +380,9 @@ or effects — `main.ts` re-renders the root on every store notification.
 - `drill.ts` — the prompt with monkeytype-style progressive colouring
   (correct prefix / wrong / untyped, plus a caret), wrapped in a `<label>`
   for the input; the autofocused monospace input; the hint area (an
-  `aria-live=polite` region that fills with the answer as large segmented
-  braille cells); the new-skill introduction banner; the qbf challenge
+  `aria-live=polite` region that fills with the caret word's braille as
+  large segmented cells, one sign at a time); the new-skill introduction
+  banner; the qbf challenge
   styling (gold, no hint area) and result screen (crown / `+N%` badge /
   failed, in an `aria-live=assertive` region, with a Continue button).
 - `skills.ts` — the 5 active skills (cells, print, score bar toward 10) and

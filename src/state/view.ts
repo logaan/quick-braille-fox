@@ -9,7 +9,7 @@ import {
   QBF_INTERVAL,
   QBF_MIN_CELLS,
   activeSkills,
-  hintForPrompt,
+  hintWordForPrompt,
   isSkillLearnt,
   learntSkills,
   scoreFor,
@@ -54,7 +54,11 @@ export interface AppViewModel {
   readonly qbfMinCells: number;
   /** How many completed prompts until the next qbf challenge (1 = this one). */
   readonly nextQbfIn: number;
-  /** The answer as U+2800 braille, once the hint is showing. */
+  /**
+   * The hint as U+2800 braille, once it is showing: the caret word's cells,
+   * limited to the reveal units uncovered so far (the store uncovers one
+   * more per cooldown tick).
+   */
   readonly hint: string | null;
   readonly intro: IntroView | null;
   readonly activeSkills: ReadonlyArray<ActiveSkillView>;
@@ -98,6 +102,16 @@ export interface ViewSources {
   readonly lastQbf: QbfResult | null;
   readonly introducingSkillId: string | null;
   readonly confirmingReset: boolean;
+  /** How many reveal units of the hinted word are uncovered (store-owned). */
+  readonly hintUnitsRevealed: number;
+}
+
+function hintText(src: ViewSources): string | null {
+  const p = src.tutor.prompt;
+  if (p === null || !p.hintShown || p.isQbf || src.hintUnitsRevealed <= 0) return null;
+  const word = hintWordForPrompt(src.tutor);
+  if (word === null) return null;
+  return word.units.slice(0, src.hintUnitsRevealed).join('');
 }
 
 export function buildViewModel(src: ViewSources): AppViewModel {
@@ -114,7 +128,7 @@ export function buildViewModel(src: ViewSources): AppViewModel {
     bestQbf: src.bestQbf,
     qbfMinCells: QBF_MIN_CELLS,
     nextQbfIn: QBF_INTERVAL - (tutor.promptCounter % QBF_INTERVAL),
-    hint: p !== null && p.hintShown && !p.isQbf ? hintForPrompt(tutor) : null,
+    hint: hintText(src),
     intro:
       introSkill === undefined
         ? null
