@@ -9,6 +9,7 @@ import { drawSeed, mulberry32 } from './rng';
 import type { Prompt, TutorState } from './types';
 import {
   CORRECT_BONUS,
+  HINTED_BONUS,
   MISTAKE_PENALTY,
   MISTAKES_BEFORE_PENALTY,
   QBF_INTERVAL,
@@ -50,8 +51,9 @@ function addScore(state: TutorState, skillId: string, delta: number): TutorState
  * Feed the current *resulting* typed text (not a single key) after an input
  * event. Progressive matching against the expected text:
  *
- * - typed == expected text: prompt completed; +CORRECT_BONUS to the target
- *   skill if the hint was never shown; promptCounter increments.
+ * - typed == expected text: prompt completed; the target skill scores
+ *   +CORRECT_BONUS if the hint was never shown, +HINTED_BONUS if it was;
+ *   promptCounter increments.
  * - typed is a proper prefix: fine, no event.
  * - typed diverges from the expected prefix: one mistake *event* (further
  *   keystrokes while still diverged are the same mistake; the learner must
@@ -72,8 +74,8 @@ export function keystroke(state: TutorState, typed: string): TutorState {
     let next = state
       .set('prompt', p.merge({ typed, diverged: false, completed: true }))
       .set('promptCounter', state.promptCounter + 1);
-    if (!p.isQbf && p.targetSkillId !== null && !p.hintShown) {
-      next = addScore(next, p.targetSkillId, CORRECT_BONUS);
+    if (!p.isQbf && p.targetSkillId !== null) {
+      next = addScore(next, p.targetSkillId, p.hintShown ? HINTED_BONUS : CORRECT_BONUS);
     }
     return next;
   }
@@ -105,8 +107,9 @@ export function keystroke(state: TutorState, typed: string): TutorState {
 
 /**
  * Record that the hint was shown (the state layer calls this when the
- * hintDelayFor() timer fires). Disqualifies the before-hint bonus. No-op on
- * qbf prompts (never hinted) and completed/absent prompts.
+ * hintDelayFor() timer fires). Drops the completion bonus from
+ * CORRECT_BONUS to HINTED_BONUS. No-op on qbf prompts (never hinted) and
+ * completed/absent prompts.
  */
 export function revealHint(state: TutorState): TutorState {
   const p = state.prompt;

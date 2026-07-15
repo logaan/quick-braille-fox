@@ -11,6 +11,8 @@ export const LEARNT_THRESHOLD = 10;
 export const ACTIVE_SKILL_COUNT = 5;
 /** Score gained for answering correctly before the hint is shown. */
 export const CORRECT_BONUS = 2;
+/** Score gained for answering correctly after the hint was shown. */
+export const HINTED_BONUS = 1;
 /** Score lost per mistake once two-in-a-row is reached (floored at 0). */
 export const MISTAKE_PENALTY = 1;
 /** Consecutive mistakes on the current item before penalty + forced hint. */
