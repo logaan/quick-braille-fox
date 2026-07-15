@@ -98,6 +98,19 @@ describe('generatePrompt', () => {
     }
   });
 
+  it('prompts a few words at a time from the very first window', () => {
+    const state = makeTutorState({ seed: 11 }); // only a-e active
+    for (const id of ['letter-a', 'letter-b', 'letter-c', 'letter-d', 'letter-e']) {
+      for (let seed = 1; seed <= 20; seed++) {
+        const { text } = generatePrompt(state.set('seed', seed), skill(id));
+        expect(
+          text.split(' ').length,
+          `expected a multi-word prompt for ${id}, got ${JSON.stringify(text)}`,
+        ).toBeGreaterThanOrEqual(3);
+      }
+    }
+  });
+
   it('never prompts a wordsign letter as a standalone word', () => {
     expect(WORDSIGN_LETTERS.size).toBeGreaterThan(20); // b=but, c=can, ...
     const states = [
