@@ -63,9 +63,11 @@ describe('startSession and active skills', () => {
     expect(isSkillLearnt(state, 'letter-b')).toBe(false);
   });
 
-  it('score of exactly the threshold (10) is not learnt', () => {
-    const state = makeTutorState().set('scores', Map({ 'letter-a': 10 }));
-    expect(isSkillLearnt(state, 'letter-a')).toBe(false);
+  it('reaching the threshold (10) makes a skill learnt; 9 is not enough', () => {
+    const at10 = makeTutorState().set('scores', Map({ 'letter-a': 10 }));
+    expect(isSkillLearnt(at10, 'letter-a')).toBe(true);
+    const at9 = makeTutorState().set('scores', Map({ 'letter-a': 9 }));
+    expect(isSkillLearnt(at9, 'letter-a')).toBe(false);
   });
 });
 
@@ -92,50 +94,79 @@ describe('hint timing', () => {
 });
 
 describe('keystroke', () => {
-  it('completes a prompt typed correctly and awards +2 before hint', () => {
+  it('scores each skill occurrence immediately as it is typed', () => {
     let state = withPrompt(makeTutorState(), 'cat', 'letter-c');
     state = keystroke(state, 'c');
-    state = keystroke(state, 'ca');
+    expect(scoreFor(state, 'letter-c')).toBe(2); // lands before the prompt completes
     expect(isPromptComplete(state)).toBe(false);
+    state = keystroke(state, 'ca');
+    expect(scoreFor(state, 'letter-a')).toBe(2);
     state = keystroke(state, 'cat');
     expect(isPromptComplete(state)).toBe(true);
-    expect(scoreFor(state, 'letter-c')).toBe(2);
+    expect(scoreFor(state, 'letter-t')).toBe(2);
     expect(state.promptCounter).toBe(1);
   });
 
-  it('awards +1 when the hint was shown first', () => {
+  it('scores every occurrence, hinted (the "a cad ebb" example)', () => {
+    let state = withPrompt(makeTutorState(), 'a cad ebb', 'letter-a');
+    state = revealHint(state);
+    state = keystroke(state, 'a cad ebb');
+    expect(isPromptComplete(state)).toBe(true);
+    expect(scoreFor(state, 'letter-a')).toBe(2); // two occurrences, 1 each
+    expect(scoreFor(state, 'letter-c')).toBe(1);
+    expect(scoreFor(state, 'letter-d')).toBe(1);
+    expect(scoreFor(state, 'letter-e')).toBe(1);
+    expect(scoreFor(state, 'letter-b')).toBe(2); // two occurrences, 1 each
+  });
+
+  it('occurrences typed before the hint appears keep their extra point', () => {
     let state = withPrompt(makeTutorState(), 'cat', 'letter-c');
+    state = keystroke(state, 'ca');
     state = revealHint(state);
     state = keystroke(state, 'cat');
-    expect(isPromptComplete(state)).toBe(true);
-    expect(scoreFor(state, 'letter-c')).toBe(1);
-    expect(state.promptCounter).toBe(1);
+    expect(scoreFor(state, 'letter-c')).toBe(2);
+    expect(scoreFor(state, 'letter-a')).toBe(2);
+    expect(scoreFor(state, 'letter-t')).toBe(1); // typed after the hint showed
   });
 
-  it('a single corrected mistake neither lowers the score nor blocks +2', () => {
+  it('a single corrected mistake drops that occurrence to one point', () => {
     let state = withPrompt(makeTutorState(), 'cat', 'letter-c');
-    state = keystroke(state, 'x'); // mistake 1
-    expect(state.prompt?.mistakesInARow).toBe(1);
+    state = keystroke(state, 'x'); // mistake on the c occurrence
     expect(state.prompt?.hintShown).toBe(false);
     expect(scoreFor(state, 'letter-c')).toBe(0);
     state = keystroke(state, ''); // backspace to a valid prefix
     state = keystroke(state, 'cat');
-    expect(scoreFor(state, 'letter-c')).toBe(2);
+    expect(scoreFor(state, 'letter-c')).toBe(1); // mistyped once, then correct
+    expect(scoreFor(state, 'letter-a')).toBe(2); // clean occurrences unaffected
+    expect(scoreFor(state, 'letter-t')).toBe(2);
   });
 
-  it('two mistakes in a row cost 1 point and force the hint', () => {
+  it('two mistakes on the same occurrence cost a point and force the hint', () => {
     let state = makeTutorState().set('scores', Map({ 'letter-c': 5 }));
     state = withPrompt(state, 'cat', 'letter-c');
-    state = keystroke(state, 'x'); // mistake 1
+    state = keystroke(state, 'x'); // mistake 1 on c
     state = keystroke(state, ''); // corrected
-    state = keystroke(state, 'k'); // mistake 2
-    expect(state.prompt?.mistakesInARow).toBe(2);
+    state = keystroke(state, 'k'); // mistake 2 on c
     expect(state.prompt?.hintShown).toBe(true);
     expect(scoreFor(state, 'letter-c')).toBe(4);
-    // completing now earns only the hinted bonus
+    // typing it correctly still earns the base point
     state = keystroke(state, '');
     state = keystroke(state, 'cat');
     expect(scoreFor(state, 'letter-c')).toBe(5);
+  });
+
+  it('mistakes on different occurrences neither penalise nor force the hint', () => {
+    let state = withPrompt(makeTutorState(), 'cat', 'letter-c');
+    state = keystroke(state, 'x'); // mistake on c
+    state = keystroke(state, 'c'); // corrected
+    expect(scoreFor(state, 'letter-c')).toBe(1);
+    state = keystroke(state, 'cx'); // mistake on a
+    expect(state.prompt?.hintShown).toBe(false);
+    expect(scoreFor(state, 'letter-a')).toBe(0);
+    state = keystroke(state, 'ca');
+    state = keystroke(state, 'cat');
+    expect(scoreFor(state, 'letter-a')).toBe(1);
+    expect(scoreFor(state, 'letter-t')).toBe(2);
   });
 
   it('typing further while diverged is still one mistake', () => {
@@ -143,7 +174,26 @@ describe('keystroke', () => {
     state = keystroke(state, 'x');
     state = keystroke(state, 'xy');
     state = keystroke(state, 'xyz');
-    expect(state.prompt?.mistakesInARow).toBe(1);
+    expect(state.prompt?.unitMistakes.get(0)).toBe(1);
+    expect(state.prompt?.hintShown).toBe(false);
+    expect(scoreFor(state, 'letter-c')).toBe(0);
+  });
+
+  it('an occurrence never scores twice, even after backspacing over it', () => {
+    let state = withPrompt(makeTutorState(), 'cat', 'letter-c');
+    state = keystroke(state, 'ca');
+    state = keystroke(state, 'c'); // backspace
+    state = keystroke(state, 'ca'); // retype
+    expect(scoreFor(state, 'letter-a')).toBe(2);
+    state = keystroke(state, 'cat');
+    expect(scoreFor(state, 'letter-a')).toBe(2);
+  });
+
+  it('indicator skills score together with their unit', () => {
+    let state = withPrompt(makeTutorState(), 'Cab', 'capital-letter-indicator');
+    state = keystroke(state, 'C');
+    expect(scoreFor(state, 'capital-letter-indicator')).toBe(2);
+    expect(scoreFor(state, 'letter-c')).toBe(2);
   });
 
   it('scores floor at zero', () => {
@@ -157,13 +207,13 @@ describe('keystroke', () => {
   });
 
   it('mistakes can drop a learnt skill back below the threshold', () => {
-    let state = makeTutorState().set('scores', Map({ 'letter-a': 11 }));
+    let state = makeTutorState().set('scores', Map({ 'letter-a': 10 }));
     expect(isSkillLearnt(state, 'letter-a')).toBe(true);
     state = withPrompt(state, 'a', 'letter-a');
     state = keystroke(state, 'x');
     state = keystroke(state, '');
     state = keystroke(state, 'y');
-    expect(scoreFor(state, 'letter-a')).toBe(10);
+    expect(scoreFor(state, 'letter-a')).toBe(9);
     expect(isSkillLearnt(state, 'letter-a')).toBe(false);
     expect(activeSkills(state).map((s) => s.id)).toContain('letter-a');
   });
@@ -247,6 +297,16 @@ describe('serialization', () => {
     const json = JSON.stringify(serialize(state));
     const revived = deserialize(JSON.parse(json));
     expect(is(revived, state)).toBe(true);
+  });
+
+  it('round-trips mid-prompt unit tracking', () => {
+    let state = withPrompt(makeTutorState({ seed: 5 }), 'cat', 'letter-c');
+    state = keystroke(state, 'c'); // awarded unit
+    state = keystroke(state, 'cx'); // mistake on the a occurrence
+    const revived = deserialize(JSON.parse(JSON.stringify(serialize(state))));
+    expect(is(revived, state)).toBe(true);
+    expect(revived.prompt?.unitMistakes.get(1)).toBe(1);
+    expect(revived.prompt?.awardedUnits.has(0)).toBe(true);
   });
 
   it('round-trips a state with no prompt and with scores', () => {

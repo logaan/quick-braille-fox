@@ -1,21 +1,28 @@
 // Core state shapes (Immutable.js Records) and game constants.
 
-import { Map, Record } from 'immutable';
+import { Map, Record, Set } from 'immutable';
 import type { RecordOf } from 'immutable';
 
 // --- Game constants --------------------------------------------------------
 
-/** A skill is learnt when its score is strictly greater than this. */
+/** A skill is learnt when its score reaches this. */
 export const LEARNT_THRESHOLD = 10;
 /** How many unlearnt skills are actively being taught at once. */
 export const ACTIVE_SKILL_COUNT = 5;
-/** Score gained for answering correctly before the hint is shown. */
-export const CORRECT_BONUS = 2;
-/** Score gained for answering correctly after the hint was shown. */
-export const HINTED_BONUS = 1;
-/** Score lost per mistake once two-in-a-row is reached (floored at 0). */
+/**
+ * Score gained for typing a skill occurrence cleanly: no mistake on that
+ * occurrence, before the hint became visible.
+ */
+export const CLEAN_AWARD = 2;
+/**
+ * Score gained for typing a skill occurrence otherwise (hint already
+ * showing, or the occurrence was mistyped once first) — typing a skill
+ * always earns at least this.
+ */
+export const BASE_AWARD = 1;
+/** Score lost per mistake once two-on-the-occurrence is reached (floored at 0). */
 export const MISTAKE_PENALTY = 1;
-/** Consecutive mistakes on the current item before penalty + forced hint. */
+/** Mistakes on the same occurrence before penalty + forced hint. */
 export const MISTAKES_BEFORE_PENALTY = 2;
 /** Every Nth completed prompt is the qbf challenge. */
 export const QBF_INTERVAL = 100;
@@ -24,7 +31,7 @@ export const REVISION_PROBABILITY = 1 / 3;
 
 /** Is a raw score enough for the skill to count as learnt? */
 export function isLearntScore(score: number): boolean {
-  return score > LEARNT_THRESHOLD;
+  return score >= LEARNT_THRESHOLD;
 }
 
 /**
@@ -54,8 +61,14 @@ export interface PromptProps {
   isQbf: boolean;
   /** What the learner has typed so far (as reported by keystroke()). */
   typed: string;
-  /** Consecutive mistakes on this item (resets only with a new prompt). */
-  mistakesInARow: number;
+  /**
+   * Mistake events per translation-unit index of `text` (missing = 0).
+   * The second mistake on the same unit costs its skills a point and
+   * force-shows the hint (see keystroke()).
+   */
+  unitMistakes: Map<number, number>;
+  /** Indexes of units whose skills have already scored this prompt. */
+  awardedUnits: Set<number>;
   /** Whether the hint (the answer as braille cells) has been shown. */
   hintShown: boolean;
   /** Whether the typed text currently diverges from the expected prefix. */
@@ -72,7 +85,8 @@ export const makePrompt = Record<PromptProps>(
     targetSkillId: null,
     isQbf: false,
     typed: '',
-    mistakesInARow: 0,
+    unitMistakes: Map<number, number>(),
+    awardedUnits: Set<number>(),
     hintShown: false,
     diverged: false,
     completed: false,

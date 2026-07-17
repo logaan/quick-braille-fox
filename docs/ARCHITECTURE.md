@@ -144,23 +144,32 @@ everything from `src/core` (`import { startSession, keystroke } from
 
 ### Game rules implemented
 
-- Every skill has a score (default 0). Score **> 10 ⇒ learnt**
+- Every skill has a score (default 0). Score **reaches 10 ⇒ learnt**
   (`LEARNT_THRESHOLD = 10`, `isLearntScore`).
 - Exactly the 5 unlearnt skills earliest in curriculum order are **active**
   (`ACTIVE_SKILL_COUNT = 5`). When one crosses the threshold the next
   unlearnt skill takes its place; a learnt skill knocked back below the
   threshold rejoins the pool automatically.
-- A correct answer always scores the target skill: +2 (`CORRECT_BONUS`)
-  when typed **before the hint is shown**, +1 (`HINTED_BONUS`) after it —
-  hinted progress is real progress, just half as fast, so scores climb (and
-  the hint delay below lengthens) even while the learner still leans on the
-  hint.
-- One mistake is free; the **second consecutive mistake on the current
-  item** costs 1 point (`MISTAKE_PENALTY`, floored at 0 — this can drop
-  learnt skills below the threshold) and force-shows the hint. A "mistake"
-  is the transition from matching-prefix to diverged; typing further while
-  already diverged is the same mistake, and a fresh divergence after
-  backspacing to a correct prefix is a new one.
+- **Every skill occurrence in the prompt scores, immediately as it is
+  typed** — not just the target skill, and not at prompt completion. An
+  occurrence is a translation unit of the prompt text (a letter, a
+  contraction, a digit; indicators like capitals and the number sign ride
+  along with their unit and score too). Typing an occurrence earns its
+  skills +2 (`CLEAN_AWARD`) when typed with **no mistake on that occurrence
+  before the hint became visible**, else +1 (`BASE_AWARD`) — typing a skill
+  always earns at least a point, so hinted progress is real progress, just
+  half as fast, and scores climb (and the hint delay below lengthens) even
+  while the learner still leans on the hint. In "a cad ebb", hinted with no
+  mistakes, "a" scores 2 (two occurrences), c/d/e score 1, "b" scores 2.
+  Awards land with the hint state at the moment of typing: units typed
+  before the hint appeared keep their +2.
+- One mistake on an occurrence is free (it just drops that occurrence's
+  award to +1); the **second mistake on the same occurrence** costs its
+  skills 1 point (`MISTAKE_PENALTY`, floored at 0 — this can drop learnt
+  skills below the threshold) and force-shows the hint. A "mistake" is the
+  transition from matching-prefix to diverged, charged to the occurrence at
+  the caret; typing further while already diverged is the same mistake, and
+  a fresh divergence after backspacing to a correct prefix is a new one.
 - Unlearnt skills auto-show the hint after `hintDelayMs(score)` =
   400 + 300 × score ms (the state layer runs the timer and calls
   `revealHint`). Learnt skills get **no** time-based hint (`hintDelayFor`
@@ -190,7 +199,8 @@ Prompt = Record<{
   targetSkillId: string | null; // null for qbf
   isQbf: boolean;
   typed: string;                // latest typed text fed to keystroke()
-  mistakesInARow: number;       // consecutive mistakes on this item
+  unitMistakes: Map<number, number>; // mistakes per translation-unit index
+  awardedUnits: Set<number>;    // unit indexes already scored this prompt
   hintShown: boolean;
   diverged: boolean;            // typed currently diverges from the text
   completed: boolean;           // finished (typed correctly, or qbf failed)
@@ -208,7 +218,7 @@ correct answer can still earn the +2.
 |---|---|
 | `startSession(seed?)` | fresh state with the first prompt generated; pass e.g. `Date.now()` for variety (defaults to 1, fully deterministic) |
 | `nextPrompt(state)` | replace the current prompt with a new one (call after completion, or to skip). Serves the qbf challenge when `(promptCounter + 1) % 100 === 0`. Consumes and refreshes `seed` |
-| `keystroke(state, typed)` | feed the full *resulting* typed text after an input event (not a single key). Handles progressive prefix matching, mistake events, scoring, qbf instant-fail, completion, and `promptCounter`. Ignores input once completed |
+| `keystroke(state, typed)` | feed the full *resulting* typed text after an input event (not a single key). Handles progressive prefix matching, per-occurrence immediate scoring, mistake events, qbf instant-fail, completion, and `promptCounter`. Ignores input once completed |
 | `revealHint(state)` | mark the hint as shown (state layer calls this when the `hintDelayFor` timer fires). No-op for qbf |
 | `isPromptComplete(state)` | whether to move on (then call `nextPrompt`) |
 | `serialize(state)` | plain `SerializedTutorState` object, JSON-safe (versioned, `version: 1`) |
@@ -219,7 +229,7 @@ correct answer can still earn the +2.
 | function | returns |
 |---|---|
 | `scoreFor(state, skillId)` | current score (0 default) |
-| `isSkillLearnt(state, skillId)` | score > 10 |
+| `isSkillLearnt(state, skillId)` | score >= 10 |
 | `learntSkills(state)` / `activeSkills(state)` | `Skill[]` in curriculum order |
 | `knownSkillIds(state)` | `Set` of learnt ∪ active ids |
 | `progressSummary(state)` | `{ totalSkills, learntCount, promptsCompleted, active: [{ id, print, score }] }` |
