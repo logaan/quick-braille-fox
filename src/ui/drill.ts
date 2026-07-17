@@ -116,11 +116,17 @@ export function Drill(props: DrillProps): ReactElement {
   const { vm, on } = props;
   const showResult = vm.qbfResult !== null;
 
+  // Uncontrolled on purpose: VoiceOver braille screen input owns the field,
+  // and we never write its value back (that desyncs VoiceOver's word buffer
+  // and makes a mistake unrecoverable). We only read it and compare against
+  // the prompt. Keying on the prompt remounts the input — clearing it — at a
+  // prompt change and never mid-typing.
   const input = e('input', {
+    key: `prompt-${vm.promptKey}`,
     className: 'drill-input',
     id: 'drill-input',
     type: 'text',
-    value: vm.typed,
+    defaultValue: '',
     onChange: on.onInput,
     autoFocus: true,
     autoComplete: 'off',
