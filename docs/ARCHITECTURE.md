@@ -291,6 +291,31 @@ ALL-CAPS word — both appear in `skillIds`, so gating counts them. It is
 deliberately not liblouis — good enough for hints, prompt gating, and the
 qbf minimum, per the caveats below.
 
+### Back-translation (`backtranslate.ts`)
+
+The inverse of `translate`, used when the learner chords braille directly on a
+QWERTY keyboard (VoiceOver mode off — see the state layer). A cell's meaning is
+contextual, so decoding is word-buffered and progressive.
+
+| function | behaviour |
+|---|---|
+| `backTranslateWord(cells, { expected?, final? })` | decode one word's cells (no blanks) to print; always returns a string |
+| `backTranslateBuffer(cells, expectedText)` | decode a whole prompt buffer (blank cells mark spaces) against the prompt text |
+
+Two strategies combine. Given the `expected` prompt word, the buffer is matched
+cell-by-cell against `translate(expected).cells`/`.units` and the matching print
+span is emitted — so a correctly-typed prefix shows the matching print prefix
+(no phantom mistakes) and a full match round-trips exactly. The **round-trip
+property `backTranslateBuffer(translate(text).cells, text) === text` holds for
+every promptable text** (corpus words, capitalised/ALL-CAPS forms, digit
+strings, punctuation-in-context, the qbf sentence), enforced by a generated test
+universe, and it depends only on this matching — not on the canonical decoder.
+The diverged tail (a wrong chord), text with no expected context, and extra
+words are decoded by a greedy context-free decoder that mirrors `translate`'s
+rules (capitals, standalone signs, number mode, positional in-word signs with an
+open-word lookahead waiver). It never throws; cells it cannot read become their
+U+2800 glyph, which never matches prompt text, so a mistake stays visible.
+
 ### qbf challenge (`qbf.ts`)
 
 - `QBF_SENTENCE` — `The quick brown fox jumped over the lazy dog.`
@@ -342,6 +367,26 @@ flawless qbf completion the count goes to core `qbfResult`; the best
 crown/badge result is kept (crown beats badge, lower `percentAbove` beats
 higher) and persisted.
 
+**Chord input (VoiceOver mode off).** A header switch toggles `voiceOverInput`
+(default on = the behaviour above; persisted). When off, the learner types
+braille chords on the QWERTY home row and the store, not the OS, does the
+translation. `chords.ts` is a pure chord state machine keyed on
+`KeyboardEvent.code` — `f d s a j k l ;` → dots `1 2 3 7 4 5 6 8`; a chord
+commits when all held keys are released (Perkins convention); a chord containing
+dot 7/8, or space mixed with dots, is discarded. The store's `onDrillKeyDown`/
+`onDrillKeyUp` (wired to the same real `<input>`, which stays focusable so the
+control is unchanged for assistive tech) preventDefault the chord keys, Enter,
+and stray printables, and append each committed cell to a per-prompt
+`cellBuffer` (blank cells mark spaces). After every commit the buffer is decoded
+with core `backTranslateBuffer(cellBuffer, prompt.text)` and fed to `keystroke`,
+so scoring, hints, and qbf work unchanged; Backspace pops the last cell.
+`handleInput` short-circuits while chord mode is on, and the key handlers
+no-op while it is off. Toggling mid-prompt (or resuming a persisted chord-mode
+session) reconstructs the buffer from a clean typed prefix, or clears the typing
+if it had diverged. For qbf cell counting each committed chord (cell **or**
+space) counts as one cell; Backspace never decrements — so chording the
+canonical 36 cells earns the crown and spelling a shortform out costs extra.
+
 **Hint timer.** After every state change the store cancels and re-arms a
 single `setTimeout` from core `hintDelayFor(state)` — so a new prompt, any
 keystroke, or a mistake restarts the countdown, and qbf prompts,
@@ -358,7 +403,10 @@ next word; keystrokes within the word leave the running cooldown alone.
 
 **Persistence (`persistence.ts`).** A versioned envelope
 (`qbf-progress-v1`) in localStorage: `{ version, tutor: serialize(state),
-bestQbf, introducedSkillIds }`. Saves are debounced (250 ms) after every
+bestQbf, introducedSkillIds, voiceOverInput }`. `voiceOverInput` was added
+later as an optional field (no version bump): an absent/garbage value loads as
+`true`, so older envelopes keep the original behaviour. Saves are debounced
+(250 ms) after every
 change and flushed on `pagehide`. On boot: absent/corrupt/unknown-version
 data ⇒ fresh `startSession(Date.now())`; an in-flight prompt resumes as-is;
 a completed prompt (or half-typed qbf, whose cell count wasn't persisted)
@@ -379,14 +427,16 @@ or effects — `main.ts` re-renders the root on every store notification.
 
 - `app.ts` — layout: header, drill view, skill panel.
 - `header.ts` — the brand "qbf" as three braille cells ⠟⠃⠋ (aria-label
-  "qbf"), the persisted best qbf result (👑 or `+N%`), and the two-step
+  "qbf"), the input-mode switch (`role="switch"`, "VoiceOver input", on by
+  default), the persisted best qbf result (👑 or `+N%`), and the two-step
   reset-progress control.
 - `drill.ts` — the prompt with monkeytype-style progressive colouring
   (correct prefix / wrong / untyped, plus a caret); diverged positions show
   the character actually typed rather than the target one, so the learner
   can see what their mistake was (backspacing restores the target chars),
   wrapped in a `<label>`
-  for the input; the autofocused monospace input; the hint area (an
+  for the input; the autofocused monospace input (also carrying the chord-mode
+  `onKeyDown`/`onKeyUp` handlers, which no-op in VoiceOver mode); the hint area (an
   `aria-live=polite` region that fills with the caret word's braille as
   large segmented cells, one sign at a time); the new-skill introduction
   banner; the qbf challenge

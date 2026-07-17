@@ -21,6 +21,8 @@ export interface PersistedData {
   readonly tutor: TutorState;
   readonly bestQbf: BestQbf | null;
   readonly introducedSkillIds: ReadonlySet<string>;
+  /** Whether input flows through VoiceOver braille screen input (default). */
+  readonly voiceOverInput: boolean;
 }
 
 interface Envelope {
@@ -28,6 +30,9 @@ interface Envelope {
   tutor: SerializedTutorState;
   bestQbf: BestQbf | null;
   introducedSkillIds: string[];
+  /** Optional (added later); absent/garbage loads as true, keeping the
+   * original VoiceOver-input behaviour for existing envelopes. */
+  voiceOverInput?: boolean;
 }
 
 function coerceBestQbf(raw: unknown): BestQbf | null {
@@ -60,7 +65,12 @@ export function loadProgress(storage: StorageLike): PersistedData | null {
         ? env.introducedSkillIds.filter((id): id is string => typeof id === 'string')
         : [],
     );
-    return { tutor, bestQbf: coerceBestQbf(env.bestQbf), introducedSkillIds };
+    return {
+      tutor,
+      bestQbf: coerceBestQbf(env.bestQbf),
+      introducedSkillIds,
+      voiceOverInput: env.voiceOverInput !== false,
+    };
   } catch {
     return null;
   }
@@ -72,6 +82,7 @@ export function saveProgress(storage: StorageLike, data: PersistedData): void {
     tutor: serialize(data.tutor),
     bestQbf: data.bestQbf,
     introducedSkillIds: [...data.introducedSkillIds],
+    voiceOverInput: data.voiceOverInput,
   };
   try {
     storage.setItem(STORAGE_KEY, JSON.stringify(envelope));

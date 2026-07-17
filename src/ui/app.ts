@@ -16,7 +16,12 @@ export function App(props: AppProps): ReactElement {
   return e(
     'div',
     { className: 'app' },
-    e(Header, { bestQbf: vm.bestQbf, confirmingReset: vm.confirmingReset, on }),
+    e(Header, {
+      bestQbf: vm.bestQbf,
+      confirmingReset: vm.confirmingReset,
+      voiceOverInput: vm.voiceOverInput,
+      on,
+    }),
     e(
       'main',
       { className: 'layout' },

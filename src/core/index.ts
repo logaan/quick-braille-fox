@@ -13,6 +13,9 @@ export {
 
 export { WORDS } from './corpus';
 
+export type { BackTranslateOptions } from './backtranslate';
+export { backTranslateBuffer, backTranslateWord } from './backtranslate';
+
 export type { QbfResult } from './qbf';
 export { QBF_MIN_CELLS, QBF_SENTENCE, qbfResult } from './qbf';
 

@@ -3,10 +3,11 @@
 // The UI renders viewModel() snapshots and wires `handlers` to DOM events;
 // it never calls core transitions itself.
 
-import type { ChangeEvent } from 'react';
-import type { QbfResult, TutorState } from '../core';
+import type { ChangeEvent, KeyboardEvent } from 'react';
+import type { Cell, QbfResult, TutorState } from '../core';
 import {
   HINT_REVEAL_COOLDOWN_MS,
+  backTranslateBuffer,
   hintDelayFor,
   hintWordForPrompt,
   keystroke,
@@ -14,7 +15,10 @@ import {
   qbfResult,
   revealHint,
   startSession,
+  textToCells,
 } from '../core';
+import type { ChordState } from './chords';
+import { EMPTY_CHORD_STATE, chordKeyDown, chordKeyUp, isChordCode } from './chords';
 import type { BestQbf, StorageLike } from './persistence';
 import { clearProgress, loadProgress, saveProgress } from './persistence';
 import type { AppHandlers, AppViewModel } from './view';
@@ -44,6 +48,13 @@ export class TutorStore {
   /** Identifies the prompt+word the reveal progress belongs to. */
   private hintRevealKey: string | null = null;
 
+  /** True: input via VoiceOver braille screen input. False: QWERTY chording. */
+  private voiceOverInput = true;
+  /** Chord key state (chord mode only); not persisted. */
+  private chordState: ChordState = EMPTY_CHORD_STATE;
+  /** Committed braille cells for the current prompt (chord mode; blank = space). */
+  private cellBuffer: Cell[] = [];
+
   private readonly storage: StorageLike | null;
   private readonly saveDebounceMs: number;
   private readonly seedOption: number | undefined;
@@ -67,6 +78,7 @@ export class TutorStore {
     } else {
       this.bestQbf = persisted.bestQbf;
       this.introduced = new Set(persisted.introducedSkillIds);
+      this.voiceOverInput = persisted.voiceOverInput;
       const p = persisted.tutor.prompt;
       // Resume an in-flight prompt as-is. Move on from a prompt saved after
       // completion (e.g. mid result screen). A half-typed qbf restarts
@@ -78,9 +90,13 @@ export class TutorStore {
           : persisted.tutor;
     }
     this.markIntroduction();
+    if (!this.voiceOverInput) this.reconstructBuffer();
 
     this.handlers = {
       onInput: (event) => this.handleInput(event),
+      onDrillKeyDown: (event) => this.handleKeyDown(event),
+      onDrillKeyUp: (event) => this.handleKeyUp(event),
+      onInputModeToggle: () => this.toggleInputMode(),
       onQbfContinue: () => this.continueAfterQbf(),
       onResetRequest: () => {
         this.confirmingReset = true;
@@ -95,6 +111,11 @@ export class TutorStore {
 
     if (typeof window !== 'undefined') {
       window.addEventListener('pagehide', () => this.flushSave());
+      // Losing focus can strand a held chord key (its keyup never arrives);
+      // clear the chord accumulator so the next chord starts clean.
+      window.addEventListener('blur', () => {
+        this.chordState = EMPTY_CHORD_STATE;
+      });
     }
     this.syncHintTimer();
     this.syncHintReveal();
@@ -117,6 +138,7 @@ export class TutorStore {
       introducingSkillId: this.introducingSkillId,
       confirmingReset: this.confirmingReset,
       hintUnitsRevealed: this.hintUnitsRevealed,
+      voiceOverInput: this.voiceOverInput,
     });
   }
 
@@ -148,6 +170,7 @@ export class TutorStore {
   }
 
   private handleInput(event: ChangeEvent<HTMLInputElement>): void {
+    if (!this.voiceOverInput) return; // chord mode drives typing via key events
     const prompt = this.tutor.prompt;
     if (prompt === null || prompt.completed) return;
     const value = stripUnexpectedTrailingSpaces(event.currentTarget.value, prompt.text);
@@ -165,21 +188,120 @@ export class TutorStore {
     if (prompt.isQbf && inserted && value !== prompt.typed) this.qbfCellsTyped += 1;
 
     this.tutor = keystroke(this.tutor, value);
+    this.afterKeystroke();
+    this.changed();
+  }
 
-    const after = this.tutor.prompt;
-    if (after !== null && after.completed) {
-      if (after.isQbf) {
-        const result: QbfResult = after.failed
-          ? { kind: 'failed' }
-          : qbfResult(this.qbfCellsTyped);
-        this.lastQbf = result;
-        if (result.kind !== 'failed' && this.isNewBest(result)) this.bestQbf = result;
-        // Stay on the result screen until onQbfContinue().
-      } else {
-        this.advance();
+  // --- chord input (VoiceOver mode off) --------------------------------
+
+  private handleKeyDown(event: KeyboardEvent<HTMLInputElement>): void {
+    if (this.voiceOverInput) return;
+    // Let editing/navigation shortcuts (⌘, Ctrl, Alt combos) through.
+    if (event.ctrlKey || event.metaKey || event.altKey) return;
+    const code = event.code;
+    if (code === 'Backspace') {
+      event.preventDefault();
+      if (this.chordState.held.size > 0 || this.cellBuffer.length === 0) return;
+      this.cellBuffer = this.cellBuffer.slice(0, -1);
+      this.commitBuffer();
+      return;
+    }
+    if (code === 'Enter') {
+      event.preventDefault();
+      return;
+    }
+    if (isChordCode(code)) {
+      event.preventDefault();
+      if (event.repeat) return; // auto-repeat is not a new key press
+      this.chordState = chordKeyDown(this.chordState, code);
+      return;
+    }
+    // Swallow stray printable keys so they never reach the text field.
+    if (event.key.length === 1) event.preventDefault();
+  }
+
+  private handleKeyUp(event: KeyboardEvent<HTMLInputElement>): void {
+    if (this.voiceOverInput) return;
+    const code = event.code;
+    if (!isChordCode(code)) return;
+    const { state, action } = chordKeyUp(this.chordState, code);
+    this.chordState = state;
+    if (action.kind === 'none') return;
+    const prompt = this.tutor.prompt;
+    if (prompt === null || prompt.completed) return;
+
+    if (action.kind === 'cell') {
+      this.cellBuffer = [...this.cellBuffer, action.cell];
+      if (prompt.isQbf) this.qbfCellsTyped += 1;
+      this.commitBuffer();
+      return;
+    }
+    // Space: a blank cell, unless it is a leading or artifact trailing space.
+    if (this.cellBuffer.length === 0) return; // ignore a leading space
+    const candidate: Cell[] = [...this.cellBuffer, []];
+    const derived = backTranslateBuffer(candidate, prompt.text);
+    if (stripUnexpectedTrailingSpaces(derived, prompt.text) !== derived) return; // artifact
+    this.cellBuffer = candidate;
+    if (prompt.isQbf) this.qbfCellsTyped += 1;
+    this.commitBuffer();
+  }
+
+  /** Re-derive typed text from the cell buffer and feed it to the core. */
+  private commitBuffer(): void {
+    const prompt = this.tutor.prompt;
+    if (prompt === null || prompt.completed) return;
+    this.tutor = keystroke(this.tutor, backTranslateBuffer(this.cellBuffer, prompt.text));
+    this.afterKeystroke();
+    this.changed();
+  }
+
+  /**
+   * Rebuild the cell buffer from the current prompt's typed text (on entering
+   * chord mode or resuming a persisted chord-mode session). A clean, still-
+   * translatable prefix is reconstructed so chording continues seamlessly;
+   * otherwise the in-progress typing is cleared and the prompt starts over.
+   */
+  private reconstructBuffer(): void {
+    const prompt = this.tutor.prompt;
+    if (prompt === null || prompt.completed || prompt.typed === '') {
+      this.cellBuffer = [];
+      return;
+    }
+    if (prompt.text.startsWith(prompt.typed)) {
+      try {
+        this.cellBuffer = textToCells(prompt.typed).map((c) => [...c]);
+        return;
+      } catch {
+        // fall through to a clean restart
       }
     }
+    this.tutor = keystroke(this.tutor, '');
+    this.cellBuffer = [];
+  }
+
+  private toggleInputMode(): void {
+    this.voiceOverInput = !this.voiceOverInput;
+    this.chordState = EMPTY_CHORD_STATE;
+    if (this.voiceOverInput) {
+      this.cellBuffer = [];
+    } else {
+      this.reconstructBuffer();
+    }
     this.changed();
+  }
+
+  /** Shared post-keystroke handling: qbf scoring/result, or advance. */
+  private afterKeystroke(): void {
+    const after = this.tutor.prompt;
+    if (after === null || !after.completed) return;
+    if (after.isQbf) {
+      const result: QbfResult = after.failed ? { kind: 'failed' } : qbfResult(this.qbfCellsTyped);
+      this.lastQbf = result;
+      if (result.kind !== 'failed' && this.isNewBest(result)) this.bestQbf = result;
+      // Stay on the result screen until onQbfContinue().
+    } else {
+      this.advance();
+    }
   }
 
   private continueAfterQbf(): void {
@@ -193,6 +315,8 @@ export class TutorStore {
     this.tutor = nextPrompt(this.tutor);
     this.qbfCellsTyped = 0;
     this.lastQbf = null;
+    this.cellBuffer = [];
+    this.chordState = EMPTY_CHORD_STATE;
     this.markIntroduction();
   }
 
@@ -227,6 +351,8 @@ export class TutorStore {
     this.qbfCellsTyped = 0;
     this.introduced = new Set();
     this.confirmingReset = false;
+    this.cellBuffer = [];
+    this.chordState = EMPTY_CHORD_STATE;
     this.markIntroduction();
     this.changed();
   }
@@ -312,6 +438,7 @@ export class TutorStore {
       tutor: this.tutor,
       bestQbf: this.bestQbf,
       introducedSkillIds: this.introduced,
+      voiceOverInput: this.voiceOverInput,
     });
   }
 }
