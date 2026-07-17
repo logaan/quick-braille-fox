@@ -1,8 +1,8 @@
-// The main drill view: prompt with progressive match colouring, a visually
-// hidden text input (VoiceOver braille screen input types into it; the
-// prompt's own caret is the only visible cursor), the hint area,
-// new-skill introductions, and the qbf challenge/result presentation.
-// Pure render functions of props — all behaviour lives in src/state.
+// The main drill view: prompt with progressive match colouring, a visible raw
+// text input (VoiceOver braille screen input types into it, and showing its
+// literal DOM value lets the learner see and recover from VoiceOver mangling a
+// word), the hint area, new-skill introductions, and the qbf challenge/result
+// presentation. Pure render functions of props — all behaviour lives in src/state.
 
 import { createElement as e, type ReactElement } from 'react';
 import type { QbfResult } from '../core';
@@ -116,11 +116,19 @@ export function Drill(props: DrillProps): ReactElement {
   const { vm, on } = props;
   const showResult = vm.qbfResult !== null;
 
+  // Uncontrolled on purpose: VoiceOver braille screen input owns this field.
+  // We only read its value and compare against the prompt — we never write the
+  // value back, because a mid-word write-back desyncs VoiceOver's word buffer
+  // and makes a slip unrecoverable. Keying on the prompt epoch remounts (and so
+  // clears) the field at a genuine prompt change, never mid-typing. The field
+  // is visible so you can see exactly what VoiceOver put in the DOM and, if it
+  // mangles a word, clear/retype to recover.
   const input = e('input', {
+    key: `prompt-${vm.promptKey}`,
     className: 'drill-input',
     id: 'drill-input',
     type: 'text',
-    value: vm.typed,
+    defaultValue: '',
     onChange: on.onInput,
     autoFocus: true,
     autoComplete: 'off',

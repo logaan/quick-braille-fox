@@ -36,6 +36,13 @@ export class TutorStore {
   private lastQbf: QbfResult | null = null;
   /** Insertion events during the current qbf prompt (1 event = 1 cell). */
   private qbfCellsTyped = 0;
+  /**
+   * Bumped every time a fresh prompt is shown (advance/reset). The UI keys the
+   * uncontrolled drill input on it, so the field clears (remounts) exactly at a
+   * prompt change and never mid-typing — writing the field back mid-word is
+   * what desyncs VoiceOver's braille-screen-input word buffer.
+   */
+  private promptEpoch = 0;
   private introduced = new Set<string>();
   private introducingSkillId: string | null = null;
   private confirmingReset = false;
@@ -117,6 +124,7 @@ export class TutorStore {
       introducingSkillId: this.introducingSkillId,
       confirmingReset: this.confirmingReset,
       hintUnitsRevealed: this.hintUnitsRevealed,
+      promptKey: this.promptEpoch,
     });
   }
 
@@ -193,6 +201,7 @@ export class TutorStore {
     this.tutor = nextPrompt(this.tutor);
     this.qbfCellsTyped = 0;
     this.lastQbf = null;
+    this.promptEpoch += 1;
     this.markIntroduction();
   }
 
@@ -227,6 +236,7 @@ export class TutorStore {
     this.qbfCellsTyped = 0;
     this.introduced = new Set();
     this.confirmingReset = false;
+    this.promptEpoch += 1;
     this.markIntroduction();
     this.changed();
   }

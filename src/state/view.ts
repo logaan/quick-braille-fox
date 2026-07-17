@@ -67,6 +67,12 @@ export interface AppViewModel {
   readonly promptsCompleted: number;
   readonly groups: ReadonlyArray<GroupProgressView>;
   readonly confirmingReset: boolean;
+  /**
+   * Identity of the current prompt instance. The UI keys the uncontrolled
+   * drill input on it, so the field clears (remounts) only at a prompt change,
+   * never mid-typing (which would fight VoiceOver).
+   */
+  readonly promptKey: number;
 }
 
 /** Event handlers the store exposes for the UI to attach to DOM events. */
@@ -104,6 +110,8 @@ export interface ViewSources {
   readonly confirmingReset: boolean;
   /** How many reveal units of the hinted word are uncovered (store-owned). */
   readonly hintUnitsRevealed: number;
+  /** Identity of the current prompt instance (store-owned epoch). */
+  readonly promptKey: number;
 }
 
 function hintText(src: ViewSources): string | null {
@@ -153,5 +161,6 @@ export function buildViewModel(src: ViewSources): AppViewModel {
     promptsCompleted: tutor.promptCounter,
     groups: groupProgress(tutor),
     confirmingReset: src.confirmingReset,
+    promptKey: src.promptKey,
   };
 }

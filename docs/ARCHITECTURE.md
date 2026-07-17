@@ -341,16 +341,25 @@ straight to core transition functions and call `notify()`):
 - `subscribe(listener)` — `main.ts` subscribes and re-renders the React
   root with a fresh view model on every change.
 
-**Input capture.** The drill input is a real `<input type="text">` (required
-so macOS VoiceOver braille screen input works — raw keydown is never the
-only path). `onInput` (wired to React's `onChange`, i.e. the DOM `input`
-event) feeds the field's full current value to core `keystroke`. For qbf
-cell counting, each input event whose `inputType` starts with `insert`
-counts as **one cell** (VoiceOver commits a whole contraction as a single
-insertion; a keypress inserts one char); deletions never decrement. On a
-flawless qbf completion the count goes to core `qbfResult`; the best
-crown/badge result is kept (crown beats badge, lower `percentAbove` beats
-higher) and persisted.
+**Input capture.** The drill input is a real, **uncontrolled** and **visible**
+`<input type="text">` (required so macOS VoiceOver braille screen input works
+— raw keydown is never the only path). It is uncontrolled on purpose:
+VoiceOver owns the field's value and the app never writes it back mid-prompt,
+because rewriting a controlled `value` during a word commit desyncs
+VoiceOver's word buffer and can leave a slip unrecoverable. The field only
+*remounts* — clearing itself — when the store-owned `promptKey` epoch changes
+at a genuine prompt change. It is shown (not visually hidden) so the learner
+can see exactly what VoiceOver put in the DOM; if VoiceOver mangles or reorders
+a word, they can see it and clear/retype to recover. `onInput` (wired to
+React's `onChange`, i.e. the DOM `input` event) reads the field's full current
+value, strips VoiceOver's trailing word-commit space where that turns a
+non-match back into a prefix (a read-only comparison step that never touches
+the field), and feeds the result to core `keystroke`. For qbf cell counting,
+each input event whose `inputType` starts with `insert` counts as **one cell**
+(VoiceOver commits a whole contraction as a single insertion; a keypress
+inserts one char); deletions never decrement. On a flawless qbf completion the
+count goes to core `qbfResult`; the best crown/badge result is kept (crown
+beats badge, lower `percentAbove` beats higher) and persisted.
 
 **Hint timer.** After every state change the store cancels and re-arms a
 single `setTimeout` from core `hintDelayFor(state)` — so a new prompt, any
