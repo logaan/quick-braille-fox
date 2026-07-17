@@ -19,8 +19,8 @@ export { QBF_MIN_CELLS, QBF_SENTENCE, qbfResult } from './qbf';
 export type { Prompt, PromptProps, TutorState, TutorStateProps } from './types';
 export {
   ACTIVE_SKILL_COUNT,
-  CORRECT_BONUS,
-  HINTED_BONUS,
+  BASE_AWARD,
+  CLEAN_AWARD,
   HINT_REVEAL_COOLDOWN_MS,
   LEARNT_THRESHOLD,
   MISTAKE_PENALTY,

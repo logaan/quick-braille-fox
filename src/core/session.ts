@@ -1,15 +1,17 @@
 // Session flow: pure transition functions over TutorState, plus JSON
 // (de)serialisation for the persistence layer.
 
-import { Map } from 'immutable';
+import { Map, Set } from 'immutable';
+import type { TranslationUnit } from './braille';
+import { translate } from './braille';
 import { generatePromptText, pickTarget } from './prompts';
 import { scoreFor } from './progress';
 import { QBF_SENTENCE } from './qbf';
 import { drawSeed, mulberry32 } from './rng';
 import type { Prompt, TutorState } from './types';
 import {
-  CORRECT_BONUS,
-  HINTED_BONUS,
+  BASE_AWARD,
+  CLEAN_AWARD,
   MISTAKE_PENALTY,
   MISTAKES_BEFORE_PENALTY,
   QBF_INTERVAL,
@@ -47,20 +49,85 @@ function addScore(state: TutorState, skillId: string, delta: number): TutorState
   return state.set('scores', state.scores.set(skillId, next));
 }
 
+/** The prompt text's translation units ([] if it is not translatable). */
+function promptUnits(p: Prompt): ReadonlyArray<TranslationUnit> {
+  try {
+    return translate(p.text).units;
+  } catch {
+    return [];
+  }
+}
+
+function commonPrefixLength(a: string, b: string): number {
+  const n = Math.min(a.length, b.length);
+  let i = 0;
+  while (i < n && a[i] === b[i]) i += 1;
+  return i;
+}
+
+/**
+ * The unit a mistake at `caret` is charged to: the skill-bearing unit
+ * containing the caret, else the next one after it (a caret on a space
+ * charges the word ahead, matching what the hint shows), else the last one
+ * (typed past the end of the text). Null when no unit carries skills.
+ */
+function mistakeUnitIndex(units: ReadonlyArray<TranslationUnit>, caret: number): number | null {
+  let last: number | null = null;
+  for (let i = 0; i < units.length; i++) {
+    const u = units[i] as TranslationUnit;
+    if (u.skillIds.length === 0) continue;
+    if (caret < u.end) return i;
+    last = i;
+  }
+  return last;
+}
+
+/**
+ * Score every unit the correct prefix (length `caret`) has newly finished:
+ * each of the unit's skills gains CLEAN_AWARD if the occurrence was typed
+ * with no mistakes before the hint became visible, BASE_AWARD otherwise.
+ * Points land immediately — a unit typed before the hint shows keeps its
+ * clean award even if the hint appears later in the same prompt.
+ */
+function awardFinishedUnits(
+  state: TutorState,
+  p: Prompt,
+  units: ReadonlyArray<TranslationUnit>,
+  caret: number,
+): { state: TutorState; prompt: Prompt } {
+  let next = state;
+  let awarded = p.awardedUnits;
+  for (let i = 0; i < units.length; i++) {
+    const u = units[i] as TranslationUnit;
+    if (u.end > caret) break;
+    if (u.skillIds.length === 0 || awarded.has(i)) continue;
+    const clean = !p.hintShown && p.unitMistakes.get(i, 0) === 0;
+    const delta = clean ? CLEAN_AWARD : BASE_AWARD;
+    for (const id of u.skillIds) next = addScore(next, id, delta);
+    awarded = awarded.add(i);
+  }
+  return { state: next, prompt: p.set('awardedUnits', awarded) };
+}
+
 /**
  * Feed the current *resulting* typed text (not a single key) after an input
  * event. Progressive matching against the expected text:
  *
- * - typed == expected text: prompt completed; the target skill scores
- *   +CORRECT_BONUS if the hint was never shown, +HINTED_BONUS if it was;
- *   promptCounter increments.
+ * - Every skill occurrence (translation unit) the correctly typed prefix
+ *   finishes scores *immediately* for each of the unit's skills:
+ *   +CLEAN_AWARD when typed with no mistake on the occurrence before the
+ *   hint became visible, +BASE_AWARD otherwise (typing a skill always
+ *   earns at least BASE_AWARD).
+ * - typed == expected text: prompt completed (the final units score the
+ *   same way); promptCounter increments.
  * - typed is a proper prefix: fine, no event.
- * - typed diverges from the expected prefix: one mistake *event* (further
- *   keystrokes while still diverged are the same mistake; the learner must
- *   backspace to the matching prefix, after which a new divergence counts
- *   again). The second consecutive mistake on the item costs
- *   MISTAKE_PENALTY (score floored at 0, and learnt skills may drop below
- *   the learnt threshold) and forces the hint to show. On a qbf prompt any
+ * - typed diverges from the expected prefix: one mistake *event*, charged
+ *   to the occurrence at the caret (further keystrokes while still
+ *   diverged are the same mistake; the learner must backspace to the
+ *   matching prefix, after which a new divergence counts again). The
+ *   second mistake on the same occurrence costs its skills
+ *   MISTAKE_PENALTY (floored at 0, and learnt skills may drop below the
+ *   learnt threshold) and forces the hint to show. On a qbf prompt any
  *   mistake fails the challenge immediately and completes the prompt.
  *
  * Once the prompt is completed, further keystrokes are ignored; the state
@@ -70,36 +137,50 @@ export function keystroke(state: TutorState, typed: string): TutorState {
   const p = state.prompt;
   if (!p || p.completed || typed === p.typed) return state;
 
-  if (typed === p.text) {
-    let next = state
-      .set('prompt', p.merge({ typed, diverged: false, completed: true }))
-      .set('promptCounter', state.promptCounter + 1);
-    if (!p.isQbf && p.targetSkillId !== null) {
-      next = addScore(next, p.targetSkillId, p.hintShown ? HINTED_BONUS : CORRECT_BONUS);
-    }
-    return next;
-  }
-
-  const isPrefix = p.text.startsWith(typed);
-
   if (p.isQbf) {
-    if (isPrefix) return state.set('prompt', p.set('typed', typed));
+    if (typed === p.text) {
+      return state
+        .set('prompt', p.merge({ typed, diverged: false, completed: true }))
+        .set('promptCounter', state.promptCounter + 1);
+    }
+    if (p.text.startsWith(typed)) return state.set('prompt', p.set('typed', typed));
     return state
       .set('prompt', p.merge({ typed, diverged: true, failed: true, completed: true }))
       .set('promptCounter', state.promptCounter + 1);
   }
 
-  if (isPrefix) return state.set('prompt', p.merge({ typed, diverged: false }));
-  if (p.diverged) return state.set('prompt', p.set('typed', typed));
+  const units = promptUnits(p);
+  const caret = commonPrefixLength(p.text, typed);
+  // Correctly typed occurrences score first, with the hint state as it was
+  // when they were typed — even when the same event also brings a mistake
+  // further along.
+  const scored = awardFinishedUnits(state, p, units, caret);
+  let next = scored.state;
+  let prompt = scored.prompt;
+
+  if (typed === p.text) {
+    return next
+      .set('prompt', prompt.merge({ typed, diverged: false, completed: true }))
+      .set('promptCounter', state.promptCounter + 1);
+  }
+
+  if (p.text.startsWith(typed)) {
+    return next.set('prompt', prompt.merge({ typed, diverged: false }));
+  }
+
+  if (p.diverged) return next.set('prompt', prompt.set('typed', typed));
 
   // A new mistake event (prefix -> divergence transition).
-  const mistakes = p.mistakesInARow + 1;
-  let prompt = p.merge({ typed, diverged: true, mistakesInARow: mistakes });
-  let next = state;
-  if (mistakes >= MISTAKES_BEFORE_PENALTY) {
-    prompt = prompt.set('hintShown', true);
-    if (p.targetSkillId !== null) {
-      next = addScore(next, p.targetSkillId, -MISTAKE_PENALTY);
+  prompt = prompt.merge({ typed, diverged: true });
+  const idx = mistakeUnitIndex(units, caret);
+  if (idx !== null) {
+    const mistakes = prompt.unitMistakes.get(idx, 0) + 1;
+    prompt = prompt.set('unitMistakes', prompt.unitMistakes.set(idx, mistakes));
+    if (mistakes >= MISTAKES_BEFORE_PENALTY) {
+      prompt = prompt.set('hintShown', true);
+      for (const id of (units[idx] as TranslationUnit).skillIds) {
+        next = addScore(next, id, -MISTAKE_PENALTY);
+      }
     }
   }
   return next.set('prompt', prompt);
@@ -107,9 +188,9 @@ export function keystroke(state: TutorState, typed: string): TutorState {
 
 /**
  * Record that the hint was shown (the state layer calls this when the
- * hintDelayFor() timer fires). Drops the completion bonus from
- * CORRECT_BONUS to HINTED_BONUS. No-op on qbf prompts (never hinted) and
- * completed/absent prompts.
+ * hintDelayFor() timer fires). Occurrences typed from here on earn
+ * BASE_AWARD instead of CLEAN_AWARD. No-op on qbf prompts (never hinted)
+ * and completed/absent prompts.
  */
 export function revealHint(state: TutorState): TutorState {
   const p = state.prompt;
@@ -135,7 +216,8 @@ export interface SerializedTutorState {
     targetSkillId: string | null;
     isQbf: boolean;
     typed: string;
-    mistakesInARow: number;
+    unitMistakes: { [unitIndex: string]: number };
+    awardedUnits: number[];
     hintShown: boolean;
     diverged: boolean;
     completed: boolean;
@@ -145,12 +227,27 @@ export interface SerializedTutorState {
 
 /** Convert state to a plain object that survives JSON.stringify/parse. */
 export function serialize(state: TutorState): SerializedTutorState {
+  const p = state.prompt;
   return {
     version: 1,
     seed: state.seed,
     promptCounter: state.promptCounter,
     scores: state.scores.toObject(),
-    prompt: state.prompt === null ? null : state.prompt.toObject(),
+    prompt:
+      p === null
+        ? null
+        : {
+            text: p.text,
+            targetSkillId: p.targetSkillId,
+            isQbf: p.isQbf,
+            typed: p.typed,
+            unitMistakes: p.unitMistakes.mapKeys(String).toObject(),
+            awardedUnits: p.awardedUnits.toArray(),
+            hintShown: p.hintShown,
+            diverged: p.diverged,
+            completed: p.completed,
+            failed: p.failed,
+          },
   };
 }
 
@@ -164,6 +261,29 @@ function bool(value: unknown): boolean {
 
 function str(value: unknown, fallback: string): string {
   return typeof value === 'string' ? value : fallback;
+}
+
+function unitMistakesFrom(value: unknown): Map<number, number> {
+  let mistakes = Map<number, number>();
+  if (typeof value === 'object' && value !== null) {
+    for (const [key, count] of Object.entries(value)) {
+      const index = Number(key);
+      if (Number.isInteger(index) && index >= 0 && typeof count === 'number') {
+        mistakes = mistakes.set(index, count);
+      }
+    }
+  }
+  return mistakes;
+}
+
+function awardedUnitsFrom(value: unknown): Set<number> {
+  let awarded = Set<number>();
+  if (Array.isArray(value)) {
+    for (const index of value) {
+      if (Number.isInteger(index) && index >= 0) awarded = awarded.add(index as number);
+    }
+  }
+  return awarded;
 }
 
 /** Rebuild a TutorState from serialize() output. Throws on garbage input. */
@@ -191,7 +311,8 @@ export function deserialize(raw: unknown): TutorState {
           targetSkillId: typeof p.targetSkillId === 'string' ? p.targetSkillId : null,
           isQbf: bool(p.isQbf),
           typed: str(p.typed, ''),
-          mistakesInARow: num(p.mistakesInARow, 0),
+          unitMistakes: unitMistakesFrom(p.unitMistakes),
+          awardedUnits: awardedUnitsFrom(p.awardedUnits),
           hintShown: bool(p.hintShown),
           diverged: bool(p.diverged),
           completed: bool(p.completed),

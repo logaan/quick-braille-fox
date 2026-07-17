@@ -44,6 +44,9 @@ export interface TranslationUnit {
   readonly start: number;
   readonly end: number;
   readonly cells: ReadonlyArray<Cell>;
+  /** Ids of the skills this unit exercises (indicators included; a space
+   * unit has none). */
+  readonly skillIds: ReadonlyArray<string>;
 }
 
 /** Result of translating a print string to braille cells. */
@@ -171,7 +174,7 @@ function emitUnit(
 ): void {
   out.cells.push(...cells);
   out.skillIds.push(...skillIds);
-  out.units.push({ start, end, cells });
+  out.units.push({ start, end, cells, skillIds });
 }
 
 function translateLetterRun(word: string, base: number, out: MutableTranslation): void {
