@@ -39,3 +39,36 @@ appears, add a script for it instead of documenting the raw invocation.
 
 `data/` is gitignored. It holds the liblouis braille tables copied from macOS
 by `scripts/copy-braille-tables.sh`; run that script to (re)populate it.
+
+## Claude suggestions
+
+While working on a task, you'll often notice things about the project that
+aren't working well — a rough edge in the tooling, a slow or awkward workflow,
+a bug that's tangential to what you were asked to do, or a gap in the docs. If
+fixing it isn't necessary for the task at hand, **don't fix it inline and don't
+just mention it in passing**. Instead, file it as a suggestion so the user can
+decide whether to act on it.
+
+File a suggestion by creating a new Thing as a child of the top-level
+"Claude suggestions" Thing (`lot:033rPj8TVaL2WyrRjmxFxA`). If that ID ever
+stops resolving, find the Thing by name with `lot thing list`.
+
+```bash
+# Name as arguments, body (issue + proposed solution) on stdin:
+echo "Body describing the issue and a proposed solution" \
+  | lot thing new --parent lot:033rPj8TVaL2WyrRjmxFxA Short suggestion title
+```
+
+Each suggestion should:
+
+- **Describe the issue** — what isn't working well and, where it helps, how you
+  hit it.
+- **Describe a solution** — a concrete proposed fix or improvement.
+
+Keep the suggestion focused on the one improvement; file separate Things for
+unrelated issues. If the user likes a suggestion they'll use `lot`'s send-to-
+Claude function to have it implemented.
+
+Examples of the kind of thing worth filing: Vite running tests in `.claude`
+worktrees when executed from the base worktree, or a `MAP.md` file to save each
+task from re-learning the project's layout from scratch.
