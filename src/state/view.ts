@@ -69,6 +69,12 @@ export interface AppViewModel {
   readonly confirmingReset: boolean;
   /** True: input via VoiceOver braille screen input. False: QWERTY chording. */
   readonly voiceOverInput: boolean;
+  /**
+   * Identity of the current prompt instance. The UI keys the uncontrolled
+   * drill input on it, so the field clears (remounts) only at a prompt
+   * change — never mid-typing, which would fight VoiceOver.
+   */
+  readonly promptKey: number;
 }
 
 /** Event handlers the store exposes for the UI to attach to DOM events. */
@@ -113,6 +119,8 @@ export interface ViewSources {
   /** How many reveal units of the hinted word are uncovered (store-owned). */
   readonly hintUnitsRevealed: number;
   readonly voiceOverInput: boolean;
+  /** Identity of the current prompt instance (store-owned epoch). */
+  readonly promptKey: number;
 }
 
 function hintText(src: ViewSources): string | null {
@@ -163,5 +171,6 @@ export function buildViewModel(src: ViewSources): AppViewModel {
     groups: groupProgress(tutor),
     confirmingReset: src.confirmingReset,
     voiceOverInput: src.voiceOverInput,
+    promptKey: src.promptKey,
   };
 }

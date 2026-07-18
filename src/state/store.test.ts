@@ -414,6 +414,63 @@ describe('VoiceOver trailing spaces', () => {
     const expectedPercent = ((QBF_SENTENCE.length - QBF_MIN_CELLS) / QBF_MIN_CELLS) * 100;
     expect(store.viewModel().qbfResult).toEqual({ kind: 'badge', percentAbove: expectedPercent });
   });
+
+  it('drops a stray leading space so the learner can still recover', () => {
+    // The field is uncontrolled, so a stray space VoiceOver leaves at the
+    // front stays in the DOM; matching must ignore it rather than diverge.
+    const store = createTutorStore({ storage: promptStorage('x y'), seed: 1 });
+    insert(store, ' '); // stray leading space
+    expect(store.viewModel().typed).toBe('');
+    expect(store.viewModel().diverged).toBe(false);
+    insert(store, ' x'); // VoiceOver appends onto the stray space
+    expect(store.viewModel().typed).toBe('x');
+    expect(store.viewModel().diverged).toBe(false);
+    insert(store, ' x y');
+    expect(store.viewModel().promptsCompleted).toBe(2);
+  });
+
+  it('collapses a doubled space at a word boundary', () => {
+    const store = createTutorStore({ storage: promptStorage('x y'), seed: 1 });
+    insert(store, 'x');
+    insert(store, 'x  '); // VoiceOver doubles the boundary space
+    expect(store.viewModel().typed).toBe('x ');
+    expect(store.viewModel().diverged).toBe(false);
+    insert(store, 'x  y');
+    expect(store.viewModel().promptsCompleted).toBe(2);
+  });
+});
+
+describe('drill input remount key', () => {
+  function twoWordStore(): TutorStore {
+    const storage = memoryStorage();
+    const state = makeTutorState({
+      seed: 7,
+      promptCounter: 1,
+      prompt: makePrompt({ text: 'x y' }),
+    });
+    storage.setItem(
+      STORAGE_KEY,
+      JSON.stringify({ version: 1, tutor: serialize(state), bestQbf: null, introducedSkillIds: [] }),
+    );
+    return createTutorStore({ storage, seed: 1 });
+  }
+
+  it('keeps a stable key while typing and changes it on the next prompt', () => {
+    const store = twoWordStore();
+    const start = store.viewModel().promptKey;
+    insert(store, 'x'); // still the same prompt
+    expect(store.viewModel().promptKey).toBe(start);
+    insert(store, 'x y'); // completes -> advances to the next prompt
+    expect(store.viewModel().promptKey).not.toBe(start);
+  });
+
+  it('changes the key when progress is reset', () => {
+    const store = twoWordStore();
+    const start = store.viewModel().promptKey;
+    store.handlers.onResetRequest();
+    store.handlers.onResetConfirm();
+    expect(store.viewModel().promptKey).not.toBe(start);
+  });
 });
 
 describe('input mode toggle', () => {

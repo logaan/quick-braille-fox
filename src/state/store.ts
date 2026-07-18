@@ -40,6 +40,12 @@ export class TutorStore {
   private lastQbf: QbfResult | null = null;
   /** Insertion events during the current qbf prompt (1 event = 1 cell). */
   private qbfCellsTyped = 0;
+  /**
+   * Bumped every time a new prompt is shown (advance/reset). The UI keys the
+   * uncontrolled drill input on it so the field clears (remounts) exactly at
+   * a prompt change and never mid-typing — see handleInput.
+   */
+  private promptEpoch = 0;
   private introduced = new Set<string>();
   private introducingSkillId: string | null = null;
   private confirmingReset = false;
@@ -139,6 +145,7 @@ export class TutorStore {
       confirmingReset: this.confirmingReset,
       hintUnitsRevealed: this.hintUnitsRevealed,
       voiceOverInput: this.voiceOverInput,
+      promptKey: this.promptEpoch,
     });
   }
 
@@ -173,7 +180,7 @@ export class TutorStore {
     if (!this.voiceOverInput) return; // chord mode drives typing via key events
     const prompt = this.tutor.prompt;
     if (prompt === null || prompt.completed) return;
-    const value = stripUnexpectedTrailingSpaces(event.currentTarget.value, prompt.text);
+    const value = normalizeTypedValue(event.currentTarget.value, prompt.text);
     const native = event.nativeEvent as Partial<InputEvent>;
     const inserted =
       typeof native.inputType === 'string'
@@ -317,6 +324,7 @@ export class TutorStore {
     this.lastQbf = null;
     this.cellBuffer = [];
     this.chordState = EMPTY_CHORD_STATE;
+    this.promptEpoch += 1;
     this.markIntroduction();
   }
 
@@ -353,6 +361,7 @@ export class TutorStore {
     this.confirmingReset = false;
     this.cellBuffer = [];
     this.chordState = EMPTY_CHORD_STATE;
+    this.promptEpoch += 1;
     this.markIntroduction();
     this.changed();
   }
@@ -444,12 +453,32 @@ export class TutorStore {
 }
 
 /**
- * VoiceOver braille screen input commits a trailing space after each word —
- * including the last word of a prompt, and sometimes as its own event that
- * lands on the next prompt. A space the expected text doesn't have coming is
- * an input-method artifact, not a mistake: strip trailing spaces whenever
- * doing so turns a non-matching value back into a prefix of (or all of) the
- * expected text. Expected mid-prompt spaces and real mistakes pass through.
+ * Absorb VoiceOver braille-screen-input's spacing artifacts in the value we
+ * compare against the expected text. The drill input is uncontrolled —
+ * VoiceOver owns the field and we never write back to it — so this only
+ * shapes what we match/score, never what VoiceOver sees (rewriting the field
+ * mid-word is exactly what desyncs its word buffer and makes a mistake
+ * unrecoverable).
+ *
+ * VoiceOver commits a trailing space after every word (including the last of
+ * a prompt), occasionally lands a stray leading space on a fresh prompt, and
+ * now and then doubles a space. None of those are mistakes. So: drop leading
+ * spaces, collapse internal runs to one, and keep a trailing space only while
+ * it leaves the value a prefix of the expected text — dropping it when that
+ * makes the value match (so the final word's commit completes the prompt).
+ * Expected mid-prompt spaces and genuine mistakes pass through untouched.
+ */
+function normalizeTypedValue(value: string, text: string): string {
+  const collapsed = value.replace(/^ +/u, '').replace(/ {2,}/gu, ' ');
+  if (text.startsWith(collapsed)) return collapsed;
+  const trimmed = collapsed.replace(/ +$/u, '');
+  return trimmed !== collapsed && text.startsWith(trimmed) ? trimmed : collapsed;
+}
+
+/**
+ * Drop a trailing space only when it makes `value` stop being a prefix of the
+ * expected text — used by chord mode to reject an artifact space cell while
+ * leaving genuine mid-prompt spaces (and real mistakes) untouched.
  */
 function stripUnexpectedTrailingSpaces(value: string, text: string): string {
   if (text.startsWith(value)) return value;
