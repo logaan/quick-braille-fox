@@ -19,7 +19,7 @@
 # Path to the vault, relative to this file (the project root). Keeping the vault
 # inside the project (`.lot-vault`) means the Things live alongside the code
 # they describe.
-path = ".lot-vault"
+path = "~/code/personal/html/braille-grade2/.lot-vault"
 
 # Keep `lot` out of git: no repo init, no automatic commits. Because the vault
 # sits inside this project's own git repo, `lot` staying out of git lets vault
