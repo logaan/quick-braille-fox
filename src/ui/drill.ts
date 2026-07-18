@@ -122,6 +122,10 @@ export function Drill(props: DrillProps): ReactElement {
     type: 'text',
     value: vm.typed,
     onChange: on.onInput,
+    // In chord mode these drive typing (dot keys, space, backspace); they
+    // no-op while VoiceOver input is on.
+    onKeyDown: on.onDrillKeyDown,
+    onKeyUp: on.onDrillKeyUp,
     autoFocus: true,
     autoComplete: 'off',
     autoCapitalize: 'none',

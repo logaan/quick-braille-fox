@@ -2,7 +2,7 @@
 // the handler interface the UI wires to DOM events. UI components are pure
 // render functions of these props; the dependency direction is ui -> state.
 
-import type { ChangeEvent } from 'react';
+import type { ChangeEvent, KeyboardEvent } from 'react';
 import type { QbfResult, TutorState } from '../core';
 import {
   LEARNT_THRESHOLD,
@@ -67,12 +67,20 @@ export interface AppViewModel {
   readonly promptsCompleted: number;
   readonly groups: ReadonlyArray<GroupProgressView>;
   readonly confirmingReset: boolean;
+  /** True: input via VoiceOver braille screen input. False: QWERTY chording. */
+  readonly voiceOverInput: boolean;
 }
 
 /** Event handlers the store exposes for the UI to attach to DOM events. */
 export interface AppHandlers {
   /** Wire to the drill input's change/input event. */
   onInput(event: ChangeEvent<HTMLInputElement>): void;
+  /** Wire to the drill input's keydown (chord press / backspace / swallow). */
+  onDrillKeyDown(event: KeyboardEvent<HTMLInputElement>): void;
+  /** Wire to the drill input's keyup (chord commit). */
+  onDrillKeyUp(event: KeyboardEvent<HTMLInputElement>): void;
+  /** Toggle between VoiceOver braille screen input and QWERTY chording. */
+  onInputModeToggle(): void;
   /** Dismiss the qbf result screen and move to the next prompt. */
   onQbfContinue(): void;
   onResetRequest(): void;
@@ -104,6 +112,7 @@ export interface ViewSources {
   readonly confirmingReset: boolean;
   /** How many reveal units of the hinted word are uncovered (store-owned). */
   readonly hintUnitsRevealed: number;
+  readonly voiceOverInput: boolean;
 }
 
 function hintText(src: ViewSources): string | null {
@@ -153,5 +162,6 @@ export function buildViewModel(src: ViewSources): AppViewModel {
     promptsCompleted: tutor.promptCounter,
     groups: groupProgress(tutor),
     confirmingReset: src.confirmingReset,
+    voiceOverInput: src.voiceOverInput,
   };
 }

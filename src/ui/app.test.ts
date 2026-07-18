@@ -86,6 +86,22 @@ describe('App rendering', () => {
     expect(html).not.toContain(`class="char-wrong">${text[0] ?? ''}</span>`);
   });
 
+  it('renders the input-mode switch, checked by default', () => {
+    const store = createTutorStore({ seed: 1 });
+    const html = render(store);
+    expect(html).toContain('role="switch"');
+    expect(html).toContain('aria-checked="true"');
+    expect(html).toContain('VoiceOver input');
+  });
+
+  it('unchecks the switch after toggling, keeping the drill input mounted', () => {
+    const store = createTutorStore({ seed: 1 });
+    store.handlers.onInputModeToggle();
+    const html = render(store);
+    expect(html).toContain('aria-checked="false"');
+    expect(html).toContain('id="drill-input"');
+  });
+
   it('renders the qbf challenge and its result screen', () => {
     const store = qbfReadyStore();
     let html = render(store);

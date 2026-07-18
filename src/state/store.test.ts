@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import type { ChangeEvent } from 'react';
+import type { ChangeEvent, KeyboardEvent } from 'react';
 import {
   HINT_REVEAL_COOLDOWN_MS,
   QBF_MIN_CELLS,
@@ -7,6 +7,7 @@ import {
   makePrompt,
   makeTutorState,
   serialize,
+  textToCells,
 } from '../core';
 import type { StorageLike, TutorStore } from './index';
 import { STORAGE_KEY, createTutorStore } from './index';
@@ -46,6 +47,55 @@ function insert(store: TutorStore, value: string): void {
 /** Simulate a backspace (field now holds `value`). */
 function del(store: TutorStore, value: string): void {
   store.handlers.onInput(fakeEvent(value, 'deleteContentBackward'));
+}
+
+// --- chord-mode helpers ----------------------------------------------------
+
+const DOT_CODE: Record<number, string> = { 1: 'KeyF', 2: 'KeyD', 3: 'KeyS', 4: 'KeyJ', 5: 'KeyK', 6: 'KeyL' };
+
+function keyEvent(code: string, extra: Partial<{ repeat: boolean; key: string }> = {}): KeyboardEvent<HTMLInputElement> {
+  return {
+    code,
+    key: extra.key ?? '',
+    repeat: extra.repeat ?? false,
+    ctrlKey: false,
+    metaKey: false,
+    altKey: false,
+    preventDefault: () => {},
+  } as unknown as KeyboardEvent<HTMLInputElement>;
+}
+
+function keyDown(store: TutorStore, code: string, extra?: Partial<{ repeat: boolean; key: string }>): void {
+  store.handlers.onDrillKeyDown(keyEvent(code, extra));
+}
+function keyUp(store: TutorStore, code: string): void {
+  store.handlers.onDrillKeyUp(keyEvent(code));
+}
+
+/** Chord one braille cell: press each dot key, then release them all. */
+function chordCell(store: TutorStore, dots: ReadonlyArray<number>): void {
+  const codes = dots.map((d) => DOT_CODE[d] as string);
+  for (const c of codes) keyDown(store, c);
+  for (const c of codes) keyUp(store, c);
+}
+
+/** Chord a space (blank cell). */
+function chordSpace(store: TutorStore): void {
+  keyDown(store, 'Space');
+  keyUp(store, 'Space');
+}
+
+/** Chord a whole print string using its canonical grade-2 cells. */
+function chordText(store: TutorStore, text: string): void {
+  for (const cell of textToCells(text)) {
+    if (cell.length === 0) chordSpace(store);
+    else chordCell(store, cell);
+  }
+}
+
+/** Put a store into chord mode (VoiceOver input off). */
+function chordMode(store: TutorStore): void {
+  if (store.viewModel().voiceOverInput) store.handlers.onInputModeToggle();
 }
 
 /** Type `text` one character-insertion at a time. */
@@ -363,5 +413,167 @@ describe('VoiceOver trailing spaces', () => {
     // The stripped space must not have counted: still one cell per character.
     const expectedPercent = ((QBF_SENTENCE.length - QBF_MIN_CELLS) / QBF_MIN_CELLS) * 100;
     expect(store.viewModel().qbfResult).toEqual({ kind: 'badge', percentAbove: expectedPercent });
+  });
+});
+
+describe('input mode toggle', () => {
+  it('defaults to VoiceOver input and flips on toggle', () => {
+    const store = createTutorStore({ seed: 1 });
+    expect(store.viewModel().voiceOverInput).toBe(true);
+    store.handlers.onInputModeToggle();
+    expect(store.viewModel().voiceOverInput).toBe(false);
+    store.handlers.onInputModeToggle();
+    expect(store.viewModel().voiceOverInput).toBe(true);
+  });
+
+  it('persists the mode across store recreation', () => {
+    const storage = memoryStorage();
+    const first = createTutorStore({ storage, seed: 1 });
+    first.handlers.onInputModeToggle(); // -> chord mode
+    first.flushSave();
+    const second = createTutorStore({ storage, seed: 1 });
+    expect(second.viewModel().voiceOverInput).toBe(false);
+  });
+
+  it('loads an old envelope (no field) as VoiceOver input', () => {
+    const storage = midPromptStorage(); // envelope written without voiceOverInput
+    const store = createTutorStore({ storage, seed: 1 });
+    expect(store.viewModel().voiceOverInput).toBe(true);
+  });
+
+  it('ignores chord key events while VoiceOver input is on', () => {
+    const store = createTutorStore({ storage: midPromptStorage(), seed: 1 });
+    chordCell(store, [2, 3, 4, 6]); // would be "the" in chord mode
+    expect(store.viewModel().typed).toBe('');
+    // ...but onInput still works.
+    insert(store, 't');
+    expect(store.viewModel().typed).toBe('t');
+  });
+
+  it('ignores onInput while chord mode is on', () => {
+    const store = createTutorStore({ storage: midPromptStorage(), seed: 1 });
+    chordMode(store);
+    insert(store, 'the dog');
+    expect(store.viewModel().typed).toBe('');
+  });
+});
+
+describe('chord input', () => {
+  /** Storage resuming an in-flight prompt of `text` (letter-d target). */
+  function promptStorage(text: string): MemoryStorage {
+    const storage = memoryStorage();
+    const state = makeTutorState({
+      seed: 7,
+      promptCounter: 1,
+      prompt: makePrompt({ text, targetSkillId: 'letter-d' }),
+    });
+    storage.setItem(
+      STORAGE_KEY,
+      JSON.stringify({ version: 1, tutor: serialize(state), bestQbf: null, introducedSkillIds: [] }),
+    );
+    return storage;
+  }
+
+  it('completes a prompt typed entirely by chording', () => {
+    const store = createTutorStore({ storage: midPromptStorage(), seed: 1 });
+    chordMode(store);
+    chordText(store, 'the dog'); // ⠮ ␣ ⠙ ⠕ ⠛
+    const vm = store.viewModel();
+    expect(vm.promptsCompleted).toBe(2);
+    expect(vm.typed).toBe('');
+  });
+
+  it('shows the matching prefix with no phantom mistake', () => {
+    const store = createTutorStore({ storage: promptStorage('band top'), seed: 1 });
+    chordMode(store);
+    chordCell(store, [1, 2]); // ⠃ — "but" alone, but here the prefix "b"
+    const vm = store.viewModel();
+    expect(vm.typed).toBe('b');
+    expect(vm.diverged).toBe(false);
+  });
+
+  it('diverges on a wrong chord and recovers on backspace', () => {
+    const store = createTutorStore({ storage: promptStorage('cat top'), seed: 1 });
+    chordMode(store);
+    chordCell(store, [2, 3, 4, 5]); // ⠞, expected "c" — diverges (reads "that")
+    expect(store.viewModel().typed).not.toBe('');
+    expect(store.viewModel().diverged).toBe(true);
+    keyDown(store, 'Backspace');
+    expect(store.viewModel().typed).toBe('');
+    expect(store.viewModel().diverged).toBe(false);
+    chordCell(store, [1, 4]); // ⠉ = "c"
+    expect(store.viewModel().typed).toBe('c');
+    expect(store.viewModel().diverged).toBe(false);
+  });
+
+  it('ignores a leading space chord and keeps expected mid-prompt spaces', () => {
+    const store = createTutorStore({ storage: midPromptStorage(), seed: 1 });
+    chordMode(store);
+    chordSpace(store); // nothing typed yet -> ignored
+    expect(store.viewModel().typed).toBe('');
+    chordCell(store, [2, 3, 4, 6]); // "the"
+    chordSpace(store); // expected space after "the"
+    expect(store.viewModel().typed).toBe('the ');
+  });
+
+  it('reconstructs the buffer when toggling mid-prompt on a clean prefix', () => {
+    const store = createTutorStore({ storage: midPromptStorage(), seed: 1 });
+    insert(store, 'the'); // typed via VoiceOver
+    chordMode(store); // toggle to chording
+    expect(store.viewModel().typed).toBe('the');
+    chordSpace(store);
+    chordText(store, 'dog');
+    expect(store.viewModel().promptsCompleted).toBe(2);
+  });
+
+  it('clears diverged typing when toggling into chord mode', () => {
+    const store = createTutorStore({ storage: midPromptStorage(), seed: 1 });
+    insert(store, 'z'); // diverges from "the dog"
+    expect(store.viewModel().typed).toBe('z');
+    chordMode(store);
+    expect(store.viewModel().typed).toBe('');
+  });
+
+  it('awards the crown for a minimum-cell chorded qbf run', () => {
+    const store = createTutorStore({ storage: qbfReadyStorage(), seed: 1 });
+    chordMode(store);
+    chordText(store, QBF_SENTENCE); // canonical: exactly QBF_MIN_CELLS commits
+    expect(store.viewModel().qbfResult).toEqual({ kind: 'crown' });
+  });
+
+  it('awards a badge when a shortform is chorded uncontracted', () => {
+    const store = createTutorStore({ storage: qbfReadyStorage(), seed: 1 });
+    chordMode(store);
+    chordText(store, 'The '); // caps + the + space
+    for (const d of [[1, 2, 3, 4, 5], [1, 3, 6], [2, 4], [1, 4], [1, 3]]) chordCell(store, d); // q u i c k
+    chordText(store, ' brown fox jumped over the lazy dog.');
+    // "quick" is a 2-cell shortform; spelling it out adds 3 cells -> 39 total.
+    const cells = QBF_MIN_CELLS + 3;
+    const result = store.viewModel().qbfResult;
+    expect(result?.kind).toBe('badge');
+    if (result?.kind === 'badge') {
+      expect(result.percentAbove).toBeCloseTo(((cells - QBF_MIN_CELLS) / QBF_MIN_CELLS) * 100, 6);
+    }
+  });
+
+  it('does not decrement the qbf cell count on backspace', () => {
+    const store = createTutorStore({ storage: qbfReadyStorage(), seed: 1 });
+    chordMode(store);
+    chordCell(store, [6]); // a stray capital-indicator cell
+    keyDown(store, 'Backspace'); // removed, but the cell already counted
+    chordText(store, QBF_SENTENCE);
+    const cells = QBF_MIN_CELLS + 1;
+    const result = store.viewModel().qbfResult;
+    expect(result?.kind).toBe('badge');
+    if (result?.kind === 'badge') {
+      expect(result.percentAbove).toBeCloseTo(((cells - QBF_MIN_CELLS) / QBF_MIN_CELLS) * 100, 6);
+    }
+  });
+
+  it('fails a qbf run instantly on a wrong chord', () => {
+    const store = createTutorStore({ storage: qbfReadyStorage(), seed: 1 });
+    chordMode(store);
+    chordCell(store, [1, 3, 5]); // ⠕ = "o", expected the capital "T"
+    expect(store.viewModel().qbfResult).toEqual({ kind: 'failed' });
   });
 });
