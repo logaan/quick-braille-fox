@@ -19,6 +19,7 @@ import {
   serialize,
   startSession,
 } from './session';
+import { translate } from './braille';
 import type { TutorState } from './types';
 import { hintDelayMs, makePrompt, makeTutorState } from './types';
 
@@ -30,6 +31,12 @@ function withPrompt(
   isQbf = false,
 ): TutorState {
   return base.set('prompt', makePrompt({ text, targetSkillId, isQbf }));
+}
+
+/** Reveal every sign's hint, as a fully hinted prompt would end up. */
+function revealWholePrompt(state: TutorState): TutorState {
+  const text = state.prompt?.text ?? '';
+  return translate(text).units.reduce((s, _u, i) => revealHint(s, i), state);
 }
 
 const allLetterIds = skills.filter((s) => s.kind === 'letter').map((s) => s.id);
@@ -109,7 +116,7 @@ describe('keystroke', () => {
 
   it('scores every occurrence, hinted (the "a cad ebb" example)', () => {
     let state = withPrompt(makeTutorState(), 'a cad ebb', 'letter-a');
-    state = revealHint(state);
+    state = revealWholePrompt(state);
     state = keystroke(state, 'a cad ebb');
     expect(isPromptComplete(state)).toBe(true);
     expect(scoreFor(state, 'letter-a')).toBe(2); // two occurrences, 1 each
@@ -119,20 +126,29 @@ describe('keystroke', () => {
     expect(scoreFor(state, 'letter-b')).toBe(2); // two occurrences, 1 each
   });
 
-  it('occurrences typed before the hint appears keep their extra point', () => {
+  it('occurrences typed before their hint appears keep their extra point', () => {
     let state = withPrompt(makeTutorState(), 'cat', 'letter-c');
     state = keystroke(state, 'ca');
-    state = revealHint(state);
+    state = revealHint(state, 2); // the 't' the caret is now waiting on
     state = keystroke(state, 'cat');
     expect(scoreFor(state, 'letter-c')).toBe(2);
     expect(scoreFor(state, 'letter-a')).toBe(2);
-    expect(scoreFor(state, 'letter-t')).toBe(1); // typed after the hint showed
+    expect(scoreFor(state, 'letter-t')).toBe(1); // typed after its hint showed
+  });
+
+  it('hinting one sign leaves the rest of the prompt still worth two points', () => {
+    let state = withPrompt(makeTutorState(), 'cat', 'letter-c');
+    state = revealHint(state, 0); // dawdled on the 'c', so it was hinted
+    state = keystroke(state, 'cat'); // ...then typed the rest straight off
+    expect(scoreFor(state, 'letter-c')).toBe(1);
+    expect(scoreFor(state, 'letter-a')).toBe(2);
+    expect(scoreFor(state, 'letter-t')).toBe(2);
   });
 
   it('a single corrected mistake drops that occurrence to one point', () => {
     let state = withPrompt(makeTutorState(), 'cat', 'letter-c');
     state = keystroke(state, 'x'); // mistake on the c occurrence
-    expect(state.prompt?.hintShown).toBe(false);
+    expect(state.prompt?.hintedUnits.isEmpty()).toBe(true);
     expect(scoreFor(state, 'letter-c')).toBe(0);
     state = keystroke(state, ''); // backspace to a valid prefix
     state = keystroke(state, 'cat');
@@ -141,13 +157,13 @@ describe('keystroke', () => {
     expect(scoreFor(state, 'letter-t')).toBe(2);
   });
 
-  it('two mistakes on the same occurrence cost a point and force the hint', () => {
+  it("two mistakes on the same occurrence cost a point and reveal that sign's hint", () => {
     let state = makeTutorState().set('scores', Map({ 'letter-c': 5 }));
     state = withPrompt(state, 'cat', 'letter-c');
     state = keystroke(state, 'x'); // mistake 1 on c
     state = keystroke(state, ''); // corrected
     state = keystroke(state, 'k'); // mistake 2 on c
-    expect(state.prompt?.hintShown).toBe(true);
+    expect(state.prompt?.hintedUnits.toArray()).toEqual([0]); // only the 'c'
     expect(scoreFor(state, 'letter-c')).toBe(4);
     // typing it correctly still earns the base point
     state = keystroke(state, '');
@@ -161,7 +177,7 @@ describe('keystroke', () => {
     state = keystroke(state, 'c'); // corrected
     expect(scoreFor(state, 'letter-c')).toBe(1);
     state = keystroke(state, 'cx'); // mistake on a
-    expect(state.prompt?.hintShown).toBe(false);
+    expect(state.prompt?.hintedUnits.isEmpty()).toBe(true);
     expect(scoreFor(state, 'letter-a')).toBe(0);
     state = keystroke(state, 'ca');
     state = keystroke(state, 'cat');
@@ -175,7 +191,7 @@ describe('keystroke', () => {
     state = keystroke(state, 'xy');
     state = keystroke(state, 'xyz');
     expect(state.prompt?.unitMistakes.get(0)).toBe(1);
-    expect(state.prompt?.hintShown).toBe(false);
+    expect(state.prompt?.hintedUnits.isEmpty()).toBe(true);
     expect(scoreFor(state, 'letter-c')).toBe(0);
   });
 
@@ -262,11 +278,11 @@ describe('qbf flow', () => {
     expect(state.scores.size).toBe(0);
   });
 
-  it('never sets hintShown via mistakes', () => {
+  it('never reveals a hint, by mistake or by timer', () => {
     let state = withPrompt(makeTutorState(), QBF_SENTENCE, null, true);
     state = keystroke(state, 'x');
-    expect(state.prompt?.hintShown).toBe(false);
-    expect(revealHint(state).prompt?.hintShown).toBe(false);
+    expect(state.prompt?.hintedUnits.isEmpty()).toBe(true);
+    expect(revealHint(state, 0).prompt?.hintedUnits.isEmpty()).toBe(true);
   });
 });
 

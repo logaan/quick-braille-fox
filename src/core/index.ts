@@ -30,11 +30,11 @@ export {
   MISTAKES_BEFORE_PENALTY,
   QBF_INTERVAL,
   REVISION_PROBABILITY,
-  answerBeforeHintPossible,
   hintDelayMs,
   isLearntScore,
   makePrompt,
   makeTutorState,
+  unitTypedClean,
 } from './types';
 
 export type { ProgressSummary } from './progress';
@@ -51,8 +51,8 @@ export {
 export type { GeneratedPrompt } from './prompts';
 export { generatePrompt, pickTarget } from './prompts';
 
-export type { HintWord } from './hints';
-export { hintWordForPrompt } from './hints';
+export type { HintUnit, HintWord, PendingHint } from './hints';
+export { hintWordForPrompt, nextHintFor } from './hints';
 
 export type { SerializedTutorState } from './session';
 export {

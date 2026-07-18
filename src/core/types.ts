@@ -11,13 +11,13 @@ export const LEARNT_THRESHOLD = 10;
 export const ACTIVE_SKILL_COUNT = 5;
 /**
  * Score gained for typing a skill occurrence cleanly: no mistake on that
- * occurrence, before the hint became visible.
+ * occurrence, and typed before *that occurrence's* hint was revealed.
  */
 export const CLEAN_AWARD = 2;
 /**
- * Score gained for typing a skill occurrence otherwise (hint already
- * showing, or the occurrence was mistyped once first) — typing a skill
- * always earns at least this.
+ * Score gained for typing a skill occurrence otherwise (its hint was
+ * already revealed, or the occurrence was mistyped once first) — typing a
+ * skill always earns at least this.
  */
 export const BASE_AWARD = 1;
 /** Score lost per mistake once two-on-the-occurrence is reached (floored at 0). */
@@ -43,10 +43,11 @@ export function hintDelayMs(score: number): number {
 }
 
 /**
- * Milliseconds between successive reveal units once the hint is showing:
- * the hint uncovers the caret word one sign at a time (see hints.ts), and
- * each further sign waits this long, giving the learner a beat to recall
- * it unaided.
+ * Milliseconds a sign waits before its hint shows, once an earlier sign in
+ * the same prompt has already been hinted. The clock starts when the caret
+ * *reaches* the sign — i.e. when the sign before it has been typed — not
+ * when the previous sign's hint appeared, so a long pause on one sign never
+ * eats the next sign's time.
  */
 export const HINT_REVEAL_COOLDOWN_MS = 1000;
 
@@ -69,8 +70,12 @@ export interface PromptProps {
   unitMistakes: Map<number, number>;
   /** Indexes of units whose skills have already scored this prompt. */
   awardedUnits: Set<number>;
-  /** Whether the hint (the answer as braille cells) has been shown. */
-  hintShown: boolean;
+  /**
+   * Indexes of units whose hint has been revealed. Per unit, not per
+   * prompt: a unit typed before *its own* hint appeared still scores
+   * CLEAN_AWARD, however much of the prompt was hinted before it.
+   */
+  hintedUnits: Set<number>;
   /** Whether the typed text currently diverges from the expected prefix. */
   diverged: boolean;
   /** Whether the prompt is finished (typed correctly, or qbf failed). */
@@ -87,7 +92,7 @@ export const makePrompt = Record<PromptProps>(
     typed: '',
     unitMistakes: Map<number, number>(),
     awardedUnits: Set<number>(),
-    hintShown: false,
+    hintedUnits: Set<number>(),
     diverged: false,
     completed: false,
     failed: false,
@@ -120,7 +125,11 @@ export const makeTutorState = Record<TutorStateProps>(
 );
 export type TutorState = RecordOf<TutorStateProps>;
 
-/** Can a correct answer still earn the before-hint bonus on this prompt? */
-export function answerBeforeHintPossible(prompt: Prompt): boolean {
-  return !prompt.completed && !prompt.hintShown && !prompt.isQbf;
+/**
+ * Is this occurrence still on course for CLEAN_AWARD — no mistake on it,
+ * and its own hint not yet revealed? Per occurrence, not per prompt: signs
+ * elsewhere in the prompt being hinted or mistyped is irrelevant.
+ */
+export function unitTypedClean(prompt: Prompt, unitIndex: number): boolean {
+  return !prompt.hintedUnits.has(unitIndex) && prompt.unitMistakes.get(unitIndex, 0) === 0;
 }
