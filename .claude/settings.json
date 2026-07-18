@@ -1,5 +1,21 @@
 {
   "worktree": {
-    "bgIsolation": "none"
+    "bgIsolation": "worktree",
+    "baseRef": "head",
+    "symlinkDirectories": ["node_modules"]
+  },
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Edit|Write|NotebookEdit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash \"$(git rev-parse --show-toplevel)/.claude/hooks/require-worktree.sh\"",
+            "statusMessage": "Checking worktree isolation"
+          }
+        ]
+      }
+    ]
   }
 }
