@@ -268,10 +268,44 @@ describe('persistence', () => {
     expect(store.viewModel().promptsCompleted).toBe(1);
 
     store.handlers.onResetRequest();
+    store.handlers.onResetTextChange('reset');
     store.handlers.onResetConfirm();
     const vm = store.viewModel();
     expect(vm.confirmingReset).toBe(false);
     expect(vm.promptsCompleted).toBe(0);
+  });
+
+  it('will not erase until the word "reset" is typed', () => {
+    const store = createTutorStore({ storage: memoryStorage(), seed: 1 });
+    typeText(store, store.viewModel().promptText);
+    store.handlers.onResetRequest();
+
+    expect(store.viewModel().canConfirmReset).toBe(false);
+    store.handlers.onResetConfirm(); // no-op while the field is empty
+    expect(store.viewModel().promptsCompleted).toBe(1);
+
+    store.handlers.onResetTextChange('res');
+    expect(store.viewModel().canConfirmReset).toBe(false);
+    store.handlers.onResetConfirm();
+    expect(store.viewModel().promptsCompleted).toBe(1);
+
+    // Case and surrounding whitespace do not matter.
+    store.handlers.onResetTextChange('  RESET ');
+    expect(store.viewModel().canConfirmReset).toBe(true);
+    store.handlers.onResetConfirm();
+    expect(store.viewModel().promptsCompleted).toBe(0);
+  });
+
+  it('clears the typed word when the confirm step is dismissed or reopened', () => {
+    const store = createTutorStore({ storage: memoryStorage(), seed: 1 });
+    store.handlers.onResetRequest();
+    store.handlers.onResetTextChange('reset');
+    store.handlers.onResetCancel();
+    expect(store.viewModel().resetConfirmText).toBe('');
+
+    store.handlers.onResetRequest();
+    expect(store.viewModel().resetConfirmText).toBe('');
+    expect(store.viewModel().canConfirmReset).toBe(false);
   });
 });
 
@@ -466,6 +500,7 @@ describe('drill input remount key', () => {
     const store = twoWordStore();
     const start = store.viewModel().promptKey;
     store.handlers.onResetRequest();
+    store.handlers.onResetTextChange('reset');
     store.handlers.onResetConfirm();
     expect(store.viewModel().promptKey).not.toBe(start);
   });

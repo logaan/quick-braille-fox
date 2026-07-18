@@ -19,6 +19,8 @@ export function App(props: AppProps): ReactElement {
     e(Header, {
       bestQbf: vm.bestQbf,
       confirmingReset: vm.confirmingReset,
+      resetConfirmText: vm.resetConfirmText,
+      canConfirmReset: vm.canConfirmReset,
       voiceOverInput: vm.voiceOverInput,
       on,
     }),

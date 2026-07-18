@@ -7,6 +7,7 @@ export type {
   AppViewModel,
   GroupProgressView,
 } from './view';
+export { RESET_CONFIRM_WORD, matchesResetWord } from './view';
 export type { BestQbf, StorageLike } from './persistence';
 export { STORAGE_KEY } from './persistence';
 export type { TutorStoreOptions } from './store';

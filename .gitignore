@@ -5,8 +5,9 @@
 # Claude Code worktrees (see CLAUDE.md worktree workflow).
 /.claude/worktrees/
 
-# Node / Vite
-node_modules/
+# Node / Vite. No trailing slash: worktrees symlink node_modules at the main
+# checkout's copy, and a symlink is not matched by a directory-only pattern.
+node_modules
 dist/
 
 # src/data/skills.json is generated (npm run generate) but IS committed,

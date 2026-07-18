@@ -58,6 +58,10 @@ export interface AppViewModel {
   readonly promptsCompleted: number;
   readonly groups: ReadonlyArray<GroupProgressView>;
   readonly confirmingReset: boolean;
+  /** What the user has typed into the reset confirmation field so far. */
+  readonly resetConfirmText: string;
+  /** True once resetConfirmText matches RESET_CONFIRM_WORD; gates the erase. */
+  readonly canConfirmReset: boolean;
   /** True: input via VoiceOver braille screen input. False: QWERTY chording. */
   readonly voiceOverInput: boolean;
   /**
@@ -83,6 +87,16 @@ export interface AppHandlers {
   onResetRequest(): void;
   onResetConfirm(): void;
   onResetCancel(): void;
+  /** Wire to the reset confirmation field's change event. */
+  onResetTextChange(value: string): void;
+}
+
+/** Typing this word (case/space insensitive) unlocks the erase button. */
+export const RESET_CONFIRM_WORD = 'reset';
+
+/** Does what the user typed unlock the erase button? */
+export function matchesResetWord(value: string): boolean {
+  return value.trim().toLowerCase() === RESET_CONFIRM_WORD;
 }
 
 function groupProgress(state: TutorState): GroupProgressView[] {
@@ -104,6 +118,8 @@ export interface ViewSources {
   readonly bestQbf: BestQbf | null;
   readonly lastQbf: QbfResult | null;
   readonly confirmingReset: boolean;
+  /** Raw text typed into the reset confirmation field (store-owned). */
+  readonly resetConfirmText: string;
   /** How many reveal units of the hinted word are uncovered (store-owned). */
   readonly hintUnitsRevealed: number;
   readonly voiceOverInput: boolean;
@@ -147,6 +163,8 @@ export function buildViewModel(src: ViewSources): AppViewModel {
     promptsCompleted: tutor.promptCounter,
     groups: groupProgress(tutor),
     confirmingReset: src.confirmingReset,
+    resetConfirmText: src.resetConfirmText,
+    canConfirmReset: matchesResetWord(src.resetConfirmText),
     voiceOverInput: src.voiceOverInput,
     promptKey: src.promptKey,
   };
