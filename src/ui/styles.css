@@ -518,6 +518,23 @@ input:focus-visible {
   letter-spacing: 0.08em;
 }
 
+.qbf-rules {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.qbf-rule-list {
+  margin: 0;
+  padding-left: 1.15rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  color: var(--dim);
+  font-size: 0.9rem;
+  line-height: 1.45;
+}
+
 .qbf-result-area {
   min-height: 4.6rem;
 }

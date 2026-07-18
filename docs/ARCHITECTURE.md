@@ -195,9 +195,11 @@ everything from `src/core` (`import { startSession, keystroke } from
   within that word only the signs already revealed (`hintWordForPrompt`
   supplies the word's units with their prompt-wide indexes; the view shows
   their leading revealed run).
-- Every 100th completed prompt (`QBF_INTERVAL`) is the qbf challenge — the
-  fixed sentence `QBF_SENTENCE`, no hints ever, any first wrong character
-  fails it instantly and moves on.
+- Every `QBF_INTERVAL`-th prompt (50), counting from the learner's first, is
+  the qbf challenge — the fixed sentence `QBF_SENTENCE`, no hints ever, any
+  first wrong character fails it instantly and moves on. Occurrences the
+  correct prefix finishes score `QBF_AWARD` (10 = `LEARNT_THRESHOLD`) per
+  skill, including those typed before a failing keystroke.
 
 ### State shapes (`types.ts`)
 
@@ -231,7 +233,7 @@ correct answer can still earn the +2.
 | function | behaviour |
 |---|---|
 | `startSession(seed?)` | fresh state with the first prompt generated; pass e.g. `Date.now()` for variety (defaults to 1, fully deterministic) |
-| `nextPrompt(state)` | replace the current prompt with a new one (call after completion, or to skip). Serves the qbf challenge when `(promptCounter + 1) % 100 === 0`. Consumes and refreshes `seed` |
+| `nextPrompt(state)` | replace the current prompt with a new one (call after completion, or to skip). Serves the qbf challenge when `promptCounter % QBF_INTERVAL === 0`. Consumes and refreshes `seed` |
 | `keystroke(state, typed)` | feed the full *resulting* typed text after an input event (not a single key). Handles progressive prefix matching, per-occurrence immediate scoring, mistake events, qbf instant-fail, completion, and `promptCounter`. Ignores input once completed |
 | `revealHint(state, unitIndex)` | uncover one sign's hint (state layer calls this when that sign's timer fires). No-op for qbf |
 | `isPromptComplete(state)` | whether to move on (then call `nextPrompt`) |

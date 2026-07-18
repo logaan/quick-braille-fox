@@ -21,7 +21,7 @@ import {
 } from './session';
 import { translate } from './braille';
 import type { TutorState } from './types';
-import { hintDelayMs, makePrompt, makeTutorState } from './types';
+import { QBF_AWARD, QBF_INTERVAL, hintDelayMs, makePrompt, makeTutorState } from './types';
 
 /** A state showing a hand-built prompt (bypasses generation). */
 function withPrompt(
@@ -244,18 +244,19 @@ describe('keystroke', () => {
 });
 
 describe('qbf flow', () => {
-  it('serves the qbf sentence as every 100th prompt', () => {
-    let state = makeTutorState({ seed: 3, promptCounter: 99 });
-    state = state.set(
-      'scores',
-      Map(allLetterIds.map((id) => [id, 20] as [string, number])),
-    );
+  it('serves the qbf sentence on the first prompt and every QBF_INTERVAL-th after', () => {
+    const learnt = Map(allLetterIds.map((id) => [id, 20] as [string, number]));
+    // The learner's very first prompt, before anything is completed.
+    const first = nextPrompt(makeTutorState({ seed: 3 }));
+    expect(first.prompt?.isQbf).toBe(true);
+    expect(first.prompt?.text).toBe(QBF_SENTENCE);
+    expect(first.prompt?.targetSkillId).toBeNull();
+
+    let state = makeTutorState({ seed: 3, promptCounter: QBF_INTERVAL }).set('scores', learnt);
     state = nextPrompt(state);
     expect(state.prompt?.isQbf).toBe(true);
-    expect(state.prompt?.text).toBe(QBF_SENTENCE);
-    expect(state.prompt?.targetSkillId).toBeNull();
-    // ...and the 101st is a normal prompt again
-    const after = nextPrompt(state.set('promptCounter', 100));
+    // ...and the one after that is a normal prompt again
+    const after = nextPrompt(state.set('promptCounter', QBF_INTERVAL + 1));
     expect(after.prompt?.isQbf).toBe(false);
   });
 
@@ -269,13 +270,30 @@ describe('qbf flow', () => {
     expect(state.promptCounter).toBe(100);
   });
 
-  it('completes flawlessly without touching any scores', () => {
+  it('completes flawlessly, scoring QBF_AWARD for every skill in the sentence', () => {
     let state = withPrompt(makeTutorState({ promptCounter: 99 }), QBF_SENTENCE, null, true);
     state = keystroke(state, QBF_SENTENCE);
     expect(state.prompt?.completed).toBe(true);
     expect(state.prompt?.failed).toBe(false);
     expect(state.promptCounter).toBe(100);
-    expect(state.scores.size).toBe(0);
+    expect(state.scores.size).toBeGreaterThan(0);
+    // One QBF_AWARD per occurrence — 'o' appears three times, so it scores thrice.
+    for (const [, score] of state.scores) expect(score % QBF_AWARD).toBe(0);
+    expect(scoreFor(state, 'letter-o')).toBe(QBF_AWARD * 3);
+    expect(scoreFor(state, 'contraction-the')).toBe(QBF_AWARD * 2); // "The" and "the"
+    // A single flawless occurrence learns the skill outright.
+    expect(isSkillLearnt(state, 'contraction-the')).toBe(true);
+  });
+
+  it('scores the occurrences typed before a run fails, and no more', () => {
+    let state = withPrompt(makeTutorState(), QBF_SENTENCE, null, true);
+    // "The quick" typed correctly, then a wrong character.
+    state = keystroke(state, 'The quick');
+    state = keystroke(state, 'The quickx');
+    expect(state.prompt?.failed).toBe(true);
+    expect(scoreFor(state, 'contraction-the')).toBe(QBF_AWARD);
+    // "brown" comes after the mistake and never scored.
+    expect(scoreFor(state, 'groupsign-ow')).toBe(0);
   });
 
   it('never reveals a hint, by mistake or by timer', () => {
