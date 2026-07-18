@@ -6,7 +6,6 @@ export type {
   AppHandlers,
   AppViewModel,
   GroupProgressView,
-  IntroView,
 } from './view';
 export type { BestQbf, StorageLike } from './persistence';
 export { STORAGE_KEY } from './persistence';

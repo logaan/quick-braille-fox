@@ -42,7 +42,7 @@ function qbfReadyStore(): TutorStore {
   });
   storage.setItem(
     STORAGE_KEY,
-    JSON.stringify({ version: 1, tutor: serialize(state), bestQbf: null, introducedSkillIds: [] }),
+    JSON.stringify({ version: 1, tutor: serialize(state), bestQbf: null }),
   );
   return createTutorStore({ storage, seed: 1 });
 }
@@ -63,7 +63,6 @@ describe('App rendering', () => {
     expect(html).toContain('id="drill-input"');
     expect(html).toContain('Learning now');
     expect(html).toContain('of 258 skills learnt');
-    expect(html).toContain('New skill'); // first prompt introduces its target
   });
 
   it('renders the hint as braille cells once the timer fires', () => {

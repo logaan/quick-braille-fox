@@ -1,6 +1,6 @@
 // Persistence: a versioned localStorage envelope around the core's
 // serialize()/deserialize(), plus the state-layer extras (best qbf result,
-// which skills have already had their introduction shown).
+// input mode).
 
 import type { QbfResult, SerializedTutorState, TutorState } from '../core';
 import { deserialize, serialize } from '../core';
@@ -20,7 +20,6 @@ export type BestQbf = Exclude<QbfResult, { readonly kind: 'failed' }>;
 export interface PersistedData {
   readonly tutor: TutorState;
   readonly bestQbf: BestQbf | null;
-  readonly introducedSkillIds: ReadonlySet<string>;
   /** Whether input flows through VoiceOver braille screen input (default). */
   readonly voiceOverInput: boolean;
 }
@@ -29,7 +28,6 @@ interface Envelope {
   version: 1;
   tutor: SerializedTutorState;
   bestQbf: BestQbf | null;
-  introducedSkillIds: string[];
   /** Optional (added later); absent/garbage loads as true, keeping the
    * original VoiceOver-input behaviour for existing envelopes. */
   voiceOverInput?: boolean;
@@ -60,15 +58,9 @@ export function loadProgress(storage: StorageLike): PersistedData | null {
     const env = parsed as Partial<Envelope>;
     if (env.version !== 1) return null;
     const tutor = deserialize(env.tutor); // throws TypeError on garbage
-    const introducedSkillIds = new Set<string>(
-      Array.isArray(env.introducedSkillIds)
-        ? env.introducedSkillIds.filter((id): id is string => typeof id === 'string')
-        : [],
-    );
     return {
       tutor,
       bestQbf: coerceBestQbf(env.bestQbf),
-      introducedSkillIds,
       voiceOverInput: env.voiceOverInput !== false,
     };
   } catch {
@@ -81,7 +73,6 @@ export function saveProgress(storage: StorageLike, data: PersistedData): void {
     version: 1,
     tutor: serialize(data.tutor),
     bestQbf: data.bestQbf,
-    introducedSkillIds: [...data.introducedSkillIds],
     voiceOverInput: data.voiceOverInput,
   };
   try {

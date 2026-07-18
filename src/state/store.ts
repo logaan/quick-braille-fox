@@ -46,8 +46,6 @@ export class TutorStore {
    * a prompt change and never mid-typing — see handleInput.
    */
   private promptEpoch = 0;
-  private introduced = new Set<string>();
-  private introducingSkillId: string | null = null;
   private confirmingReset = false;
   /** Reveal units of the hinted word currently uncovered (not persisted). */
   private hintUnitsRevealed = 0;
@@ -83,7 +81,6 @@ export class TutorStore {
       this.tutor = startSession(this.freshSeed());
     } else {
       this.bestQbf = persisted.bestQbf;
-      this.introduced = new Set(persisted.introducedSkillIds);
       this.voiceOverInput = persisted.voiceOverInput;
       const p = persisted.tutor.prompt;
       // Resume an in-flight prompt as-is. Move on from a prompt saved after
@@ -95,7 +92,6 @@ export class TutorStore {
           ? nextPrompt(persisted.tutor)
           : persisted.tutor;
     }
-    this.markIntroduction();
     if (!this.voiceOverInput) this.reconstructBuffer();
 
     this.handlers = {
@@ -141,7 +137,6 @@ export class TutorStore {
       tutor: this.tutor,
       bestQbf: this.bestQbf,
       lastQbf: this.lastQbf,
-      introducingSkillId: this.introducingSkillId,
       confirmingReset: this.confirmingReset,
       hintUnitsRevealed: this.hintUnitsRevealed,
       voiceOverInput: this.voiceOverInput,
@@ -325,22 +320,6 @@ export class TutorStore {
     this.cellBuffer = [];
     this.chordState = EMPTY_CHORD_STATE;
     this.promptEpoch += 1;
-    this.markIntroduction();
-  }
-
-  /**
-   * If the new prompt's target skill has never been prompted before, mark
-   * it as being introduced (the UI shows its braille cells + print + group
-   * prominently alongside this first prompt).
-   */
-  private markIntroduction(): void {
-    const id = this.tutor.prompt?.targetSkillId ?? null;
-    if (id !== null && !this.introduced.has(id)) {
-      this.introduced.add(id);
-      this.introducingSkillId = id;
-    } else {
-      this.introducingSkillId = null;
-    }
   }
 
   private isNewBest(result: BestQbf): boolean {
@@ -357,12 +336,10 @@ export class TutorStore {
     this.bestQbf = null;
     this.lastQbf = null;
     this.qbfCellsTyped = 0;
-    this.introduced = new Set();
     this.confirmingReset = false;
     this.cellBuffer = [];
     this.chordState = EMPTY_CHORD_STATE;
     this.promptEpoch += 1;
-    this.markIntroduction();
     this.changed();
   }
 
@@ -446,7 +423,6 @@ export class TutorStore {
     saveProgress(this.storage, {
       tutor: this.tutor,
       bestQbf: this.bestQbf,
-      introducedSkillIds: this.introduced,
       voiceOverInput: this.voiceOverInput,
     });
   }

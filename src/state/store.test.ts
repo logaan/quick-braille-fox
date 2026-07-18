@@ -127,7 +127,7 @@ function midPromptStorage(): MemoryStorage {
   });
   storage.setItem(
     STORAGE_KEY,
-    JSON.stringify({ version: 1, tutor: serialize(state), bestQbf: null, introducedSkillIds: [] }),
+    JSON.stringify({ version: 1, tutor: serialize(state), bestQbf: null }),
   );
   return storage;
 }
@@ -142,7 +142,7 @@ function qbfReadyStorage(): MemoryStorage {
   });
   storage.setItem(
     STORAGE_KEY,
-    JSON.stringify({ version: 1, tutor: serialize(state), bestQbf: null, introducedSkillIds: [] }),
+    JSON.stringify({ version: 1, tutor: serialize(state), bestQbf: null }),
   );
   return storage;
 }
@@ -157,7 +157,7 @@ afterEach(() => {
 // --- tests -------------------------------------------------------------
 
 describe('TutorStore basics', () => {
-  it('starts a fresh session with a prompt, five active skills, and an intro', () => {
+  it('starts a fresh session with a prompt and five active skills', () => {
     const store = createTutorStore({ seed: 1 });
     const vm = store.viewModel();
     expect(vm.promptText.length).toBeGreaterThan(0);
@@ -165,8 +165,6 @@ describe('TutorStore basics', () => {
     expect(vm.promptsCompleted).toBe(0);
     expect(vm.hint).toBeNull();
     expect(vm.isQbf).toBe(false);
-    expect(vm.intro).not.toBeNull();
-    expect(vm.activeSkills.map((s) => s.id)).toContain(vm.intro?.id);
     expect(vm.groups[0]).toEqual({ group: 'letters', learnt: 0, total: 26 });
     expect(vm.totalSkills).toBe(258);
   });
@@ -357,7 +355,7 @@ describe('VoiceOver trailing spaces', () => {
     const state = makeTutorState({ seed: 7, promptCounter: 1, prompt: makePrompt({ text }) });
     storage.setItem(
       STORAGE_KEY,
-      JSON.stringify({ version: 1, tutor: serialize(state), bestQbf: null, introducedSkillIds: [] }),
+      JSON.stringify({ version: 1, tutor: serialize(state), bestQbf: null }),
     );
     return storage;
   }
@@ -450,7 +448,7 @@ describe('drill input remount key', () => {
     });
     storage.setItem(
       STORAGE_KEY,
-      JSON.stringify({ version: 1, tutor: serialize(state), bestQbf: null, introducedSkillIds: [] }),
+      JSON.stringify({ version: 1, tutor: serialize(state), bestQbf: null }),
     );
     return createTutorStore({ storage, seed: 1 });
   }
@@ -526,7 +524,7 @@ describe('chord input', () => {
     });
     storage.setItem(
       STORAGE_KEY,
-      JSON.stringify({ version: 1, tutor: serialize(state), bestQbf: null, introducedSkillIds: [] }),
+      JSON.stringify({ version: 1, tutor: serialize(state), bestQbf: null }),
     );
     return storage;
   }

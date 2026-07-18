@@ -359,7 +359,7 @@ straight to core transition functions and call `notify()`):
 
 - `viewModel(): AppViewModel` — a plain-data snapshot of everything the UI
   renders (prompt/typed/diverged, hint unicode, active skills with scores,
-  per-group progress, best qbf, intro skill, reset-confirm flag, …). Built
+  per-group progress, best qbf, reset-confirm flag, …). Built
   by `view.ts` from the core's read-only views.
 - `handlers: AppHandlers` — a stable object of DOM event handlers the UI
   wires up: `onInput`, `onQbfContinue`, `onResetRequest/Confirm/Cancel`.
@@ -424,7 +424,7 @@ next word; keystrokes within the word leave the running cooldown alone.
 
 **Persistence (`persistence.ts`).** A versioned envelope
 (`qbf-progress-v1`) in localStorage: `{ version, tutor: serialize(state),
-bestQbf, introducedSkillIds, voiceOverInput }`. `voiceOverInput` was added
+bestQbf, voiceOverInput }`. `voiceOverInput` was added
 later as an optional field (no version bump): an absent/garbage value loads as
 `true`, so older envelopes keep the original behaviour. Saves are debounced
 (250 ms) after every
@@ -434,10 +434,15 @@ a completed prompt (or half-typed qbf, whose cell count wasn't persisted)
 moves on via `nextPrompt`. "Reset progress" (confirm step in the UI) clears
 storage and starts over.
 
-**New-skill introductions.** `introducedSkillIds` records every skill that
-has ever been a prompt target; when a prompt targets a skill not yet in the
-set, the store flags it (`intro` in the view model) so the UI shows its
-braille cells + print + group alongside that first prompt.
+A "New skill" introduction banner used to live here, keyed on
+`introducedSkillIds` (every skill that had ever been a prompt *target*). It
+was removed: skills are used in prompt text — and score points — from the
+moment they enter the active window, which is long before they are randomly
+picked as a target, so the banner announced skills as "new" after the learner
+had already been drilling them. The "Learning now" panel already shows all
+five active skills with cells, print, and score, continuously. Envelopes
+written by older versions still carry `introducedSkillIds`; the loader
+ignores unknown fields, so no version bump was needed.
 
 ## UI (`src/ui`)
 
@@ -459,8 +464,7 @@ or effects — `main.ts` re-renders the root on every store notification.
   for the input; the autofocused monospace input (also carrying the chord-mode
   `onKeyDown`/`onKeyUp` handlers, which no-op in VoiceOver mode); the hint area (an
   `aria-live=polite` region that fills with the caret word's braille as
-  large segmented cells, one sign at a time); the new-skill introduction
-  banner; the qbf challenge
+  large segmented cells, one sign at a time); the qbf challenge
   styling (gold, no hint area) and result screen (crown / `+N%` badge /
   failed, in an `aria-live=assertive` region, with a Continue button).
 - `skills.ts` — the 5 active skills (cells, print, score bar toward 10) and

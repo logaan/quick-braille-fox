@@ -472,42 +472,6 @@ input:focus-visible {
   align-items: center;
 }
 
-/* --- New-skill introduction --------------------------------------------- */
-
-.intro {
-  border-radius: var(--radius);
-  background: var(--accent-tint);
-  padding: 0.9rem 1.1rem;
-  display: flex;
-  flex-direction: column;
-  gap: 0.6rem;
-}
-
-.intro-heading {
-  margin: 0;
-  font-size: 0.8rem;
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
-  font-weight: 650;
-  color: var(--accent-deep); /* AA on the tinted banner */
-}
-
-.intro-group {
-  color: var(--dim);
-}
-
-.intro-body {
-  display: flex;
-  align-items: center;
-  gap: 1rem;
-  flex-wrap: wrap;
-}
-
-.intro-print {
-  font-family: var(--mono);
-  font-size: 1.9rem;
-}
-
 /* --- qbf challenge ------------------------------------------------------ */
 
 .drill-qbf {

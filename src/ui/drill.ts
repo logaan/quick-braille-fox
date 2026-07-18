@@ -1,14 +1,14 @@
 // The main drill view: prompt with progressive match colouring, a visually
 // hidden text input (VoiceOver braille screen input types into it; the
-// prompt's own caret is the only visible cursor), the hint area,
-// new-skill introductions, and the qbf challenge/result presentation.
+// prompt's own caret is the only visible cursor), the hint area, and the
+// qbf challenge/result presentation.
 // Pure render functions of props — all behaviour lives in src/state.
 
 import { createElement as e, type ReactElement } from 'react';
 import type { QbfResult } from '../core';
-import type { AppHandlers, AppViewModel, IntroView } from '../state';
+import type { AppHandlers, AppViewModel } from '../state';
 import { BrailleCells } from './braille';
-import { GROUP_LABELS, formatPercent } from './labels';
+import { formatPercent } from './labels';
 
 function commonPrefixLength(a: string, b: string): number {
   const n = Math.min(a.length, b.length);
@@ -42,27 +42,6 @@ function PromptText(props: { readonly text: string; readonly typed: string }): R
     { className: 'prompt' },
     e('span', { className: 'visually-hidden' }, text),
     e('span', { className: 'prompt-chars', 'aria-hidden': 'true' }, parts),
-  );
-}
-
-/** Shown when a skill enters the active window, with its first prompt. */
-function NewSkillIntro(props: { readonly intro: IntroView }): ReactElement {
-  const { intro } = props;
-  return e(
-    'div',
-    { className: 'intro' },
-    e(
-      'p',
-      { className: 'intro-heading' },
-      'New skill · ',
-      e('span', { className: 'intro-group' }, GROUP_LABELS[intro.group]),
-    ),
-    e(
-      'div',
-      { className: 'intro-body' },
-      e(BrailleCells, { unicode: intro.unicode, size: 'lg' }),
-      e('span', { className: 'intro-print' }, intro.print),
-    ),
   );
 }
 
@@ -153,9 +132,7 @@ export function Drill(props: DrillProps): ReactElement {
           e('strong', null, 'qbf challenge'),
           ' — type the sentence exactly. No hints; one wrong character fails the run.',
         )
-      : vm.intro === null
-        ? null
-        : e(NewSkillIntro, { intro: vm.intro }),
+      : null,
     e(
       'label',
       { className: 'prompt-label', htmlFor: 'drill-input' },

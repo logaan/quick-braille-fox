@@ -34,14 +34,6 @@ export interface GroupProgressView {
   readonly total: number;
 }
 
-/** A skill whose introduction should be shown with the current prompt. */
-export interface IntroView {
-  readonly id: string;
-  readonly print: string;
-  readonly unicode: string;
-  readonly group: SkillGroup;
-}
-
 /** Everything the UI needs to render, as plain data. */
 export interface AppViewModel {
   readonly promptText: string;
@@ -60,7 +52,6 @@ export interface AppViewModel {
    * more per cooldown tick).
    */
   readonly hint: string | null;
-  readonly intro: IntroView | null;
   readonly activeSkills: ReadonlyArray<ActiveSkillView>;
   readonly learntCount: number;
   readonly totalSkills: number;
@@ -94,8 +85,6 @@ export interface AppHandlers {
   onResetCancel(): void;
 }
 
-const skillById = new Map(skills.map((s) => [s.id, s]));
-
 function groupProgress(state: TutorState): GroupProgressView[] {
   const byGroup = new Map<SkillGroup, { learnt: number; total: number }>();
   for (const s of skills) {
@@ -114,7 +103,6 @@ export interface ViewSources {
   readonly tutor: TutorState;
   readonly bestQbf: BestQbf | null;
   readonly lastQbf: QbfResult | null;
-  readonly introducingSkillId: string | null;
   readonly confirmingReset: boolean;
   /** How many reveal units of the hinted word are uncovered (store-owned). */
   readonly hintUnitsRevealed: number;
@@ -134,8 +122,6 @@ function hintText(src: ViewSources): string | null {
 export function buildViewModel(src: ViewSources): AppViewModel {
   const { tutor } = src;
   const p = tutor.prompt;
-  const introSkill =
-    src.introducingSkillId === null ? undefined : skillById.get(src.introducingSkillId);
   return {
     promptText: p?.text ?? '',
     typed: p?.typed ?? '',
@@ -146,15 +132,6 @@ export function buildViewModel(src: ViewSources): AppViewModel {
     qbfMinCells: QBF_MIN_CELLS,
     nextQbfIn: QBF_INTERVAL - (tutor.promptCounter % QBF_INTERVAL),
     hint: hintText(src),
-    intro:
-      introSkill === undefined
-        ? null
-        : {
-            id: introSkill.id,
-            print: introSkill.print,
-            unicode: introSkill.unicode,
-            group: introSkill.group,
-          },
     activeSkills: activeSkills(tutor).map((s) => {
       const score = scoreFor(tutor, s.id);
       return {
