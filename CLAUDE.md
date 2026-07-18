@@ -54,31 +54,40 @@ instead.
 
 ## Lot vault
 
-`.lot-vault/` is gitignored and not tracked. There is one vault, living in the
-main checkout; `.lot.toml` points `lot` at it by absolute path, so `lot`
-commands run from a worktree read and write that same vault. Worktrees do not
-carry their own copy and there is nothing vault-related to merge.
+The vault lives **outside this repo**, at
+`~/code/personal/html/braille-grade2-lot-vault/`. `.lot.toml` points `lot` at
+it by absolute path, so `lot` commands read and write that one vault from any
+working directory, worktrees included. Nothing vault-related is tracked here
+and nothing vault-related is ever merged.
 
-Caveat: `$LOT_VAULT_PATH` bypasses config files entirely, and a session
-launched with a *relative* value for it will resolve that path against the
-current directory — i.e. against the worktree, not the main checkout. In a
-session like that, run `lot` from the main checkout (e.g.
-`(cd <repo root> && … | lot update work --thing …)`).
+Caveat: `$LOT_VAULT_PATH` bypasses config files entirely, so whatever a session
+is launched with wins over `.lot.toml`. Modern `lot` always exports an absolute
+path, but a *relative* one (an older binary, or a hand-set value) resolves
+against the current directory — i.e. against the worktree — and `lot` then
+creates a *second*, empty vault there and writes the session's updates into it,
+where removing the worktree destroys them. It has happened.
 
-When that goes unnoticed, `lot` creates a *second* vault inside the worktree
-and writes the session's updates there, where deleting the worktree destroys
-them. It has happened. So before removing a worktree, check whether it holds
-updates the real vault does not:
+The tell is `lot thing get <id>` reporting `no thing found with id …`, or
+`lot thing list` returning `things: []`. That means the wrong vault, not a
+deleted Thing. Check with `echo $LOT_VAULT_PATH`; if it is relative, pass the
+absolute path explicitly for the rest of the session:
 
 ```bash
-# Any update-ids under the worktree that are absent from the main vault?
+export LOT_VAULT_PATH=~/code/personal/html/braille-grade2-lot-vault
+```
+
+If updates were already written to a stray vault, before removing the worktree
+check whether it holds any the real vault does not:
+
+```bash
+# Any update-ids under the worktree that are absent from the real vault?
 comm -23 \
-  <(rg -o --no-filename 'update-id: \S+' <worktree>/.lot-vault | sort -u) \
-  <(rg -o --no-filename 'update-id: \S+' <repo root>/.lot-vault | sort -u)
+  <(rg -o --no-filename 'update-id: \S+' <worktree> | sort -u) \
+  <(rg -o --no-filename 'update-id: \S+' ~/code/personal/html/braille-grade2-lot-vault | sort -u)
 ```
 
 Anything listed is real history that exists nowhere else. Copy each file into
-the corresponding Thing's folder in the main vault, renumbering so filenames
+the corresponding Thing's folder in the real vault, renumbering so filenames
 still run in timestamp order (insert and shift the later files rather than
 appending out of order), then confirm with `lot thing get <task-id>`.
 
