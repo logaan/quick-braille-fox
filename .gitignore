@@ -5,6 +5,11 @@
 # Claude Code worktrees (see CLAUDE.md worktree workflow).
 /.claude/worktrees/
 
+# The LoT vault. Untracked from here on. `.lot.toml` points `lot` at the main
+# checkout's vault by absolute path, so worktrees share that one vault rather
+# than each carrying a copy whose updates have to be merged back.
+/.lot-vault/
+
 # Node / Vite. No trailing slash: worktrees symlink node_modules at the main
 # checkout's copy, and a symlink is not matched by a directory-only pattern.
 node_modules

@@ -17,12 +17,16 @@ When work on a worktree branch is complete:
 
 ## Lot vault
 
-`.lot-vault/` is committed to git like any other content. Branches commit
-their lot vault, including any updates `lot` writes while the session works.
-Update files within a Thing's folder are numbered (`001.md`, `002.md`, …);
-if both main and a branch added updates to the same Thing, renumber before
-merging so filenames don't collide and numbering follows the updates'
-timestamps.
+`.lot-vault/` is gitignored and not tracked. There is one vault, living in the
+main checkout; `.lot.toml` points `lot` at it by absolute path, so `lot`
+commands run from a worktree read and write that same vault. Worktrees do not
+carry their own copy and there is nothing vault-related to merge.
+
+Caveat: `$LOT_VAULT_PATH` bypasses config files entirely, and a session
+launched with a *relative* value for it will resolve that path against the
+current directory — i.e. against the worktree, not the main checkout. In a
+session like that, run `lot` from the main checkout (e.g.
+`(cd <repo root> && … | lot update work --thing …)`).
 
 ## Commands
 
