@@ -474,21 +474,26 @@ input:focus-visible {
   }
 }
 
-/* The input is visually hidden — the prompt renders the caret and typed
- * state, so showing the field would put a second cursor on screen. It stays
- * in the DOM, focusable and 1×1, so VoiceOver braille screen input and
- * keyboards still type into it (never display:none). */
+/* The input is visible on purpose: it shows exactly what VoiceOver braille
+ * screen input put in the DOM, so when VoiceOver mangles or reorders a word the
+ * learner can see it and clear/retype to recover. The coloured prompt above is
+ * the teaching view; this is the raw field VoiceOver actually owns. */
 .drill-input {
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  margin: -1px;
-  padding: 0;
-  border: 0;
-  overflow: hidden;
-  clip: rect(0 0 0 0);
-  white-space: nowrap;
+  width: 100%;
+  box-sizing: border-box;
+  margin-top: 0.75rem;
+  padding: 0.6rem 0.75rem;
+  font: inherit;
+  font-family: var(--mono);
+  color: var(--text);
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
   outline: none;
+}
+
+.drill-input:focus {
+  border-color: var(--accent);
 }
 
 /* Hint area: space is reserved so the answer appearing never shifts layout. */

@@ -393,27 +393,30 @@ straight to core transition functions and call `notify()`):
 - `subscribe(listener)` — `main.ts` subscribes and re-renders the React
   root with a fresh view model on every change.
 
-**Input capture.** The drill input is a real, **uncontrolled**
+**Input capture.** The drill input is a real, **uncontrolled** and **visible**
 `<input type="text">` (required so macOS VoiceOver braille screen input works
 — raw keydown is never the only path). It is uncontrolled on purpose:
-VoiceOver owns the field's value, and the app never writes it back
-mid-prompt. Rewriting a controlled `value` during a word commit desyncs
-VoiceOver's word buffer, so a slip becomes unrecoverable; instead the field
-is keyed on a store-owned prompt epoch (`promptKey`) and only *remounts* —
-clearing itself — at a genuine prompt change. `onInput` (wired to React's
-`onChange`, i.e. the DOM `input` event) reads the field's full current value,
-runs it through `normalizeTypedValue` (a **read-only** comparison
-normalisation — drops a stray leading space, collapses VoiceOver's doubled
-spaces, tolerates the trailing space at a word/sentence commit; it never
-touches the field), and feeds the result to core `keystroke`. Because the
-field is invisible (visually hidden), any leftover spacing artifacts in the
-raw DOM value are never seen; the monkeytype colouring is driven by the
-normalised `typed`. For qbf cell counting, each input event whose `inputType`
-starts with `insert` counts as **one cell** (VoiceOver commits a whole
-contraction as a single insertion; a keypress inserts one char); deletions
-never decrement. On a flawless qbf completion the count goes to core
-`qbfResult`; the best crown/badge result is kept (crown beats badge, lower
-`percentAbove` beats higher) and persisted.
+VoiceOver owns the field's value and the app never writes it back mid-prompt,
+because rewriting a controlled `value` during a word commit desyncs
+VoiceOver's word buffer and can leave a slip unrecoverable. The field only
+*remounts* — clearing itself — when the store-owned `promptKey` epoch changes
+at a genuine prompt change. It is shown (not visually hidden) so the learner
+can see exactly what VoiceOver put in the DOM; if VoiceOver mangles or
+reorders a word, they can see it and clear/retype to recover. `onInput`
+(wired to React's `onChange`, i.e. the DOM `input` event) reads the field's
+full current value, runs it through `normalizeTypedValue` (a **read-only**
+comparison normalisation — drops a stray leading space, collapses VoiceOver's
+doubled spaces, tolerates the trailing space at a word/sentence commit; it
+never touches the field), and feeds the result to core `keystroke`. Note the
+consequence of a visible field plus that normalisation: the raw value on
+screen and the coloured prompt can disagree about spacing — the field shows
+what VoiceOver actually produced, while the colouring follows the normalised
+`typed`. For qbf cell counting, each input event whose `inputType` starts with
+`insert` counts as **one cell** (VoiceOver commits a whole contraction as a
+single insertion; a keypress inserts one char); deletions never decrement. On
+a flawless qbf completion the count goes to core `qbfResult`; the best
+crown/badge result is kept (crown beats badge, lower `percentAbove` beats
+higher) and persisted.
 
 **Chord input (VoiceOver mode off).** A header switch toggles `voiceOverInput`
 (default on = the behaviour above; persisted). When off, the learner types
