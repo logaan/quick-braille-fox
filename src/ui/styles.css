@@ -490,6 +490,10 @@ input:focus-visible {
   border: 1px solid var(--line);
   border-radius: var(--radius);
   outline: none;
+  /* The prompt above renders its own caret; hiding the native one leaves a
+     single cursor on screen. The field's text stays visible so the learner can
+     still see exactly what VoiceOver typed. */
+  caret-color: transparent;
 }
 
 .drill-input:focus {

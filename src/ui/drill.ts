@@ -2,6 +2,8 @@
 // text input (VoiceOver braille screen input types into it, and showing its
 // literal DOM value lets the learner see and recover from VoiceOver mangling a
 // word), the hint area, and the qbf challenge/result presentation.
+// The input's native caret is hidden in CSS so the prompt's caret is the only
+// cursor on screen; only its text is shown.
 // Pure render functions of props — all behaviour lives in src/state.
 
 import { createElement as e, type ReactElement } from 'react';
