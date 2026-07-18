@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { ChangeEvent, KeyboardEvent } from 'react';
 import {
   HINT_REVEAL_COOLDOWN_MS,
+  QBF_INTERVAL,
   QBF_MIN_CELLS,
   QBF_SENTENCE,
   makePrompt,
@@ -132,12 +133,30 @@ function midPromptStorage(): MemoryStorage {
   return storage;
 }
 
-/** Storage whose saved session is one completed prompt away from the qbf. */
+/**
+ * Storage whose saved session is one completed prompt into the curriculum,
+ * so the store serves an ordinary drill — prompt 0 is the qbf challenge.
+ */
+function drillReadyStorage(): MemoryStorage {
+  const storage = memoryStorage();
+  const state = makeTutorState({
+    seed: 7,
+    promptCounter: 1,
+    prompt: makePrompt({ text: 'done', typed: 'done', completed: true }),
+  });
+  storage.setItem(
+    STORAGE_KEY,
+    JSON.stringify({ version: 1, tutor: serialize(state), bestQbf: null }),
+  );
+  return storage;
+}
+
+/** Storage whose saved session lands the next prompt on the qbf challenge. */
 function qbfReadyStorage(): MemoryStorage {
   const storage = memoryStorage();
   const state = makeTutorState({
     seed: 7,
-    promptCounter: 99,
+    promptCounter: QBF_INTERVAL,
     prompt: makePrompt({ text: 'done', typed: 'done', completed: true }),
   });
   storage.setItem(
@@ -157,24 +176,33 @@ afterEach(() => {
 // --- tests -------------------------------------------------------------
 
 describe('TutorStore basics', () => {
-  it('starts a fresh session with a prompt and five active skills', () => {
+  it('starts a fresh session on the qbf challenge with five active skills', () => {
     const store = createTutorStore({ seed: 1 });
     const vm = store.viewModel();
-    expect(vm.promptText.length).toBeGreaterThan(0);
+    expect(vm.promptText).toBe(QBF_SENTENCE);
     expect(vm.activeSkills).toHaveLength(5);
     expect(vm.promptsCompleted).toBe(0);
     expect(vm.hint).toBeNull();
-    expect(vm.isQbf).toBe(false);
+    expect(vm.isQbf).toBe(true);
+    expect(vm.nextQbfIn).toBe(1);
     expect(vm.groups[0]).toEqual({ group: 'letters', learnt: 0, total: 26 });
     expect(vm.totalSkills).toBe(258);
   });
 
+  it('serves an ordinary drill once the opening qbf is behind the learner', () => {
+    const store = createTutorStore({ storage: drillReadyStorage(), seed: 1 });
+    const vm = store.viewModel();
+    expect(vm.promptText.length).toBeGreaterThan(0);
+    expect(vm.isQbf).toBe(false);
+    expect(vm.nextQbfIn).toBe(QBF_INTERVAL);
+  });
+
   it('completing a prompt scores the target and advances to a new prompt', () => {
-    const store = createTutorStore({ seed: 1 });
+    const store = createTutorStore({ storage: drillReadyStorage(), seed: 1 });
     const text = store.viewModel().promptText;
     typeText(store, text);
     const vm = store.viewModel();
-    expect(vm.promptsCompleted).toBe(1);
+    expect(vm.promptsCompleted).toBe(2);
     expect(vm.typed).toBe('');
     expect(vm.activeSkills.some((s) => s.score >= 2)).toBe(true);
   });
@@ -182,7 +210,7 @@ describe('TutorStore basics', () => {
 
 describe('hint timer', () => {
   it('reveals the hint after the core-provided delay', () => {
-    const store = createTutorStore({ seed: 1 });
+    const store = createTutorStore({ storage: drillReadyStorage(), seed: 1 });
     vi.advanceTimersByTime(399);
     expect(store.viewModel().hint).toBeNull();
     vi.advanceTimersByTime(1); // score 0 => 400ms
@@ -190,7 +218,7 @@ describe('hint timer', () => {
   });
 
   it('re-arms the countdown on a keystroke', () => {
-    const store = createTutorStore({ seed: 1 });
+    const store = createTutorStore({ storage: drillReadyStorage(), seed: 1 });
     const text = store.viewModel().promptText;
     vi.advanceTimersByTime(200);
     // A wrong first character (a mistake, but the first one is free) —
@@ -310,7 +338,7 @@ describe('persistence', () => {
 });
 
 describe('qbf challenge', () => {
-  it('serves the pangram on the 100th prompt with no hints ever', () => {
+  it('serves the pangram on the qbf slot with no hints ever', () => {
     const store = createTutorStore({ storage: qbfReadyStorage(), seed: 1 });
     const vm = store.viewModel();
     expect(vm.isQbf).toBe(true);
@@ -332,7 +360,7 @@ describe('qbf challenge', () => {
     const next = store.viewModel();
     expect(next.isQbf).toBe(false);
     expect(next.qbfResult).toBeNull();
-    expect(next.promptsCompleted).toBe(100);
+    expect(next.promptsCompleted).toBe(QBF_INTERVAL + 1);
   });
 
   it('awards the crown for a minimum-cell run (contraction-sized insertions)', () => {
@@ -363,7 +391,7 @@ describe('qbf challenge', () => {
     const vm = store.viewModel();
     expect(vm.qbfResult).toEqual({ kind: 'failed' });
     expect(vm.bestQbf).toBeNull();
-    expect(vm.promptsCompleted).toBe(100); // a failed qbf still counts
+    expect(vm.promptsCompleted).toBe(QBF_INTERVAL + 1); // a failed qbf still counts
 
     store.handlers.onQbfContinue();
     expect(store.viewModel().isQbf).toBe(false);
@@ -395,21 +423,21 @@ describe('VoiceOver trailing spaces', () => {
   }
 
   it('completes the prompt when the final word commit carries a trailing space', () => {
-    const store = createTutorStore({ seed: 1 });
+    const store = createTutorStore({ storage: drillReadyStorage(), seed: 1 });
     const text = store.viewModel().promptText;
     insert(store, `${text} `);
     const vm = store.viewModel();
-    expect(vm.promptsCompleted).toBe(1);
+    expect(vm.promptsCompleted).toBe(2);
     expect(vm.typed).toBe('');
   });
 
   it('ignores a stray space landing on a fresh prompt', () => {
-    const store = createTutorStore({ seed: 1 });
+    const store = createTutorStore({ storage: drillReadyStorage(), seed: 1 });
     insert(store, `${store.viewModel().promptText} `);
-    expect(store.viewModel().promptsCompleted).toBe(1);
+    expect(store.viewModel().promptsCompleted).toBe(2);
     insert(store, ' '); // the space arriving as its own event, after advancing
     expect(store.viewModel().typed).toBe('');
-    expect(store.viewModel().promptsCompleted).toBe(1);
+    expect(store.viewModel().promptsCompleted).toBe(2);
   });
 
   it('keeps a space the prompt actually expects', () => {

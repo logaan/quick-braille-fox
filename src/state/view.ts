@@ -6,6 +6,7 @@ import type { ChangeEvent, KeyboardEvent } from 'react';
 import type { QbfResult, TutorState } from '../core';
 import {
   LEARNT_THRESHOLD,
+  QBF_AWARD,
   QBF_INTERVAL,
   QBF_MIN_CELLS,
   activeSkills,
@@ -44,6 +45,10 @@ export interface AppViewModel {
   readonly qbfResult: QbfResult | null;
   readonly bestQbf: BestQbf | null;
   readonly qbfMinCells: number;
+  /** Prompts between qbf challenges, for the on-screen rules. */
+  readonly qbfInterval: number;
+  /** Points a skill scores per occurrence typed during a qbf run. */
+  readonly qbfAward: number;
   /** How many completed prompts until the next qbf challenge (1 = this one). */
   readonly nextQbfIn: number;
   /**
@@ -99,6 +104,16 @@ export function matchesResetWord(value: string): boolean {
   return value.trim().toLowerCase() === RESET_CONFIRM_WORD;
 }
 
+/**
+ * Prompts until the next qbf challenge, counting the current one (1 = the
+ * prompt on screen *is* the challenge). qbf lands whenever the counter is a
+ * multiple of QBF_INTERVAL.
+ */
+function nextQbfIn(promptCounter: number): number {
+  const since = promptCounter % QBF_INTERVAL;
+  return since === 0 ? 1 : QBF_INTERVAL - since + 1;
+}
+
 function groupProgress(state: TutorState): GroupProgressView[] {
   const byGroup = new Map<SkillGroup, { learnt: number; total: number }>();
   for (const s of skills) {
@@ -146,7 +161,9 @@ export function buildViewModel(src: ViewSources): AppViewModel {
     qbfResult: p !== null && p.isQbf && p.completed ? src.lastQbf : null,
     bestQbf: src.bestQbf,
     qbfMinCells: QBF_MIN_CELLS,
-    nextQbfIn: QBF_INTERVAL - (tutor.promptCounter % QBF_INTERVAL),
+    qbfInterval: QBF_INTERVAL,
+    qbfAward: QBF_AWARD,
+    nextQbfIn: nextQbfIn(tutor.promptCounter),
     hint: hintText(src),
     activeSkills: activeSkills(tutor).map((s) => {
       const score = scoreFor(tutor, s.id);

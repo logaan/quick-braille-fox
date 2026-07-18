@@ -14,6 +14,7 @@ import {
   CLEAN_AWARD,
   MISTAKE_PENALTY,
   MISTAKES_BEFORE_PENALTY,
+  QBF_AWARD,
   QBF_INTERVAL,
   makePrompt,
   makeTutorState,
@@ -26,13 +27,15 @@ export function startSession(seed: number = 1): TutorState {
 
 /**
  * Replace the current prompt with a freshly generated one (also used to
- * skip). Every QBF_INTERVAL-th completed prompt is the qbf challenge.
+ * skip). Every QBF_INTERVAL-th prompt is the qbf challenge, counting from
+ * the learner's first prompt (counters 0, QBF_INTERVAL, 2*QBF_INTERVAL, …),
+ * so a fresh learner meets the challenge immediately.
  * Consumes state.seed and stores a fresh one.
  */
 export function nextPrompt(state: TutorState): TutorState {
   const rng = mulberry32(state.seed);
   let prompt: Prompt;
-  if ((state.promptCounter + 1) % QBF_INTERVAL === 0) {
+  if (state.promptCounter % QBF_INTERVAL === 0) {
     prompt = makePrompt({ text: QBF_SENTENCE, isQbf: true });
   } else {
     const target = pickTarget(state, rng);
@@ -88,12 +91,17 @@ function mistakeUnitIndex(units: ReadonlyArray<TranslationUnit>, caret: number):
  * with no mistakes before the hint became visible, BASE_AWARD otherwise.
  * Points land immediately — a unit typed before the hint shows keeps its
  * clean award even if the hint appears later in the same prompt.
+ *
+ * `fixedAward` overrides that for the qbf challenge, where every finished
+ * occurrence is worth QBF_AWARD (no hints exist there, and the run is over
+ * at the first mistake, so anything finished was typed cold).
  */
 function awardFinishedUnits(
   state: TutorState,
   p: Prompt,
   units: ReadonlyArray<TranslationUnit>,
   caret: number,
+  fixedAward?: number,
 ): { state: TutorState; prompt: Prompt } {
   let next = state;
   let awarded = p.awardedUnits;
@@ -102,7 +110,7 @@ function awardFinishedUnits(
     if (u.end > caret) break;
     if (u.skillIds.length === 0 || awarded.has(i)) continue;
     const clean = !p.hintShown && p.unitMistakes.get(i, 0) === 0;
-    const delta = clean ? CLEAN_AWARD : BASE_AWARD;
+    const delta = fixedAward ?? (clean ? CLEAN_AWARD : BASE_AWARD);
     for (const id of u.skillIds) next = addScore(next, id, delta);
     awarded = awarded.add(i);
   }
@@ -128,7 +136,8 @@ function awardFinishedUnits(
  *   second mistake on the same occurrence costs its skills
  *   MISTAKE_PENALTY (floored at 0, and learnt skills may drop below the
  *   learnt threshold) and forces the hint to show. On a qbf prompt any
- *   mistake fails the challenge immediately and completes the prompt.
+ *   mistake fails the challenge immediately and completes the prompt, and
+ *   every occurrence finished before that scores QBF_AWARD per skill.
  *
  * Once the prompt is completed, further keystrokes are ignored; the state
  * layer should call nextPrompt().
@@ -138,14 +147,25 @@ export function keystroke(state: TutorState, typed: string): TutorState {
   if (!p || p.completed || typed === p.typed) return state;
 
   if (p.isQbf) {
+    // Occurrences finished by the correct prefix score QBF_AWARD each, even
+    // on the keystroke that ends the run — what was typed correctly counts.
+    const scored = awardFinishedUnits(
+      state,
+      p,
+      promptUnits(p),
+      commonPrefixLength(p.text, typed),
+      QBF_AWARD,
+    );
+    const next = scored.state;
+    const prompt = scored.prompt;
     if (typed === p.text) {
-      return state
-        .set('prompt', p.merge({ typed, diverged: false, completed: true }))
+      return next
+        .set('prompt', prompt.merge({ typed, diverged: false, completed: true }))
         .set('promptCounter', state.promptCounter + 1);
     }
-    if (p.text.startsWith(typed)) return state.set('prompt', p.set('typed', typed));
-    return state
-      .set('prompt', p.merge({ typed, diverged: true, failed: true, completed: true }))
+    if (p.text.startsWith(typed)) return next.set('prompt', prompt.set('typed', typed));
+    return next
+      .set('prompt', prompt.merge({ typed, diverged: true, failed: true, completed: true }))
       .set('promptCounter', state.promptCounter + 1);
   }
 

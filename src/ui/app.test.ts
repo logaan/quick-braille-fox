@@ -4,7 +4,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { createElement as e } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
-import { QBF_SENTENCE, makePrompt, makeTutorState, serialize } from '../core';
+import { QBF_INTERVAL, QBF_SENTENCE, makePrompt, makeTutorState, serialize } from '../core';
 import type { AppHandlers, StorageLike, TutorStore } from '../state';
 import { STORAGE_KEY, createTutorStore } from '../state';
 import { App } from './index';
@@ -33,11 +33,21 @@ function memoryStorage(): StorageLike {
   };
 }
 
+/** A store whose next prompt is an ordinary drill (prompt 0 is the qbf). */
+function drillStore(): TutorStore {
+  return storeAt(1);
+}
+
+/** A store whose next prompt is the qbf challenge. */
 function qbfReadyStore(): TutorStore {
+  return storeAt(QBF_INTERVAL);
+}
+
+function storeAt(promptCounter: number): TutorStore {
   const storage = memoryStorage();
   const state = makeTutorState({
     seed: 7,
-    promptCounter: 99,
+    promptCounter,
     prompt: makePrompt({ text: 'done', typed: 'done', completed: true }),
   });
   storage.setItem(
@@ -66,7 +76,7 @@ describe('App rendering', () => {
   });
 
   it('renders the hint as braille cells once the timer fires', () => {
-    const store = createTutorStore({ seed: 1 });
+    const store = drillStore();
     vi.advanceTimersByTime(400);
     const vm = store.viewModel();
     expect(vm.hint).not.toBeNull();
@@ -76,7 +86,7 @@ describe('App rendering', () => {
   });
 
   it('shows the actually-typed character where typing diverged', () => {
-    const store = createTutorStore({ seed: 1 });
+    const store = drillStore();
     const text = store.viewModel().promptText;
     const wrong = text.startsWith('z') ? 'q' : 'z';
     type(store, wrong);

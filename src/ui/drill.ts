@@ -48,14 +48,15 @@ function PromptText(props: { readonly text: string; readonly typed: string }): R
 function QbfResultPanel(props: {
   readonly result: QbfResult;
   readonly minCells: number;
+  readonly interval: number;
   readonly onContinue: () => void;
 }): ReactElement {
-  const { result, minCells, onContinue } = props;
+  const { result, minCells, interval, onContinue } = props;
   let outcome: ReactElement;
   let detail: string;
   if (result.kind === 'failed') {
     outcome = e('p', { className: 'qbf-outcome qbf-failed' }, '✗ Run failed');
-    detail = 'One wrong character ends a qbf run. It comes back every 100 prompts.';
+    detail = `One wrong character ends a qbf run. It comes back every ${interval} prompts.`;
   } else if (result.kind === 'crown') {
     outcome = e(
       'p',
@@ -82,6 +83,46 @@ function QbfResultPanel(props: {
       'button',
       { className: 'btn btn-primary', autoFocus: true, onClick: onContinue },
       'Continue',
+    ),
+  );
+}
+
+/**
+ * The challenge's rules, on screen for the whole qbf round — it turns up
+ * rarely enough (and scores differently enough) that the learner should
+ * never have to remember how it works.
+ */
+function QbfRules(props: {
+  readonly interval: number;
+  readonly award: number;
+  readonly minCells: number;
+}): ReactElement {
+  const { interval, award, minCells } = props;
+  return e(
+    'div',
+    { className: 'qbf-rules' },
+    e(
+      'p',
+      { className: 'qbf-banner' },
+      e('strong', null, 'qbf challenge'),
+      ` — every ${interval} prompts, starting with your first.`,
+    ),
+    e(
+      'ul',
+      { className: 'qbf-rule-list' },
+      e('li', { key: 'exact' }, 'Type the sentence exactly. No hints are given.'),
+      e('li', { key: 'fail' }, 'One wrong character ends the run on the spot.'),
+      e(
+        'li',
+        { key: 'score' },
+        `Every skill you type correctly scores ${award} points — enough to learn it outright.`,
+      ),
+      e(
+        'li',
+        { key: 'cells' },
+        `Finish flawlessly to be graded on cells used: ${minCells} is the grade 2 ` +
+          'minimum and earns the crown; anything more earns a badge.',
+      ),
     ),
   );
 }
@@ -126,12 +167,11 @@ export function Drill(props: DrillProps): ReactElement {
       'aria-label': vm.isQbf ? 'qbf challenge' : 'Typing drill',
     },
     vm.isQbf
-      ? e(
-          'p',
-          { className: 'qbf-banner' },
-          e('strong', null, 'qbf challenge'),
-          ' — type the sentence exactly. No hints; one wrong character fails the run.',
-        )
+      ? e(QbfRules, {
+          interval: vm.qbfInterval,
+          award: vm.qbfAward,
+          minCells: vm.qbfMinCells,
+        })
       : null,
     e(
       'label',
@@ -148,6 +188,7 @@ export function Drill(props: DrillProps): ReactElement {
             : e(QbfResultPanel, {
                 result: vm.qbfResult,
                 minCells: vm.qbfMinCells,
+                interval: vm.qbfInterval,
                 onContinue: on.onQbfContinue,
               }),
         )

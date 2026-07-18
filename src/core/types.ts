@@ -24,8 +24,18 @@ export const BASE_AWARD = 1;
 export const MISTAKE_PENALTY = 1;
 /** Mistakes on the same occurrence before penalty + forced hint. */
 export const MISTAKES_BEFORE_PENALTY = 2;
-/** Every Nth completed prompt is the qbf challenge. */
-export const QBF_INTERVAL = 100;
+/**
+ * The qbf challenge runs on every Nth prompt, counting from the learner's
+ * very first one (prompt counters 0, N, 2N, …).
+ */
+export const QBF_INTERVAL = 50;
+/**
+ * Score gained per skill for each occurrence typed correctly during a qbf
+ * run. The challenge offers no hints and ends on the first mistake, so
+ * typing an occurrence there proves the skill outright — one occurrence is
+ * worth LEARNT_THRESHOLD, i.e. instantly learnt.
+ */
+export const QBF_AWARD = LEARNT_THRESHOLD;
 /** Chance that a prompt revises a learnt skill instead of an active one. */
 export const REVISION_PROBABILITY = 1 / 3;
 
@@ -57,7 +67,7 @@ export interface PromptProps {
   text: string;
   /** Skill this prompt drills; null for the qbf challenge. */
   targetSkillId: string | null;
-  /** Whether this is the every-100th qbf challenge. */
+  /** Whether this is the every-QBF_INTERVAL-th qbf challenge. */
   isQbf: boolean;
   /** What the learner has typed so far (as reported by keystroke()). */
   typed: string;

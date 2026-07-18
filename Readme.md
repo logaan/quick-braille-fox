@@ -9,12 +9,14 @@ liblouis tables that macOS VoiceOver ships, so what you learn matches what a
 Mac actually produces. A real text field receives all typing, so VoiceOver
 braille screen input works throughout.
 
-Every 100th prompt is the qbf challenge: type "The quick brown fox jumped
-over the lazy dog." flawlessly, with no hints and instant failure on any
-wrong character. Your insertion count is compared with the 36-cell grade 2
-minimum — committing contractions means fewer insertions — and a perfect
-minimum-cell run earns a crown. Progress persists in the browser
-(localStorage).
+Every 50th prompt — starting with your very first — is the qbf challenge:
+type "The quick brown fox jumped over the lazy dog." flawlessly, with no
+hints and instant failure on any wrong character. Its rules are shown on
+screen for the whole round. Every skill you type correctly there scores 10
+points, enough to learn it outright, since you have demonstrated it cold.
+Your insertion count is compared with the 36-cell grade 2 minimum —
+committing contractions means fewer insertions — and a perfect minimum-cell
+run earns a crown. Progress persists in the browser (localStorage).
 
 ## Commands
 
