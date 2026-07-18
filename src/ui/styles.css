@@ -390,22 +390,23 @@ input:focus-visible {
 
 /* --- Layout --------------------------------------------------------------- */
 
+/* One centred column at every width. A side column left a wide gap of dead
+   space under the drill on a laptop; stacking instead lets the drill card use
+   the full column and pushes the progress panels below the fold, where they
+   belong while you are typing. */
 .layout {
   flex: 1;
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(15rem, 19rem);
-  gap: 1.5rem;
-  align-items: start;
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
   width: 100%;
-  max-width: 68rem;
+  max-width: 46rem;
   margin: 0 auto;
   padding: 1rem clamp(0.75rem, 3vw, 1.5rem) 2.75rem;
 }
 
 @media (max-width: 52rem) {
   .layout {
-    grid-template-columns: minmax(0, 1fr);
-    gap: 1.25rem;
     padding-bottom: 1.25rem;
   }
 }
@@ -419,7 +420,7 @@ input:focus-visible {
   gap: 1.4rem;
   background: var(--surface);
   border-radius: var(--radius-lg);
-  padding: clamp(1.1rem, 3vw, 2rem);
+  padding: clamp(1.1rem, 3vw, 2.5rem);
   min-width: 0;
   box-shadow: var(--shadow-md);
 }
@@ -482,9 +483,10 @@ input:focus-visible {
   width: 100%;
   box-sizing: border-box;
   margin-top: 0.75rem;
-  padding: 0.6rem 0.75rem;
+  padding: 0.85rem 1rem;
   font: inherit;
   font-family: var(--mono);
+  font-size: clamp(1.05rem, 2.5vw, 1.35rem);
   color: var(--text);
   background: var(--surface);
   border: 1px solid var(--line);
@@ -583,21 +585,16 @@ input:focus-visible {
 
 /* --- Skill panel ---------------------------------------------------------- */
 
-.skill-panel {
+/* "Learning now" and "Overall" are separate cards, stacked under the drill. */
+.panel {
   display: flex;
   flex-direction: column;
-  gap: 1.4rem;
+  gap: 0.65rem;
   background: var(--surface);
   border-radius: var(--radius-lg);
   padding: 1.15rem;
   min-width: 0;
   box-shadow: var(--shadow-md);
-}
-
-.panel-block {
-  display: flex;
-  flex-direction: column;
-  gap: 0.65rem;
 }
 
 .panel-heading {

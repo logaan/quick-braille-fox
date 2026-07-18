@@ -1,10 +1,11 @@
-// Top-level layout: header, drill view, skill panel.
+// Top-level layout: header, then a single centred column stacking the drill
+// view above the progress panels.
 
 import { createElement as e, type ReactElement } from 'react';
 import type { AppHandlers, AppViewModel } from '../state';
 import { Drill } from './drill';
 import { Header } from './header';
-import { SkillPanel } from './skills';
+import { LearningNowPanel, OverallPanel } from './skills';
 
 export interface AppProps {
   readonly vm: AppViewModel;
@@ -28,7 +29,8 @@ export function App(props: AppProps): ReactElement {
       'main',
       { className: 'layout' },
       e(Drill, { vm, on }),
-      e(SkillPanel, { vm }),
+      e(LearningNowPanel, { vm }),
+      e(OverallPanel, { vm }),
     ),
   );
 }
