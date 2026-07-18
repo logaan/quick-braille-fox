@@ -22,7 +22,7 @@ export function App(props: AppProps): ReactElement {
       confirmingReset: vm.confirmingReset,
       resetConfirmText: vm.resetConfirmText,
       canConfirmReset: vm.canConfirmReset,
-      voiceOverInput: vm.voiceOverInput,
+      inputMode: vm.inputMode,
       on,
     }),
     e(

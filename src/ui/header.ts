@@ -7,8 +7,8 @@ import {
   type KeyboardEvent,
   type ReactElement,
 } from 'react';
-import type { AppHandlers, BestFox } from '../state';
-import { RESET_CONFIRM_WORD } from '../state';
+import type { AppHandlers, BestFox, InputMode } from '../state';
+import { INPUT_MODE_LABELS, RESET_CONFIRM_WORD } from '../state';
 import { formatPercent } from './labels';
 
 export interface HeaderProps {
@@ -16,7 +16,7 @@ export interface HeaderProps {
   readonly confirmingReset: boolean;
   readonly resetConfirmText: string;
   readonly canConfirmReset: boolean;
-  readonly voiceOverInput: boolean;
+  readonly inputMode: InputMode;
   readonly on: AppHandlers;
 }
 
@@ -48,31 +48,50 @@ function BestFoxBadge(props: { readonly best: BestFox }): ReactElement {
 }
 
 /**
- * Switch between VoiceOver braille screen input (the OS commits whole words)
- * and typing braille chords directly on the QWERTY home row (f d s a j k l ;).
+ * What a screen reader appends to each option's name — the modes are
+ * otherwise a mystery, especially Emulated, where the drill starts
+ * swallowing every printable key except the (undocumented) home-row chord
+ * keys.
  */
-function InputModeToggle(props: {
-  readonly voiceOverInput: boolean;
-  readonly onToggle: () => void;
+const MODE_DESCRIPTIONS: Record<InputMode, string> = {
+  emulated:
+    ' — type braille chords on the home row: F D S for dots 1 2 3, J K L for dots 4 5 6',
+  voiceover: ' — VoiceOver braille screen input; the OS commits whole words',
+};
+
+/**
+ * Pick the input mode: Emulated (braille chords on the QWERTY home row,
+ * f d s a j k l ;) or VoiceOver (braille screen input, where the OS commits
+ * whole words). Real radio inputs so a screen reader announces the group
+ * name, each option's name, its checked state, and its position in the set —
+ * and so arrow keys move between the options natively.
+ */
+function InputModePicker(props: {
+  readonly inputMode: InputMode;
+  readonly onSelect: (mode: InputMode) => void;
 }): ReactElement {
-  const { voiceOverInput, onToggle } = props;
+  const { inputMode, onSelect } = props;
   return e(
-    'button',
-    {
-      type: 'button',
-      className: 'btn btn-quiet mode-toggle',
-      role: 'switch',
-      'aria-checked': voiceOverInput,
-      onClick: onToggle,
-    },
-    e('span', { className: 'mode-toggle-indicator', 'aria-hidden': 'true' }),
-    'VoiceOver input',
-    // The off state is otherwise a mystery: the drill starts swallowing
-    // every printable key except the (undocumented) home-row chord keys.
-    e(
-      'span',
-      { className: 'visually-hidden' },
-      ' — when off, type braille chords on the home row: F D S for dots 1 2 3, J K L for dots 4 5 6',
+    'div',
+    { className: 'mode-picker', role: 'radiogroup', 'aria-label': 'Input mode' },
+    e('span', { className: 'mode-picker-label', 'aria-hidden': 'true' }, 'Input'),
+    INPUT_MODE_LABELS.map(({ mode, label }) =>
+      e(
+        'label',
+        { key: mode, className: 'mode-option' },
+        e('input', {
+          type: 'radio',
+          className: 'mode-option-input',
+          name: 'input-mode',
+          value: mode,
+          checked: mode === inputMode,
+          onChange: () => {
+            onSelect(mode);
+          },
+        }),
+        e('span', { className: 'mode-option-text' }, label),
+        e('span', { className: 'visually-hidden' }, MODE_DESCRIPTIONS[mode]),
+      ),
     ),
   );
 }
@@ -134,7 +153,7 @@ function ResetConfirm(props: {
 }
 
 export function Header(props: HeaderProps): ReactElement {
-  const { bestFox, confirmingReset, resetConfirmText, canConfirmReset, voiceOverInput, on } = props;
+  const { bestFox, confirmingReset, resetConfirmText, canConfirmReset, inputMode, on } = props;
   return e(
     'header',
     { className: 'app-header' },
@@ -152,7 +171,7 @@ export function Header(props: HeaderProps): ReactElement {
     e(
       'div',
       { className: 'header-right' },
-      e(InputModeToggle, { voiceOverInput, onToggle: on.onInputModeToggle }),
+      e(InputModePicker, { inputMode, onSelect: on.onInputModeSelect }),
       bestFox === null ? null : e(BestFoxBadge, { best: bestFox }),
       confirmingReset
         ? e(ResetConfirm, { text: resetConfirmText, canConfirm: canConfirmReset, on })

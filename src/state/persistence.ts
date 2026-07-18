@@ -4,6 +4,8 @@
 
 import type { FoxResult, SerializedTutorState, TutorState } from '../core';
 import { deserialize, serialize } from '../core';
+import type { InputMode } from './modes';
+import { DEFAULT_INPUT_MODE, isInputMode } from './modes';
 
 // Predates the "fox challenge" naming ("qbf" era); kept so progress survives.
 export const STORAGE_KEY = 'qbf-progress-v1';
@@ -21,8 +23,8 @@ export type BestFox = Exclude<FoxResult, { readonly kind: 'failed' }>;
 export interface PersistedData {
   readonly tutor: TutorState;
   readonly bestFox: BestFox | null;
-  /** Whether input flows through VoiceOver braille screen input (default). */
-  readonly voiceOverInput: boolean;
+  /** Which input mode the drill is in; see InputMode. */
+  readonly inputMode: InputMode;
 }
 
 interface Envelope {
@@ -30,9 +32,29 @@ interface Envelope {
   tutor: SerializedTutorState;
   /** Wire name predates the "fox challenge" naming; kept for stored data. */
   bestQbf: BestFox | null;
-  /** Optional (added later); absent/garbage loads as true, keeping the
-   * original VoiceOver-input behaviour for existing envelopes. */
+  /** Optional (added later); absent/garbage loads as DEFAULT_INPUT_MODE,
+   * keeping the original VoiceOver behaviour for existing envelopes. */
+  inputMode?: InputMode;
+  /**
+   * The pre-rename spelling of the same setting: true = 'voiceover',
+   * false = 'emulated'. Only ever read, never written — envelopes are
+   * rewritten with `inputMode` on the next save.
+   */
   voiceOverInput?: boolean;
+}
+
+/**
+ * Resolve the input mode from an envelope that may use either the current
+ * `inputMode` field or the legacy `voiceOverInput` boolean. The version is
+ * not bumped for the rename: the loader reads both shapes, so an old
+ * envelope stays readable and gains nothing from a migration step.
+ */
+function coerceInputMode(env: Partial<Envelope>): InputMode {
+  if (isInputMode(env.inputMode)) return env.inputMode;
+  if (typeof env.voiceOverInput === 'boolean') {
+    return env.voiceOverInput ? 'voiceover' : 'emulated';
+  }
+  return DEFAULT_INPUT_MODE;
 }
 
 function coerceBestFox(raw: unknown): BestFox | null {
@@ -63,7 +85,7 @@ export function loadProgress(storage: StorageLike): PersistedData | null {
     return {
       tutor,
       bestFox: coerceBestFox(env.bestQbf),
-      voiceOverInput: env.voiceOverInput !== false,
+      inputMode: coerceInputMode(env),
     };
   } catch {
     return null;
@@ -75,7 +97,7 @@ export function saveProgress(storage: StorageLike, data: PersistedData): void {
     version: 1,
     tutor: serialize(data.tutor),
     bestQbf: data.bestFox,
-    voiceOverInput: data.voiceOverInput,
+    inputMode: data.inputMode,
   };
   try {
     storage.setItem(STORAGE_KEY, JSON.stringify(envelope));

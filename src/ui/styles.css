@@ -343,54 +343,68 @@ input:focus-visible {
   border-color: transparent;
 }
 
-/* Input-mode switch: on = VoiceOver braille screen input, off = QWERTY
-   chording. The indicator dot fills with the accent colour when on. */
-.mode-toggle {
+/* Input-mode picker: two radio options, Emulated and VoiceOver. The native
+   radio is kept in the layout (not display:none) so it stays focusable and
+   announced; it is visually collapsed and the label text carries the look. */
+.mode-picker {
   display: inline-flex;
   align-items: center;
-  gap: 0.45rem;
-}
-
-.mode-toggle-indicator {
-  width: 1.6rem;
-  height: 0.9rem;
+  gap: 0.25rem;
+  padding: 0.15rem;
+  border: 1px solid var(--line);
   border-radius: 999px;
-  background: var(--line);
-  box-shadow: inset 0 0 0 1px var(--line);
-  position: relative;
-  flex: none;
-  transition: background 0.15s ease;
-}
-
-.mode-toggle-indicator::after {
-  content: '';
-  position: absolute;
-  top: 0.1rem;
-  left: 0.1rem;
-  width: 0.7rem;
-  height: 0.7rem;
-  border-radius: 50%;
   background: var(--surface);
-  box-shadow: var(--shadow-sm);
-  transition: transform 0.15s ease;
 }
 
-.mode-toggle[aria-checked='true'] {
+.mode-picker-label {
+  color: var(--dim);
+  font-size: 0.8rem;
+  padding: 0 0.35rem 0 0.5rem;
+}
+
+.mode-option {
+  display: inline-flex;
+  align-items: center;
+  cursor: pointer;
+}
+
+.mode-option-input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: 0;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.mode-option-text {
+  display: inline-block;
+  padding: 0.3rem 0.75rem;
+  border-radius: 999px;
+  color: var(--dim);
+  font-size: 0.85rem;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+.mode-option:hover .mode-option-text {
   color: var(--text);
 }
 
-.mode-toggle[aria-checked='true'] .mode-toggle-indicator {
+.mode-option-input:checked + .mode-option-text {
+  color: var(--accent-ink);
   background: var(--accent);
-  box-shadow: inset 0 0 0 1px var(--accent);
+  font-weight: 650;
 }
 
-.mode-toggle[aria-checked='true'] .mode-toggle-indicator::after {
-  transform: translateX(0.7rem);
+/* The input is visually collapsed, so its focus ring has to be drawn on the
+   label text instead — keyboard users must still see where they are. */
+.mode-option-input:focus-visible + .mode-option-text {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .mode-toggle-indicator,
-  .mode-toggle-indicator::after {
+  .mode-option-text {
     transition: none;
   }
 }

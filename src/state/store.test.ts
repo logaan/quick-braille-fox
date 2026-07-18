@@ -95,9 +95,9 @@ function chordText(store: TutorStore, text: string): void {
   }
 }
 
-/** Put a store into chord mode (VoiceOver input off). */
+/** Put a store into emulated (chording) mode. */
 function chordMode(store: TutorStore): void {
-  if (store.viewModel().voiceOverInput) store.handlers.onInputModeToggle();
+  store.handlers.onInputModeSelect('emulated');
 }
 
 /** Type `text` one character-insertion at a time. */
@@ -130,6 +130,24 @@ function midPromptStorage(): MemoryStorage {
   storage.setItem(
     STORAGE_KEY,
     JSON.stringify({ version: 1, tutor: serialize(state), bestQbf: null }),
+  );
+  return storage;
+}
+
+/**
+ * Storage holding a pre-rename envelope, which spelled the input mode as the
+ * boolean `voiceOverInput` rather than today's `inputMode` string.
+ */
+function legacyModeStorage(voiceOverInput: boolean): MemoryStorage {
+  const storage = memoryStorage();
+  const state = makeTutorState({
+    seed: 7,
+    promptCounter: 1,
+    prompt: makePrompt({ text: 'the dog', targetSkillId: 'letter-d' }),
+  });
+  storage.setItem(
+    STORAGE_KEY,
+    JSON.stringify({ version: 1, tutor: serialize(state), bestQbf: null, voiceOverInput }),
   );
   return storage;
 }
@@ -517,7 +535,7 @@ describe('drill input field sync', () => {
     insert(store, 'z');
     expect(store.viewModel().diverged).toBe(true);
     const before = store.viewModel().promptKey;
-    store.handlers.onInputModeToggle(); // chord mode: typing starts over
+    store.handlers.onInputModeSelect('emulated'); // emulated mode: typing starts over
     const vm = store.viewModel();
     expect(vm.typed).toBe('');
     expect(vm.promptKey).not.toBe(before);
@@ -527,7 +545,7 @@ describe('drill input field sync', () => {
     const store = createTutorStore({ storage: midPromptStorage(), seed: 1 });
     insert(store, 'the');
     const before = store.viewModel().promptKey;
-    store.handlers.onInputModeToggle();
+    store.handlers.onInputModeSelect('emulated');
     const vm = store.viewModel();
     expect(vm.typed).toBe('the');
     expect(vm.promptKey).toBe(before);
@@ -674,32 +692,48 @@ describe('drill input remount key', () => {
   });
 });
 
-describe('input mode toggle', () => {
-  it('defaults to VoiceOver input and flips on toggle', () => {
+describe('input mode selection', () => {
+  it('defaults to VoiceOver and switches on selection', () => {
     const store = createTutorStore({ seed: 1 });
-    expect(store.viewModel().voiceOverInput).toBe(true);
-    store.handlers.onInputModeToggle();
-    expect(store.viewModel().voiceOverInput).toBe(false);
-    store.handlers.onInputModeToggle();
-    expect(store.viewModel().voiceOverInput).toBe(true);
+    expect(store.viewModel().inputMode).toBe('voiceover');
+    store.handlers.onInputModeSelect('emulated');
+    expect(store.viewModel().inputMode).toBe('emulated');
+    store.handlers.onInputModeSelect('voiceover');
+    expect(store.viewModel().inputMode).toBe('voiceover');
+  });
+
+  it('is a no-op when the selected mode is already active', () => {
+    const store = createTutorStore({ seed: 1 });
+    store.handlers.onInputModeSelect('voiceover');
+    expect(store.viewModel().inputMode).toBe('voiceover');
   });
 
   it('persists the mode across store recreation', () => {
     const storage = memoryStorage();
     const first = createTutorStore({ storage, seed: 1 });
-    first.handlers.onInputModeToggle(); // -> chord mode
+    first.handlers.onInputModeSelect('emulated');
     first.flushSave();
     const second = createTutorStore({ storage, seed: 1 });
-    expect(second.viewModel().voiceOverInput).toBe(false);
+    expect(second.viewModel().inputMode).toBe('emulated');
   });
 
-  it('loads an old envelope (no field) as VoiceOver input', () => {
-    const storage = midPromptStorage(); // envelope written without voiceOverInput
+  it('loads an old envelope (no field) as VoiceOver', () => {
+    const storage = midPromptStorage(); // envelope written without a mode field
     const store = createTutorStore({ storage, seed: 1 });
-    expect(store.viewModel().voiceOverInput).toBe(true);
+    expect(store.viewModel().inputMode).toBe('voiceover');
   });
 
-  it('ignores chord key events while VoiceOver input is on', () => {
+  it('loads a legacy voiceOverInput: true envelope as VoiceOver', () => {
+    const store = createTutorStore({ storage: legacyModeStorage(true), seed: 1 });
+    expect(store.viewModel().inputMode).toBe('voiceover');
+  });
+
+  it('loads a legacy voiceOverInput: false envelope as emulated', () => {
+    const store = createTutorStore({ storage: legacyModeStorage(false), seed: 1 });
+    expect(store.viewModel().inputMode).toBe('emulated');
+  });
+
+  it('ignores chord key events while VoiceOver mode is on', () => {
     const store = createTutorStore({ storage: midPromptStorage(), seed: 1 });
     chordCell(store, [2, 3, 4, 6]); // would be "the" in chord mode
     expect(store.viewModel().typed).toBe('');
@@ -708,7 +742,7 @@ describe('input mode toggle', () => {
     expect(store.viewModel().typed).toBe('t');
   });
 
-  it('ignores onInput while chord mode is on', () => {
+  it('ignores onInput while emulated mode is on', () => {
     const store = createTutorStore({ storage: midPromptStorage(), seed: 1 });
     chordMode(store);
     insert(store, 'the dog');

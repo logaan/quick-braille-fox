@@ -21,6 +21,8 @@ import {
 } from '../core';
 import type { ChordState } from './chords';
 import { EMPTY_CHORD_STATE, chordKeyDown, chordKeyUp, isChordCode } from './chords';
+import type { InputMode } from './modes';
+import { DEFAULT_INPUT_MODE } from './modes';
 import type { BestFox, StorageLike } from './persistence';
 import { clearProgress, loadProgress, saveProgress } from './persistence';
 import type { AppHandlers, AppViewModel } from './view';
@@ -52,8 +54,8 @@ export class TutorStore {
   /** What the user has typed into the reset confirmation field. */
   private resetConfirmText = '';
 
-  /** True: input via VoiceOver braille screen input. False: QWERTY chording. */
-  private voiceOverInput = true;
+  /** Which input mode the drill is in; see InputMode. */
+  private inputMode: InputMode = DEFAULT_INPUT_MODE;
   /** Chord key state (chord mode only); not persisted. */
   private chordState: ChordState = EMPTY_CHORD_STATE;
   /** Committed braille cells for the current prompt (chord mode; blank = space). */
@@ -86,7 +88,7 @@ export class TutorStore {
       this.tutor = startSession(this.freshSeed());
     } else {
       this.bestFox = persisted.bestFox;
-      this.voiceOverInput = persisted.voiceOverInput;
+      this.inputMode = persisted.inputMode;
       const p = persisted.tutor.prompt;
       // Resume an in-flight prompt as-is. Move on from a prompt saved after
       // completion (e.g. mid result screen). A half-typed fox restarts
@@ -99,13 +101,13 @@ export class TutorStore {
           ? nextPrompt(persisted.tutor)
           : persisted.tutor;
     }
-    if (!this.voiceOverInput) this.reconstructBuffer();
+    if (this.inputMode === 'emulated') this.reconstructBuffer();
 
     this.handlers = {
       onInput: (event) => this.handleInput(event),
       onDrillKeyDown: (event) => this.handleKeyDown(event),
       onDrillKeyUp: (event) => this.handleKeyUp(event),
-      onInputModeToggle: () => this.toggleInputMode(),
+      onInputModeSelect: (mode) => this.selectInputMode(mode),
       onFoxContinue: () => this.continueAfterFox(),
       onResetRequest: () => {
         this.confirmingReset = true;
@@ -157,7 +159,7 @@ export class TutorStore {
       lastFox: this.lastFox,
       confirmingReset: this.confirmingReset,
       resetConfirmText: this.resetConfirmText,
-      voiceOverInput: this.voiceOverInput,
+      inputMode: this.inputMode,
       promptKey: this.promptEpoch,
       cellBuffer: this.cellBuffer,
     });
@@ -190,7 +192,7 @@ export class TutorStore {
   }
 
   private handleInput(event: ChangeEvent<HTMLInputElement>): void {
-    if (!this.voiceOverInput) return; // chord mode drives typing via key events
+    if (this.inputMode !== 'voiceover') return; // emulated mode types via key events
     const prompt = this.tutor.prompt;
     if (prompt === null || prompt.completed) return;
     const value = normalizeTypedValue(event.currentTarget.value, prompt.text);
@@ -220,10 +222,10 @@ export class TutorStore {
     this.changed();
   }
 
-  // --- chord input (VoiceOver mode off) --------------------------------
+  // --- chord input (emulated mode) -------------------------------------
 
   private handleKeyDown(event: KeyboardEvent<HTMLInputElement>): void {
-    if (this.voiceOverInput) return;
+    if (this.inputMode !== 'emulated') return;
     // Let editing/navigation shortcuts (⌘, Ctrl, Alt combos) through.
     if (event.ctrlKey || event.metaKey || event.altKey) return;
     const code = event.code;
@@ -249,7 +251,7 @@ export class TutorStore {
   }
 
   private handleKeyUp(event: KeyboardEvent<HTMLInputElement>): void {
-    if (this.voiceOverInput) return;
+    if (this.inputMode !== 'emulated') return;
     const code = event.code;
     if (!isChordCode(code)) return;
     const { state, action } = chordKeyUp(this.chordState, code);
@@ -292,7 +294,7 @@ export class TutorStore {
 
   /**
    * Rebuild the cell buffer from the current prompt's typed text (on entering
-   * chord mode or resuming a persisted chord-mode session). Print alone does
+   * emulated mode or resuming a persisted emulated-mode session). Print alone does
    * not say which spelling was chorded, and a wrong guess decodes the next
    * correct chord as divergent print (the "st" groupsign is also the "still"
    * wordsign, so a canonical buffer for typed "st" reads as the whole word).
@@ -329,10 +331,11 @@ export class TutorStore {
     this.promptEpoch += 1;
   }
 
-  private toggleInputMode(): void {
-    this.voiceOverInput = !this.voiceOverInput;
+  private selectInputMode(mode: InputMode): void {
+    if (mode === this.inputMode) return;
+    this.inputMode = mode;
     this.chordState = EMPTY_CHORD_STATE;
-    if (this.voiceOverInput) {
+    if (mode === 'voiceover') {
       this.cellBuffer = [];
     } else {
       this.reconstructBuffer();
@@ -441,7 +444,7 @@ export class TutorStore {
     saveProgress(this.storage, {
       tutor: this.tutor,
       bestFox: this.bestFox,
-      voiceOverInput: this.voiceOverInput,
+      inputMode: this.inputMode,
     });
   }
 }

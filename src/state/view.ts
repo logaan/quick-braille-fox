@@ -21,6 +21,7 @@ import {
 } from '../core';
 import type { SkillGroup } from '../data/skills';
 import { skills } from '../data/skills';
+import type { InputMode } from './modes';
 import type { BestFox } from './persistence';
 
 /** One of the (up to) 5 skills currently being taught. */
@@ -92,8 +93,8 @@ export interface AppViewModel {
   readonly resetConfirmText: string;
   /** True once resetConfirmText matches RESET_CONFIRM_WORD; gates the erase. */
   readonly canConfirmReset: boolean;
-  /** True: input via VoiceOver braille screen input. False: QWERTY chording. */
-  readonly voiceOverInput: boolean;
+  /** Which input mode the drill is in; see InputMode. */
+  readonly inputMode: InputMode;
   /**
    * Identity of the current prompt instance. The UI keys the uncontrolled
    * drill input on it, so the field clears (remounts) only at a prompt
@@ -114,8 +115,8 @@ export interface AppHandlers {
   readonly onDrillKeyDown: (event: KeyboardEvent<HTMLInputElement>) => void;
   /** Wire to the drill input's keyup (chord commit). */
   readonly onDrillKeyUp: (event: KeyboardEvent<HTMLInputElement>) => void;
-  /** Toggle between VoiceOver braille screen input and QWERTY chording. */
-  readonly onInputModeToggle: () => void;
+  /** Choose the input mode: emulated (QWERTY chording) or VoiceOver. */
+  readonly onInputModeSelect: (mode: InputMode) => void;
   /** Dismiss the fox result screen and move to the next prompt. */
   readonly onFoxContinue: () => void;
   readonly onResetRequest: () => void;
@@ -164,7 +165,7 @@ export interface ViewSources {
   readonly confirmingReset: boolean;
   /** Raw text typed into the reset confirmation field (store-owned). */
   readonly resetConfirmText: string;
-  readonly voiceOverInput: boolean;
+  readonly inputMode: InputMode;
   /** Identity of the current prompt instance (store-owned epoch). */
   readonly promptKey: number;
   /** Cells committed by chording this prompt (empty in VoiceOver mode). */
@@ -209,9 +210,8 @@ function foxFailureView(src: ViewSources): FoxFailureView | null {
   if (p === null || !p.isFox || !p.completed || !p.failed) return null;
   const expected = expectedSignAt(p.text, p.typed);
   if (expected === null) return null;
-  const typed = src.voiceOverInput
-    ? ''
-    : dotsToUnicode(divergentCells(src.cellBuffer, p.text));
+  const typed =
+    src.inputMode === 'voiceover' ? '' : dotsToUnicode(divergentCells(src.cellBuffer, p.text));
   return {
     expected: expected.unicode,
     expectedPrint: expected.print,
@@ -252,7 +252,7 @@ export function buildViewModel(src: ViewSources): AppViewModel {
     confirmingReset: src.confirmingReset,
     resetConfirmText: src.resetConfirmText,
     canConfirmReset: matchesResetWord(src.resetConfirmText),
-    voiceOverInput: src.voiceOverInput,
+    inputMode: src.inputMode,
     promptKey: src.promptKey,
   };
 }

@@ -228,7 +228,7 @@ export function Drill(props: DrillProps): ReactElement {
     id: 'drill-input',
     type: 'text',
     defaultValue: vm.typed,
-    'aria-describedby': vm.voiceOverInput ? undefined : 'chord-help',
+    'aria-describedby': vm.inputMode === 'emulated' ? 'chord-help' : undefined,
     onChange: on.onInput,
     // In chord mode these drive typing (dot keys, space, backspace); they
     // no-op while VoiceOver input is on.
@@ -269,7 +269,7 @@ export function Drill(props: DrillProps): ReactElement {
       e(PromptText, { text: vm.promptText, typed: vm.typed }),
     ),
     showResult ? null : input,
-    vm.voiceOverInput
+    vm.inputMode !== 'emulated'
       ? null
       : e(
           'p',

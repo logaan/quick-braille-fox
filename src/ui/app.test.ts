@@ -151,7 +151,7 @@ describe('App rendering', () => {
 
   it('describes the chording keys while chord mode is on', () => {
     const store = createTutorStore({ seed: 1 });
-    store.handlers.onInputModeToggle();
+    store.handlers.onInputModeSelect('emulated');
     const html = render(store);
     expect(html).toContain('Chording: F D S');
     expect(html).toContain('aria-describedby="chord-help"');
@@ -175,19 +175,24 @@ describe('App rendering', () => {
     expect(html).not.toContain(`class="char-wrong">${text[0] ?? ''}</span>`);
   });
 
-  it('renders the input-mode switch, checked by default', () => {
+  it('renders the input-mode picker with VoiceOver selected by default', () => {
     const store = createTutorStore({ seed: 1 });
     const html = render(store);
-    expect(html).toContain('role="switch"');
-    expect(html).toContain('aria-checked="true"');
-    expect(html).toContain('VoiceOver input');
+    expect(html).toContain('role="radiogroup"');
+    expect(html).toContain('aria-label="Input mode"');
+    expect(html).toContain('Emulated');
+    expect(html).toContain('VoiceOver');
+    expect(html).toContain('checked="" value="voiceover"');
+    expect(html).toContain('value="emulated"');
+    expect(html).not.toContain('checked="" value="emulated"');
   });
 
-  it('unchecks the switch after toggling, keeping the drill input mounted', () => {
+  it('checks Emulated once selected, keeping the drill input mounted', () => {
     const store = createTutorStore({ seed: 1 });
-    store.handlers.onInputModeToggle();
+    store.handlers.onInputModeSelect('emulated');
     const html = render(store);
-    expect(html).toContain('aria-checked="false"');
+    expect(html).toContain('checked="" value="emulated"');
+    expect(html).not.toContain('checked="" value="voiceover"');
     expect(html).toContain('id="drill-input"');
   });
 
@@ -219,7 +224,7 @@ describe('App rendering', () => {
 
   it('also shows the chorded cells that broke a run in chord mode', () => {
     const store = foxReadyStore();
-    store.handlers.onInputModeToggle(); // chord mode
+    store.handlers.onInputModeSelect('emulated'); // emulated mode
     for (const code of ['KeyF', 'KeyS', 'KeyK']) chordDown(store, code); // ⠕ = "o"
     for (const code of ['KeyF', 'KeyS', 'KeyK']) chordUp(store, code);
     const html = render(store);

@@ -89,7 +89,7 @@ function chordSpace(store: TutorStore): void {
 }
 
 function chordMode(store: TutorStore): void {
-  if (store.viewModel().voiceOverInput) store.handlers.onInputModeToggle();
+  store.handlers.onInputModeSelect('emulated');
 }
 
 // --- rendering enumeration ---------------------------------------------------
