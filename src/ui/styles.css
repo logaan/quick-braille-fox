@@ -466,13 +466,6 @@ input:focus-visible {
   background: var(--accent);
   border-radius: 1px;
   vertical-align: text-bottom;
-  animation: caret-blink 1.1s steps(1) infinite;
-}
-
-@keyframes caret-blink {
-  50% {
-    opacity: 0;
-  }
 }
 
 /* The input is visible on purpose: it shows exactly what VoiceOver braille
