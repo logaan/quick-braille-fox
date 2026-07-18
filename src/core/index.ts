@@ -14,6 +14,9 @@ export {
 
 export { capitalizeFirst, commonPrefixLength } from './text';
 
+export type { Column, RowModel, RowModelInput } from './columns';
+export { buildRowModel } from './columns';
+
 export { WORDS } from './corpus';
 
 export type { AttributedBackTranslation, BackTranslateOptions } from './backtranslate';
