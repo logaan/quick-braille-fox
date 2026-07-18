@@ -4,7 +4,7 @@ import type { Skill } from '../data/skills';
 import { skills } from '../data/skills';
 import { translate } from './braille';
 import { WORDS } from './corpus';
-import { knownSkillIds } from './progress';
+import { activeSkills, knownSkillIds } from './progress';
 import { generatePrompt, pickTarget } from './prompts';
 import { mulberry32 } from './rng';
 import { keystroke, nextPrompt, startSession } from './session';
@@ -62,6 +62,46 @@ function assertRealWords(text: string): void {
     expect(
       CORPUS.has(run.toLowerCase()),
       `${JSON.stringify(text)} contains non-word ${JSON.stringify(run)}`,
+    ).toBe(true);
+  }
+}
+
+/** Skills a prompt is teaching: the active window plus its own target. */
+function taughtSkillIds(state: TutorState, targetId: string): Set<string> {
+  const taught = new Set(activeSkills(state).map((s) => s.id));
+  taught.add(targetId);
+  return taught;
+}
+
+/** Can any usable word exercise one of these skills? (Digits and the */
+/* capital indicators cannot appear in a plain lowercase word.) */
+function anyWordTeaches(state: TutorState, taught: ReadonlySet<string>): boolean {
+  const known = new Set(knownSkillIds(state));
+  for (const id of taught) known.add(id);
+  return WORDS.some((w) => {
+    let ids: ReadonlyArray<string>;
+    try {
+      ids = translate(w).skillIds;
+    } catch {
+      return false;
+    }
+    return ids.every((id) => known.has(id)) && ids.some((id) => taught.has(id));
+  });
+}
+
+/**
+ * Every word of a prompt must exercise at least one skill currently being
+ * taught — unless no word can, which happens for windows made only of
+ * digits, capital indicators or punctuation.
+ */
+function assertEveryWordTaught(state: TutorState, text: string, targetId: string): void {
+  const taught = taughtSkillIds(state, targetId);
+  if (!anyWordTeaches(state, taught)) return;
+  for (const token of text.split(' ')) {
+    const ids = translate(token).skillIds;
+    expect(
+      ids.some((id) => taught.has(id)),
+      `${JSON.stringify(token)} in ${JSON.stringify(text)} teaches nothing being taught`,
     ).toBe(true);
   }
 }
@@ -182,6 +222,28 @@ describe('generatePrompt', () => {
   });
 });
 
+describe('every word teaches something', () => {
+  it('holds for every skill at the moment it becomes active', () => {
+    for (const target of skills) {
+      const state = learntUpTo(target.id);
+      for (let seed = 1; seed <= 12; seed++) {
+        const s = state.set('seed', seed);
+        assertEveryWordTaught(s, generatePrompt(s, target).text, target.id);
+      }
+    }
+  });
+
+  it('holds when revising a long-learnt skill', () => {
+    const state = learntUpTo('shortform-about');
+    for (const id of ['letter-a', 'letter-m', 'contraction-the', 'punct-period']) {
+      for (let seed = 1; seed <= 12; seed++) {
+        const s = state.set('seed', seed);
+        assertEveryWordTaught(s, generatePrompt(s, skill(id)).text, id);
+      }
+    }
+  });
+});
+
 describe('reachability', () => {
   it('every skill has a generatable prompt the moment it becomes active', () => {
     for (const target of skills) {
@@ -248,7 +310,10 @@ describe('full-session smoke test', () => {
       if (!p) break;
       if (!p.isQbf) {
         expect(p.text.length).toBeGreaterThan(0);
-        if (p.targetSkillId) assertUsesOnlyKnown(state, p.text, p.targetSkillId);
+        if (p.targetSkillId) {
+          assertUsesOnlyKnown(state, p.text, p.targetSkillId);
+          assertEveryWordTaught(state, p.text, p.targetSkillId);
+        }
       }
       state = keystroke(state, p.text); // type it perfectly
       expect(state.promptCounter).toBe(i + 1);

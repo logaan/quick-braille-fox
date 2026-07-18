@@ -248,6 +248,15 @@ skills**, so e.g. "bed" is never asked before the "ed" groupsign is known
 (a braille display would render it ⠃⠫), and capitalised words wait for the
 capital indicator skill.
 
+**Every word of a prompt — not only the one exercising the target — must
+also exercise a skill currently being taught**: the active window, plus the
+target itself when the prompt is a revision of a learnt skill. Otherwise
+the earliest words ("bad cab") would go on padding prompts forever and most
+keystrokes would drill nothing. Some windows hold nothing a plain word can
+show (all digits, the capital indicators, a run of punctuation); there the
+padding falls back to the words drawn from the most recently learnt skills,
+so it is at least fresh revision.
+
 Per target kind:
 
 - **letters** and every contraction kind: a word sequence in which one word
@@ -259,9 +268,10 @@ Per target kind:
 - **number sign**: a known digit; if it activates before any digit is known
   (the window can be full of letters/capitals) it temporarily gets a plain
   gated word prompt until the first digit activates.
-- **capitals**: a sequence containing a Capitalised word
-  (capital-letter-indicator, or "I") or an ALL-CAPS word
-  (capital-word-indicator).
+- **capitals**: a sequence in which *every* word is Capitalised
+  (capital-letter-indicator, or "I") or ALL-CAPS
+  (capital-word-indicator) — no plain word exercises a capital indicator,
+  so lowercase padding would teach nothing.
 - **punctuation/symbols**: in context — terminal marks end a word sequence
   (`bad cab.`), separators sit between words (`hat, top`), enclosures wrap
   a word (`[dog]`, `“cat”`), joiners join two (`day/if`, `cat — dog`),

@@ -15,6 +15,12 @@
 // succeeds and uses only known skills — so "bed" is off-limits until the
 // "ed" groupsign is known (a braille display would render it ⠃⠫), and a
 // capitalised word is off-limits until the capital indicator is known.
+//
+// Every word of a prompt — not just the one exercising the target — must
+// also exercise at least one skill that is *currently being taught* (the
+// active window, plus the target when it is a revision item). Otherwise
+// the earliest-learnt words would go on filling prompts forever, and a
+// prompt would spend most of its keystrokes on nothing being taught.
 
 import type { Skill } from '../data/skills';
 import { skills } from '../data/skills';
@@ -54,6 +60,20 @@ function usable(text: string, known: ReadonlySet<string>, requiredId?: string): 
   return requiredId === undefined || translation.skillIds.includes(requiredId);
 }
 
+/** The skills a text exercises, or null if it does not translate. */
+function skillIdsOf(text: string): ReadonlySet<string> | null {
+  try {
+    return new Set(translate(text).skillIds);
+  } catch {
+    return null;
+  }
+}
+
+function intersects(ids: ReadonlySet<string>, other: ReadonlySet<string>): boolean {
+  for (const id of ids) if (other.has(id)) return true;
+  return false;
+}
+
 // --- Target selection -------------------------------------------------------
 
 /**
@@ -86,18 +106,68 @@ function pickRevision(state: TutorState, learnt: ReadonlyArray<Skill>, rng: Rng)
 
 // --- Word pools --------------------------------------------------------------
 
-/** All corpus words usable with the given known set, plus "I" if usable. */
-function fillerWords(known: ReadonlySet<string>): string[] {
-  const words = WORDS.filter((w) => usable(w, known));
-  if (usable('I', known)) words.push('I');
-  return words;
+/** A corpus word that translates using only known skills. */
+interface UsableWord {
+  readonly word: string;
+  readonly skillIds: ReadonlySet<string>;
+}
+
+/** Every corpus word (plus "I") usable with the given known set. */
+function usableWords(known: ReadonlySet<string>): UsableWord[] {
+  const out: UsableWord[] = [];
+  for (const word of [...WORDS, 'I']) {
+    const skillIds = skillIdsOf(word);
+    if (skillIds === null) continue;
+    let allKnown = true;
+    for (const id of skillIds) {
+      if (!known.has(id)) {
+        allKnown = false;
+        break;
+      }
+    }
+    if (allKnown) out.push({ word, skillIds });
+  }
+  return out;
+}
+
+/**
+ * Words to pad a prompt with: usable words that each exercise at least one
+ * skill currently being taught.
+ *
+ * A window can hold nothing a plain word shows — all digits, the capital
+ * indicators, a run of punctuation — and then no word qualifies. Rather
+ * than reopening the whole corpus (which would put "bad cab" in prompts
+ * forever), fall back to the words built from the most recently learnt
+ * skills, so the filler is at least fresh revision.
+ */
+function fillerWords(pool: ReadonlyArray<UsableWord>, focus: ReadonlySet<string>): string[] {
+  const focused = pool.filter((w) => intersects(w.skillIds, focus));
+  if (focused.length > 0) return focused.map((w) => w.word);
+  return recentWords(pool);
+}
+
+/** Curriculum order of a skill id (-1 for ids outside the curriculum). */
+const SKILL_ORDER = new Map(skills.map((s) => [s.id, s.order] as const));
+
+/** How many words the recent-material fallback keeps. */
+const RECENT_FILLER_WORDS = 24;
+
+/** The usable words drawing on the latest curriculum material. */
+function recentWords(pool: ReadonlyArray<UsableWord>): string[] {
+  const latest = (w: UsableWord) => {
+    let max = -1;
+    for (const id of w.skillIds) max = Math.max(max, SKILL_ORDER.get(id) ?? -1);
+    return max;
+  };
+  return [...pool]
+    .sort((a, b) => latest(b) - latest(a))
+    .slice(0, RECENT_FILLER_WORDS)
+    .map((w) => w.word);
 }
 
 /** Usable words whose translation exercises the required skill. */
-function targetWords(known: ReadonlySet<string>, requiredId: string): string[] {
-  const words = WORDS.filter((w) => usable(w, known, requiredId));
-  if (usable('I', known, requiredId)) words.push('I');
-  return words;
+function targetWords(pool: ReadonlyArray<UsableWord>, requiredId: string): string[] {
+  return pool.filter((w) => w.skillIds.has(requiredId)).map((w) => w.word);
 }
 
 function maxSequenceLength(state: TutorState): number {
@@ -152,23 +222,45 @@ export function generatePrompt(state: TutorState, targetSkill: Skill): Generated
   };
 }
 
+/** Everything the per-kind generators need besides the target and the Rng. */
+interface PromptContext {
+  /** Skills the prompt may use at all (learnt ∪ active ∪ the target). */
+  readonly known: ReadonlySet<string>;
+  /** Usable corpus words with the skills each exercises. */
+  readonly pool: ReadonlyArray<UsableWord>;
+  /** Words every prompt word is drawn from — each exercises a taught skill. */
+  readonly filler: ReadonlyArray<string>;
+  /** Longest word sequence to emit. */
+  readonly max: number;
+}
+
 /** Internal variant sharing the caller's Rng (used by nextPrompt). */
 export function generatePromptText(state: TutorState, target: Skill, rng: Rng): string {
   const known = new Set(knownSkillIds(state));
   known.add(target.id); // always allowed to use the skill being drilled
-  const max = maxSequenceLength(state);
+  // Skills "currently being taught": the active window, plus the target
+  // itself, which is a learnt skill when this prompt is a revision item.
+  const focus = new Set(activeSkills(state).map((s) => s.id));
+  focus.add(target.id);
+  const pool = usableWords(known);
+  const ctx: PromptContext = {
+    known,
+    pool,
+    filler: fillerWords(pool, focus),
+    max: maxSequenceLength(state),
+  };
   switch (target.kind) {
     case 'number':
       return digitPrompt(target, known, rng);
     case 'number-sign':
-      return numberSignPrompt(known, rng, max);
+      return numberSignPrompt(ctx, rng);
     case 'punctuation':
-      return punctuationPrompt(target, known, rng, max);
+      return punctuationPrompt(target, ctx, rng);
     case 'capital':
-      return capitalPrompt(target, known, rng, max);
+      return capitalPrompt(target, ctx, rng);
     default:
       // letters and all word/contraction kinds
-      return wordPrompt(target, known, rng, max);
+      return wordPrompt(target, ctx, rng);
   }
 }
 
@@ -189,18 +281,17 @@ function printIsRealWord(target: Skill): boolean {
   }
 }
 
-function wordPrompt(target: Skill, known: ReadonlySet<string>, rng: Rng, max: number): string {
-  const targets = targetWords(known, target.id);
-  const filler = fillerWords(known);
+function wordPrompt(target: Skill, ctx: PromptContext, rng: Rng): string {
+  const targets = targetWords(ctx.pool, target.id);
   if (targets.length > 0) {
-    return wordSequence(choice(targets, rng) as string, filler, rng, max);
+    return wordSequence(choice(targets, rng) as string, ctx.filler, rng, ctx.max);
   }
   // No corpus word exercises the target. If the print form is itself a real
   // word ("and", "about", "a") use it; otherwise emit *some* real-word
   // prompt rather than nonsense (the reachability tests guarantee this
   // branch is never needed for real curriculum states).
-  if (printIsRealWord(target) && usable(target.print, known)) return target.print;
-  return fillerSequence(filler, rng, max) ?? 'a';
+  if (printIsRealWord(target) && usable(target.print, ctx.known)) return target.print;
+  return fillerSequence(ctx.filler, rng, ctx.max) ?? 'a';
 }
 
 function knownDigitPrints(known: ReadonlySet<string>): string[] {
@@ -219,19 +310,19 @@ function digitPrompt(target: Skill, known: ReadonlySet<string>, rng: Rng): strin
   return target.print;
 }
 
-function numberSignPrompt(known: ReadonlySet<string>, rng: Rng, max: number): string {
+function numberSignPrompt(ctx: PromptContext, rng: Rng): string {
   // Typing any digit exercises the number sign (braille input needs ⠼).
-  const digit = choice(knownDigitPrints(known), rng);
+  const digit = choice(knownDigitPrints(ctx.known), rng);
   if (digit !== undefined) return digit;
   // The number sign can become active before any digit is (the 5-skill
   // window may still be full of letters/capitals). A digit prompt would
   // need an unknown digit skill, so emit an ordinary gated word prompt;
   // the sign gets drilled as soon as the first digit activates.
-  return fillerSequence(fillerWords(known), rng, max) ?? 'a';
+  return fillerSequence(ctx.filler, rng, ctx.max) ?? 'a';
 }
 
-function capitalPrompt(target: Skill, known: ReadonlySet<string>, rng: Rng, max: number): string {
-  const filler = fillerWords(known).filter((w) => /^[a-z]+$/.test(w));
+function capitalPrompt(target: Skill, ctx: PromptContext, rng: Rng): string {
+  const filler = ctx.filler.filter((w) => /^[a-z]+$/.test(w));
   const isWordIndicator = target.id === 'capital-word-indicator';
   const transform = isWordIndicator
     ? (w: string) => w.toUpperCase()
@@ -239,21 +330,19 @@ function capitalPrompt(target: Skill, known: ReadonlySet<string>, rng: Rng, max:
   const candidates = filler
     .filter((w) => (isWordIndicator ? w.length >= 2 : true))
     .map(transform)
-    .filter((w) => usable(w, known, target.id));
-  if (!isWordIndicator && usable('I', known, target.id)) candidates.push('I');
+    .filter((w) => usable(w, ctx.known, target.id));
+  if (!isWordIndicator && usable('I', ctx.known, target.id)) candidates.push('I');
   if (candidates.length === 0) {
-    return fillerSequence(filler, rng, max) ?? 'a';
+    return fillerSequence(filler, rng, ctx.max) ?? 'a';
   }
-  return wordSequence(choice(candidates, rng) as string, filler, rng, max);
+  // Every word is capitalised, not just one: no plain word exercises a
+  // capital indicator, so mixing lowercase filler in would spend most of
+  // the prompt on skills that are not being taught.
+  return fillerSequence(candidates, rng, ctx.max) as string;
 }
 
-function punctuationPrompt(
-  target: Skill,
-  known: ReadonlySet<string>,
-  rng: Rng,
-  max: number,
-): string {
-  const filler = fillerWords(known);
+function punctuationPrompt(target: Skill, ctx: PromptContext, rng: Rng): string {
+  const { known, filler, max } = ctx;
   const digits = knownDigitPrints(known);
   const w = () => choice(filler, rng) as string;
   const d = () => choice(digits, rng) as string;
