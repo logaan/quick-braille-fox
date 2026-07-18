@@ -1,13 +1,21 @@
 // App header: the "qbf" brand as three braille cells, the best qbf result,
 // and the reset-progress control (with its confirm step).
 
-import { createElement as e, type ReactElement } from 'react';
+import {
+  createElement as e,
+  type ChangeEvent,
+  type KeyboardEvent,
+  type ReactElement,
+} from 'react';
 import type { AppHandlers, BestQbf } from '../state';
+import { RESET_CONFIRM_WORD } from '../state';
 import { formatPercent } from './labels';
 
 export interface HeaderProps {
   readonly bestQbf: BestQbf | null;
   readonly confirmingReset: boolean;
+  readonly resetConfirmText: string;
+  readonly canConfirmReset: boolean;
   readonly voiceOverInput: boolean;
   readonly on: AppHandlers;
 }
@@ -53,8 +61,49 @@ function InputModeToggle(props: {
   );
 }
 
+/**
+ * The confirm step for an unrecoverable erase: the word has to be typed out
+ * before the erase button unlocks. Enter submits once it matches.
+ */
+function ResetConfirm(props: {
+  readonly text: string;
+  readonly canConfirm: boolean;
+  readonly on: AppHandlers;
+}): ReactElement {
+  const { text, canConfirm, on } = props;
+  return e(
+    'span',
+    { className: 'reset-confirm' },
+    e('span', null, `Erase all progress? Type “${RESET_CONFIRM_WORD}” to confirm.`),
+    e('input', {
+      type: 'text',
+      className: 'reset-confirm-input',
+      value: text,
+      autoFocus: true,
+      autoComplete: 'off',
+      autoCorrect: 'off',
+      autoCapitalize: 'off',
+      spellCheck: false,
+      placeholder: RESET_CONFIRM_WORD,
+      'aria-label': `Type ${RESET_CONFIRM_WORD} to confirm erasing all progress`,
+      onChange: (event: ChangeEvent<HTMLInputElement>) =>
+        on.onResetTextChange(event.currentTarget.value),
+      onKeyDown: (event: KeyboardEvent<HTMLInputElement>) => {
+        if (event.key === 'Enter' && canConfirm) on.onResetConfirm();
+        if (event.key === 'Escape') on.onResetCancel();
+      },
+    }),
+    e(
+      'button',
+      { className: 'btn btn-danger', disabled: !canConfirm, onClick: on.onResetConfirm },
+      'Erase',
+    ),
+    e('button', { className: 'btn', onClick: on.onResetCancel }, 'Cancel'),
+  );
+}
+
 export function Header(props: HeaderProps): ReactElement {
-  const { bestQbf, confirmingReset, voiceOverInput, on } = props;
+  const { bestQbf, confirmingReset, resetConfirmText, canConfirmReset, voiceOverInput, on } = props;
   return e(
     'header',
     { className: 'app-header' },
@@ -71,13 +120,7 @@ export function Header(props: HeaderProps): ReactElement {
       e(InputModeToggle, { voiceOverInput, onToggle: on.onInputModeToggle }),
       bestQbf === null ? null : e(BestQbfBadge, { best: bestQbf }),
       confirmingReset
-        ? e(
-            'span',
-            { className: 'reset-confirm' },
-            e('span', null, 'Erase all progress?'),
-            e('button', { className: 'btn btn-danger', onClick: on.onResetConfirm }, 'Erase'),
-            e('button', { className: 'btn', onClick: on.onResetCancel }, 'Cancel'),
-          )
+        ? e(ResetConfirm, { text: resetConfirmText, canConfirm: canConfirmReset, on })
         : e(
             'button',
             { className: 'btn btn-quiet', onClick: on.onResetRequest },

@@ -252,6 +252,23 @@ input:focus-visible {
   font-size: 0.9rem;
 }
 
+/* The word has to be typed here before the erase button unlocks. */
+.reset-confirm-input {
+  font: inherit;
+  font-size: 0.85rem;
+  width: 6rem;
+  color: var(--text);
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  padding: 0.35rem 0.8rem;
+}
+
+.reset-confirm-input:focus {
+  outline: none;
+  border-color: var(--accent-line);
+}
+
 /* --- Buttons -------------------------------------------------------------- */
 
 .btn {
@@ -270,6 +287,15 @@ input:focus-visible {
 .btn:hover {
   border-color: var(--accent-line);
   background: var(--accent-tint);
+}
+
+.btn:disabled,
+.btn:disabled:hover {
+  color: var(--dim);
+  background: var(--surface);
+  border-color: var(--line);
+  cursor: not-allowed;
+  opacity: 0.6;
 }
 
 .btn-quiet {

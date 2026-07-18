@@ -22,7 +22,7 @@ import { EMPTY_CHORD_STATE, chordKeyDown, chordKeyUp, isChordCode } from './chor
 import type { BestQbf, StorageLike } from './persistence';
 import { clearProgress, loadProgress, saveProgress } from './persistence';
 import type { AppHandlers, AppViewModel } from './view';
-import { buildViewModel } from './view';
+import { buildViewModel, matchesResetWord } from './view';
 
 export interface TutorStoreOptions {
   /** Where to persist progress; omit/null to disable persistence. */
@@ -47,6 +47,8 @@ export class TutorStore {
    */
   private promptEpoch = 0;
   private confirmingReset = false;
+  /** What the user has typed into the reset confirmation field. */
+  private resetConfirmText = '';
   /** Reveal units of the hinted word currently uncovered (not persisted). */
   private hintUnitsRevealed = 0;
   /** Identifies the prompt+word the reveal progress belongs to. */
@@ -102,13 +104,25 @@ export class TutorStore {
       onQbfContinue: () => this.continueAfterQbf(),
       onResetRequest: () => {
         this.confirmingReset = true;
+        this.resetConfirmText = '';
         this.notify();
       },
       onResetCancel: () => {
         this.confirmingReset = false;
+        this.resetConfirmText = '';
         this.notify();
       },
-      onResetConfirm: () => this.resetProgress(),
+      onResetTextChange: (value) => {
+        this.resetConfirmText = value;
+        this.notify();
+      },
+      // Erasing everything is unrecoverable, so it needs the word typed out —
+      // the UI disables the button too, but the guard lives here as well so
+      // the rule holds however the handler is reached.
+      onResetConfirm: () => {
+        if (!matchesResetWord(this.resetConfirmText)) return;
+        this.resetProgress();
+      },
     };
 
     if (typeof window !== 'undefined') {
@@ -138,6 +152,7 @@ export class TutorStore {
       bestQbf: this.bestQbf,
       lastQbf: this.lastQbf,
       confirmingReset: this.confirmingReset,
+      resetConfirmText: this.resetConfirmText,
       hintUnitsRevealed: this.hintUnitsRevealed,
       voiceOverInput: this.voiceOverInput,
       promptKey: this.promptEpoch,
@@ -337,6 +352,7 @@ export class TutorStore {
     this.lastQbf = null;
     this.qbfCellsTyped = 0;
     this.confirmingReset = false;
+    this.resetConfirmText = '';
     this.cellBuffer = [];
     this.chordState = EMPTY_CHORD_STATE;
     this.promptEpoch += 1;
