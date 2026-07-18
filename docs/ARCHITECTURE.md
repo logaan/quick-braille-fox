@@ -156,31 +156,45 @@ everything from `src/core` (`import { startSession, keystroke } from
   contraction, a digit; indicators like capitals and the number sign ride
   along with their unit and score too). Typing an occurrence earns its
   skills +2 (`CLEAN_AWARD`) when typed with **no mistake on that occurrence
-  before the hint became visible**, else +1 (`BASE_AWARD`) — typing a skill
-  always earns at least a point, so hinted progress is real progress, just
-  half as fast, and scores climb (and the hint delay below lengthens) even
-  while the learner still leans on the hint. In "a cad ebb", hinted with no
-  mistakes, "a" scores 2 (two occurrences), c/d/e score 1, "b" scores 2.
-  Awards land with the hint state at the moment of typing: units typed
-  before the hint appeared keep their +2.
+  and before that occurrence's own hint was revealed**, else +1
+  (`BASE_AWARD`) — typing a skill always earns at least a point, so hinted
+  progress is real progress, just half as fast, and scores climb (and the
+  hint delay below lengthens) even while the learner still leans on the
+  hint. In "a cad ebb", every sign hinted and no mistakes, "a" scores 2
+  (two occurrences), c/d/e score 1, "b" scores 2.
+  Cleanliness is tracked **per occurrence** (`prompt.hintedUnits`, and
+  `unitTypedClean` in `types.ts`), never per prompt: needing the hint on one
+  sign costs that sign's bonus and nothing else, so a sign typed promptly
+  keeps its +2 however hinted the rest of the prompt was.
 - One mistake on an occurrence is free (it just drops that occurrence's
   award to +1); the **second mistake on the same occurrence** costs its
   skills 1 point (`MISTAKE_PENALTY`, floored at 0 — this can drop learnt
-  skills below the threshold) and force-shows the hint. A "mistake" is the
+  skills below the threshold) and reveals that occurrence's hint. A "mistake" is the
   transition from matching-prefix to diverged, charged to the occurrence at
   the caret; typing further while already diverged is the same mistake, and
   a fresh divergence after backspacing to a correct prefix is a new one.
-- Unlearnt skills auto-show the hint after `hintDelayMs(score)` =
-  400 + 300 × score ms (the state layer runs the timer and calls
-  `revealHint`). Learnt skills get **no** time-based hint (`hintDelayFor`
-  returns null); their hint appears only via the two-mistake rule.
+- Hints are revealed **one sign at a time**, and each sign's countdown
+  starts **when the caret reaches it** — that is, when the sign before it
+  has been typed. Revealing one sign never starts the clock on the next:
+  taking ten minutes over one sign costs the following sign none of its
+  time. A caret sitting on a space has no countdown at all (a space unit
+  bears no skill), so the first sign of a word starts its clock only once
+  the space before it is typed.
+- The wait is `hintDelayMs(score)` = 400 + 300 × score ms for the first sign
+  hinted in a prompt, and `HINT_REVEAL_COOLDOWN_MS` (1000 ms) for each sign
+  after that — once the learner is leaning on the hint the rest comes at the
+  faster cadence, but still a sign at a time and still only as they type.
+  Learnt skills get **no** time-based hint (`hintDelayFor` returns null);
+  their hint appears only via the two-mistake rule.
+- Core `nextHintFor(state)` (`hints.ts`) is what puts this together: it
+  names the sign currently on the clock and its wait, and the state layer
+  runs exactly one timer from it, calling `revealHint(state, unitIndex)`
+  when it fires.
 - A showing hint never dumps the whole answer: it covers only the **word at
-  the caret** (VoiceOver braille screen input commits whole words), revealed
-  **one sign at a time** — one reveal unit immediately, then one more every
-  `HINT_REVEAL_COOLDOWN_MS` (1000 ms) until the word is uncovered
-  (`hintWordForPrompt` in `hints.ts` supplies the units; the state layer
-  paces the reveal and restarts it at one unit when the caret enters a new
-  word).
+  the caret** (VoiceOver braille screen input commits whole words), and
+  within that word only the signs already revealed (`hintWordForPrompt`
+  supplies the word's units with their prompt-wide indexes; the view shows
+  their leading revealed run).
 - Every 100th completed prompt (`QBF_INTERVAL`) is the qbf challenge — the
   fixed sentence `QBF_SENTENCE`, no hints ever, any first wrong character
   fails it instantly and moves on.
@@ -201,7 +215,7 @@ Prompt = Record<{
   typed: string;                // latest typed text fed to keystroke()
   unitMistakes: Map<number, number>; // mistakes per translation-unit index
   awardedUnits: Set<number>;    // unit indexes already scored this prompt
-  hintShown: boolean;
+  hintedUnits: Set<number>;     // unit indexes whose hint has been revealed
   diverged: boolean;            // typed currently diverges from the text
   completed: boolean;           // finished (typed correctly, or qbf failed)
   failed: boolean;              // qbf only
@@ -209,7 +223,7 @@ Prompt = Record<{
 ```
 
 Factories `makeTutorState(props?)` / `makePrompt(props?)` are exported for
-the state layer and tests. `answerBeforeHintPossible(prompt)` says whether a
+the state layer and tests. `unitTypedClean(prompt, unitIndex)` says whether an
 correct answer can still earn the +2.
 
 ### Session flow (`session.ts`)
@@ -219,7 +233,7 @@ correct answer can still earn the +2.
 | `startSession(seed?)` | fresh state with the first prompt generated; pass e.g. `Date.now()` for variety (defaults to 1, fully deterministic) |
 | `nextPrompt(state)` | replace the current prompt with a new one (call after completion, or to skip). Serves the qbf challenge when `(promptCounter + 1) % 100 === 0`. Consumes and refreshes `seed` |
 | `keystroke(state, typed)` | feed the full *resulting* typed text after an input event (not a single key). Handles progressive prefix matching, per-occurrence immediate scoring, mistake events, qbf instant-fail, completion, and `promptCounter`. Ignores input once completed |
-| `revealHint(state)` | mark the hint as shown (state layer calls this when the `hintDelayFor` timer fires). No-op for qbf |
+| `revealHint(state, unitIndex)` | uncover one sign's hint (state layer calls this when that sign's timer fires). No-op for qbf |
 | `isPromptComplete(state)` | whether to move on (then call `nextPrompt`) |
 | `serialize(state)` | plain `SerializedTutorState` object, JSON-safe (versioned, `version: 1`) |
 | `deserialize(obj)` | rebuild a `TutorState`; lenient about missing fields, throws `TypeError` on garbage/unknown version |
@@ -233,7 +247,7 @@ correct answer can still earn the +2.
 | `learntSkills(state)` / `activeSkills(state)` | `Skill[]` in curriculum order |
 | `knownSkillIds(state)` | `Set` of learnt ∪ active ids |
 | `progressSummary(state)` | `{ totalSkills, learntCount, promptsCompleted, active: [{ id, print, score }] }` |
-| `hintDelayFor(state)` | ms until auto-hint for the current prompt, or `null` (no prompt / hint already shown / qbf / learnt-skill revision) |
+| `hintDelayFor(state)` | ms a sign waits before the *first* hint of the current prompt, or `null` (no prompt / qbf / learnt-skill revision) |
 
 ### Prompt generation (`prompts.ts`, `corpus.ts`)
 
@@ -287,7 +301,8 @@ a–e are known).
 | `textToCells(text)` / `textToUnicode(text)` | cells / U+2800 string for braille display |
 | `cellCount(text)` | number of cells (spaces count as one blank cell each) |
 | `dotsToUnicode(cells)` | dot-number arrays → U+2800 string |
-| `hintWordForPrompt(state)` (`hints.ts`) | the caret word's braille as reveal units: `{ wordStart, units: string[] }`, `null` for qbf/no prompt/nothing after the caret |
+| `hintWordForPrompt(state)` (`hints.ts`) | the caret word's braille as reveal units: `{ wordStart, units: { index, unicode }[] }`, `null` for qbf/no prompt/nothing after the caret |
+| `nextHintFor(state)` (`hints.ts`) | the sign whose hint is on the clock and its wait: `{ unitIndex, delayMs }`, or `null` when nothing is counting down |
 | `CAPITAL_INDICATOR` | the dot-6 capital letter indicator cell |
 
 The translator applies the canonical patterns from skills.json with
@@ -408,19 +423,18 @@ if it had diverged. For qbf cell counting each committed chord (cell **or**
 space) counts as one cell; Backspace never decrements — so chording the
 canonical 36 cells earns the crown and spelling a shortform out costs extra.
 
-**Hint timer.** After every state change the store cancels and re-arms a
-single `setTimeout` from core `hintDelayFor(state)` — so a new prompt, any
-keystroke, or a mistake restarts the countdown, and qbf prompts,
-learnt-skill revision, and already-shown hints (null delay) have no timer.
-When it fires it dispatches core `revealHint`.
-
-**Hint reveal cooldown.** Once the hint is showing, a second timer paces
-what it contains: one reveal unit of the caret word (from core
-`hintWordForPrompt`) is uncovered immediately and one more every
-`HINT_REVEAL_COOLDOWN_MS` until the word is fully uncovered. The uncovered
-count is store-local (not persisted) and resets to one whenever the reveal
-moves to a different word — a new prompt, or the caret crossing into the
-next word; keystrokes within the word leave the running cooldown alone.
+**Hint timer.** A single `setTimeout`, driven by core `nextHintFor(state)`,
+which names the sign on the clock (always the one at the caret) and its
+wait. After every state change the store compares that sign against the one
+its running timer is for — keyed `promptEpoch|unitIndex`, so a new prompt
+never inherits the previous one's clock — and **re-arms only when the sign
+changes**, i.e. when the caret moves. That is what makes a sign's countdown
+start on arrival rather than chaining off the previous reveal: while the
+caret stays put, the running clock is left alone; once the caret's sign has
+been revealed `nextHintFor` returns null and nothing counts down until the
+caret moves on. When the timer fires it dispatches `revealHint(state,
+unitIndex)`. The revealed set lives in the core, so it persists across a
+reload rather than being store-local.
 
 **Persistence (`persistence.ts`).** A versioned envelope
 (`qbf-progress-v1`) in localStorage: `{ version, tutor: serialize(state),

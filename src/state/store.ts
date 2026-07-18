@@ -6,11 +6,9 @@
 import type { ChangeEvent, KeyboardEvent } from 'react';
 import type { Cell, QbfResult, TutorState } from '../core';
 import {
-  HINT_REVEAL_COOLDOWN_MS,
   backTranslateBuffer,
-  hintDelayFor,
-  hintWordForPrompt,
   keystroke,
+  nextHintFor,
   nextPrompt,
   qbfResult,
   revealHint,
@@ -47,10 +45,6 @@ export class TutorStore {
    */
   private promptEpoch = 0;
   private confirmingReset = false;
-  /** Reveal units of the hinted word currently uncovered (not persisted). */
-  private hintUnitsRevealed = 0;
-  /** Identifies the prompt+word the reveal progress belongs to. */
-  private hintRevealKey: string | null = null;
 
   /** True: input via VoiceOver braille screen input. False: QWERTY chording. */
   private voiceOverInput = true;
@@ -65,7 +59,12 @@ export class TutorStore {
 
   private readonly listeners = new Set<() => void>();
   private hintTimer: ReturnType<typeof setTimeout> | null = null;
-  private hintRevealTimer: ReturnType<typeof setTimeout> | null = null;
+  /**
+   * Which sign the running hint timer is counting down for, as
+   * `promptEpoch|unitIndex` — the epoch included so a new prompt never
+   * inherits the previous one's running clock for the same unit index.
+   */
+  private hintTimerKey: string | null = null;
   private saveTimer: ReturnType<typeof setTimeout> | null = null;
 
   /** Stable event-handler object for the UI to attach to DOM events. */
@@ -120,7 +119,6 @@ export class TutorStore {
       });
     }
     this.syncHintTimer();
-    this.syncHintReveal();
   }
 
   /** Subscribe to store changes; returns an unsubscribe function. */
@@ -138,7 +136,6 @@ export class TutorStore {
       bestQbf: this.bestQbf,
       lastQbf: this.lastQbf,
       confirmingReset: this.confirmingReset,
-      hintUnitsRevealed: this.hintUnitsRevealed,
       voiceOverInput: this.voiceOverInput,
       promptKey: this.promptEpoch,
     });
@@ -166,7 +163,6 @@ export class TutorStore {
   /** After every tutor-state transition: re-arm timers, persist, re-render. */
   private changed(): void {
     this.syncHintTimer();
-    this.syncHintReveal();
     this.scheduleSave();
     this.notify();
   }
@@ -344,68 +340,37 @@ export class TutorStore {
   }
 
   /**
-   * Cancel and re-arm the auto-hint timer from the core's hintDelayFor():
-   * called after every state change, so a new prompt, a keystroke, or a
-   * mistake all restart the countdown; qbf prompts, learnt-skill revision,
-   * and already-shown hints yield null (no timer).
+   * Keep the hint countdown in sync with the tutor state. Core
+   * nextHintFor() names the sign whose hint is due next — always the one at
+   * the caret — and how long it waits.
+   *
+   * The timer is (re)started only when that sign *changes*, i.e. when the
+   * caret moves to a new sign. That is the whole point: the countdown for a
+   * sign begins when the learner arrives at it, so a long pause on one sign
+   * costs the next one nothing, and revealing one sign's hint does not
+   * start the clock on the sign after it — typing does. Once the caret's
+   * sign has been revealed, nextHintFor() returns null and no timer runs
+   * until the caret moves on.
    */
   private syncHintTimer(): void {
+    const pending = nextHintFor(this.tutor);
+    const key = pending === null ? null : `${this.promptEpoch}|${pending.unitIndex}`;
+    if (key === this.hintTimerKey) return; // same sign: leave its clock alone
+    this.clearHintTimer();
+    this.hintTimerKey = key;
+    if (pending === null) return;
+    const unitIndex = pending.unitIndex;
+    this.hintTimer = setTimeout(() => {
+      this.hintTimer = null;
+      this.tutor = revealHint(this.tutor, unitIndex);
+      this.changed();
+    }, pending.delayMs);
+  }
+
+  private clearHintTimer(): void {
     if (this.hintTimer !== null) {
       clearTimeout(this.hintTimer);
       this.hintTimer = null;
-    }
-    const delay = hintDelayFor(this.tutor);
-    if (delay === null) return;
-    this.hintTimer = setTimeout(() => {
-      this.hintTimer = null;
-      this.tutor = revealHint(this.tutor);
-      this.changed();
-    }, delay);
-  }
-
-  /**
-   * Keep the hint's progressive reveal in sync with the tutor state: once
-   * the hint is showing, one reveal unit of the caret word is uncovered
-   * immediately and one more every HINT_REVEAL_COOLDOWN_MS until the word
-   * is fully uncovered. A new prompt or the caret moving to another word
-   * restarts the reveal at one unit; keystrokes within the word leave the
-   * running cooldown alone.
-   */
-  private syncHintReveal(): void {
-    const p = this.tutor.prompt;
-    const word =
-      p !== null && p.hintShown && !p.completed ? hintWordForPrompt(this.tutor) : null;
-    if (word === null) {
-      this.hintRevealKey = null;
-      this.hintUnitsRevealed = 0;
-      this.clearHintRevealTimer();
-      return;
-    }
-    const key = `${this.tutor.promptCounter}|${word.wordStart}`;
-    if (key !== this.hintRevealKey) {
-      this.hintRevealKey = key;
-      this.hintUnitsRevealed = 1;
-      this.clearHintRevealTimer();
-    }
-    if (this.hintUnitsRevealed >= word.units.length) {
-      this.hintUnitsRevealed = word.units.length;
-      this.clearHintRevealTimer();
-      return;
-    }
-    if (this.hintRevealTimer === null) {
-      this.hintRevealTimer = setTimeout(() => {
-        this.hintRevealTimer = null;
-        this.hintUnitsRevealed += 1;
-        this.syncHintReveal();
-        this.notify();
-      }, HINT_REVEAL_COOLDOWN_MS);
-    }
-  }
-
-  private clearHintRevealTimer(): void {
-    if (this.hintRevealTimer !== null) {
-      clearTimeout(this.hintRevealTimer);
-      this.hintRevealTimer = null;
     }
   }
 

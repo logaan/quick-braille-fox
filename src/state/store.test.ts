@@ -189,36 +189,78 @@ describe('hint timer', () => {
     expect(store.viewModel().hint).not.toBeNull();
   });
 
-  it('re-arms the countdown on a keystroke', () => {
+  it('does not restart the countdown for a sign already on the clock', () => {
     const store = createTutorStore({ seed: 1 });
     const text = store.viewModel().promptText;
     vi.advanceTimersByTime(200);
     // A wrong first character (a mistake, but the first one is free) —
-    // guaranteed not to complete even a one-character prompt.
+    // guaranteed not to complete even a one-character prompt. The caret has
+    // not moved off the first sign, so its clock keeps running.
     insert(store, text.startsWith('x') ? 'y' : 'x');
-    vi.advanceTimersByTime(399);
-    expect(store.viewModel().hint).toBeNull();
-    vi.advanceTimersByTime(1); // 400ms after the keystroke
+    vi.advanceTimersByTime(200); // 400ms since the sign was reached
     expect(store.viewModel().hint).not.toBeNull();
   });
 });
 
+describe('a sign’s countdown starts when the caret reaches it', () => {
+  it('does not start the next sign’s clock when a hint is revealed', () => {
+    const store = createTutorStore({ storage: midPromptStorage(), seed: 1 });
+    vi.advanceTimersByTime(400); // "the" is hinted after the 400ms delay
+    expect(store.viewModel().hint).toBe('⠮');
+    // Go and make a cup of tea. Nothing else uncovers, because the caret is
+    // still sitting on "the" — the rest of the prompt is untouched.
+    vi.advanceTimersByTime(600_000);
+    expect(store.viewModel().hint).toBe('⠮');
+  });
+
+  it('holds the next word’s clock until the space before it is typed', () => {
+    const store = createTutorStore({ storage: midPromptStorage(), seed: 1 });
+    typeText(store, 'the');
+    vi.advanceTimersByTime(600_000); // dawdle with the caret on the space
+    expect(store.viewModel().hint).toBeNull();
+    // Only now does "d" start counting — and it gets its full time (the
+    // prompt delay, since nothing has been hinted yet).
+    insert(store, 'the ');
+    vi.advanceTimersByTime(399);
+    expect(store.viewModel().hint).toBeNull();
+    vi.advanceTimersByTime(1);
+    expect(store.viewModel().hint).toBe('⠙');
+  });
+
+  it('still awards a sign typed promptly after a long pause on the one before', () => {
+    const store = createTutorStore({ storage: midPromptStorage(), seed: 1 });
+    const scoreOf = (id: string): number =>
+      store.viewModel().activeSkills.find((s) => s.id === id)?.score ?? 0;
+
+    vi.advanceTimersByTime(600_000); // ten minutes on "the"; it gets hinted
+    typeText(store, 'the d'); // then "d" typed straight away
+    expect(scoreOf('letter-d')).toBe(2); // full marks, hint or no hint
+  });
+});
+
 describe('progressive hint reveal', () => {
-  it('uncovers the caret word one sign at a time on a cooldown', () => {
+  it('uncovers the caret word one sign at a time, as each is reached', () => {
     const store = createTutorStore({ storage: midPromptStorage(), seed: 1 });
     expect(store.viewModel().hint).toBeNull();
     vi.advanceTimersByTime(400); // score 0 => auto-hint after 400ms
     expect(store.viewModel().hint).toBe('⠮'); // "the" is a single sign
 
     typeText(store, 'the ');
-    expect(store.viewModel().hint).toBe('⠙'); // next word restarts at one sign
+    expect(store.viewModel().hint).toBeNull(); // the next word starts covered
+    vi.advanceTimersByTime(HINT_REVEAL_COOLDOWN_MS);
+    expect(store.viewModel().hint).toBe('⠙');
+
+    // Each further sign waits its own cooldown, and only from the moment
+    // the sign before it is typed.
+    typeText(store, 'the d');
     vi.advanceTimersByTime(HINT_REVEAL_COOLDOWN_MS);
     expect(store.viewModel().hint).toBe('⠙⠕');
+    typeText(store, 'the do');
     vi.advanceTimersByTime(HINT_REVEAL_COOLDOWN_MS);
     expect(store.viewModel().hint).toBe('⠙⠕⠛');
   });
 
-  it('never uncovers more than the word at the caret', () => {
+  it('never uncovers more than the sign at the caret', () => {
     const store = createTutorStore({ storage: midPromptStorage(), seed: 1 });
     vi.advanceTimersByTime(60_000);
     expect(store.viewModel().hint).toBe('⠮');

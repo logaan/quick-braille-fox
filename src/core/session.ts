@@ -17,6 +17,7 @@ import {
   QBF_INTERVAL,
   makePrompt,
   makeTutorState,
+  unitTypedClean,
 } from './types';
 
 /** Start a fresh session. Pass a seed (e.g. Date.now()) for variety. */
@@ -85,9 +86,10 @@ function mistakeUnitIndex(units: ReadonlyArray<TranslationUnit>, caret: number):
 /**
  * Score every unit the correct prefix (length `caret`) has newly finished:
  * each of the unit's skills gains CLEAN_AWARD if the occurrence was typed
- * with no mistakes before the hint became visible, BASE_AWARD otherwise.
- * Points land immediately — a unit typed before the hint shows keeps its
- * clean award even if the hint appears later in the same prompt.
+ * with no mistakes and before *its own* hint was revealed, BASE_AWARD
+ * otherwise. Cleanliness is per occurrence, not per prompt — a sign typed
+ * promptly keeps its clean award however much of the rest of the prompt
+ * had to be hinted.
  */
 function awardFinishedUnits(
   state: TutorState,
@@ -101,8 +103,7 @@ function awardFinishedUnits(
     const u = units[i] as TranslationUnit;
     if (u.end > caret) break;
     if (u.skillIds.length === 0 || awarded.has(i)) continue;
-    const clean = !p.hintShown && p.unitMistakes.get(i, 0) === 0;
-    const delta = clean ? CLEAN_AWARD : BASE_AWARD;
+    const delta = unitTypedClean(p, i) ? CLEAN_AWARD : BASE_AWARD;
     for (const id of u.skillIds) next = addScore(next, id, delta);
     awarded = awarded.add(i);
   }
@@ -115,9 +116,9 @@ function awardFinishedUnits(
  *
  * - Every skill occurrence (translation unit) the correctly typed prefix
  *   finishes scores *immediately* for each of the unit's skills:
- *   +CLEAN_AWARD when typed with no mistake on the occurrence before the
- *   hint became visible, +BASE_AWARD otherwise (typing a skill always
- *   earns at least BASE_AWARD).
+ *   +CLEAN_AWARD when typed with no mistake on the occurrence and before
+ *   that occurrence's own hint was revealed, +BASE_AWARD otherwise (typing
+ *   a skill always earns at least BASE_AWARD).
  * - typed == expected text: prompt completed (the final units score the
  *   same way); promptCounter increments.
  * - typed is a proper prefix: fine, no event.
@@ -127,7 +128,7 @@ function awardFinishedUnits(
  *   matching prefix, after which a new divergence counts again). The
  *   second mistake on the same occurrence costs its skills
  *   MISTAKE_PENALTY (floored at 0, and learnt skills may drop below the
- *   learnt threshold) and forces the hint to show. On a qbf prompt any
+ *   learnt threshold) and reveals that occurrence's hint. On a qbf prompt any
  *   mistake fails the challenge immediately and completes the prompt.
  *
  * Once the prompt is completed, further keystrokes are ignored; the state
@@ -177,7 +178,7 @@ export function keystroke(state: TutorState, typed: string): TutorState {
     const mistakes = prompt.unitMistakes.get(idx, 0) + 1;
     prompt = prompt.set('unitMistakes', prompt.unitMistakes.set(idx, mistakes));
     if (mistakes >= MISTAKES_BEFORE_PENALTY) {
-      prompt = prompt.set('hintShown', true);
+      prompt = prompt.set('hintedUnits', prompt.hintedUnits.add(idx));
       for (const id of (units[idx] as TranslationUnit).skillIds) {
         next = addScore(next, id, -MISTAKE_PENALTY);
       }
@@ -187,15 +188,16 @@ export function keystroke(state: TutorState, typed: string): TutorState {
 }
 
 /**
- * Record that the hint was shown (the state layer calls this when the
- * hintDelayFor() timer fires). Occurrences typed from here on earn
- * BASE_AWARD instead of CLEAN_AWARD. No-op on qbf prompts (never hinted)
- * and completed/absent prompts.
+ * Uncover one sign's hint (the state layer calls this when the timer for
+ * the unit nextHintFor() named fires). That occurrence now earns
+ * BASE_AWARD instead of CLEAN_AWARD; every *other* occurrence keeps its own
+ * clean chance. No-op on qbf prompts (never hinted) and completed/absent
+ * prompts.
  */
-export function revealHint(state: TutorState): TutorState {
+export function revealHint(state: TutorState, unitIndex: number): TutorState {
   const p = state.prompt;
-  if (!p || p.completed || p.isQbf || p.hintShown) return state;
-  return state.set('prompt', p.set('hintShown', true));
+  if (!p || p.completed || p.isQbf || p.hintedUnits.has(unitIndex)) return state;
+  return state.set('prompt', p.set('hintedUnits', p.hintedUnits.add(unitIndex)));
 }
 
 /** Whether the current prompt is finished (correct, or qbf failed). */
@@ -218,7 +220,7 @@ export interface SerializedTutorState {
     typed: string;
     unitMistakes: { [unitIndex: string]: number };
     awardedUnits: number[];
-    hintShown: boolean;
+    hintedUnits: number[];
     diverged: boolean;
     completed: boolean;
     failed: boolean;
@@ -243,7 +245,7 @@ export function serialize(state: TutorState): SerializedTutorState {
             typed: p.typed,
             unitMistakes: p.unitMistakes.mapKeys(String).toObject(),
             awardedUnits: p.awardedUnits.toArray(),
-            hintShown: p.hintShown,
+            hintedUnits: p.hintedUnits.toArray(),
             diverged: p.diverged,
             completed: p.completed,
             failed: p.failed,
@@ -276,14 +278,15 @@ function unitMistakesFrom(value: unknown): Map<number, number> {
   return mistakes;
 }
 
-function awardedUnitsFrom(value: unknown): Set<number> {
-  let awarded = Set<number>();
+/** A persisted array of translation-unit indexes, garbage filtered out. */
+function unitIndexesFrom(value: unknown): Set<number> {
+  let indexes = Set<number>();
   if (Array.isArray(value)) {
     for (const index of value) {
-      if (Number.isInteger(index) && index >= 0) awarded = awarded.add(index as number);
+      if (Number.isInteger(index) && index >= 0) indexes = indexes.add(index as number);
     }
   }
-  return awarded;
+  return indexes;
 }
 
 /** Rebuild a TutorState from serialize() output. Throws on garbage input. */
@@ -312,8 +315,8 @@ export function deserialize(raw: unknown): TutorState {
           isQbf: bool(p.isQbf),
           typed: str(p.typed, ''),
           unitMistakes: unitMistakesFrom(p.unitMistakes),
-          awardedUnits: awardedUnitsFrom(p.awardedUnits),
-          hintShown: bool(p.hintShown),
+          awardedUnits: unitIndexesFrom(p.awardedUnits),
+          hintedUnits: unitIndexesFrom(p.hintedUnits),
           diverged: bool(p.diverged),
           completed: bool(p.completed),
           failed: bool(p.failed),

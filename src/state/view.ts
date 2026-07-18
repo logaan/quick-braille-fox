@@ -47,9 +47,9 @@ export interface AppViewModel {
   /** How many completed prompts until the next qbf challenge (1 = this one). */
   readonly nextQbfIn: number;
   /**
-   * The hint as U+2800 braille, once it is showing: the caret word's cells,
-   * limited to the reveal units uncovered so far (the store uncovers one
-   * more per cooldown tick).
+   * The hint as U+2800 braille: the caret word's cells, limited to the
+   * signs uncovered so far (one is uncovered per elapsed countdown, and
+   * each sign's countdown only starts once the caret reaches it).
    */
   readonly hint: string | null;
   readonly activeSkills: ReadonlyArray<ActiveSkillView>;
@@ -104,19 +104,29 @@ export interface ViewSources {
   readonly bestQbf: BestQbf | null;
   readonly lastQbf: QbfResult | null;
   readonly confirmingReset: boolean;
-  /** How many reveal units of the hinted word are uncovered (store-owned). */
-  readonly hintUnitsRevealed: number;
   readonly voiceOverInput: boolean;
   /** Identity of the current prompt instance (store-owned epoch). */
   readonly promptKey: number;
 }
 
+/**
+ * The uncovered part of the caret word's hint: its leading run of revealed
+ * units. Signs are revealed in order as the learner reaches them, so a
+ * leading run is all there ever is — and stopping at the first unrevealed
+ * unit keeps a sign hinted by the two-mistake rule from dragging later,
+ * still-earnable signs of the word on screen with it.
+ */
 function hintText(src: ViewSources): string | null {
   const p = src.tutor.prompt;
-  if (p === null || !p.hintShown || p.isQbf || src.hintUnitsRevealed <= 0) return null;
+  if (p === null || p.isQbf) return null;
   const word = hintWordForPrompt(src.tutor);
   if (word === null) return null;
-  return word.units.slice(0, src.hintUnitsRevealed).join('');
+  let text = '';
+  for (const unit of word.units) {
+    if (!p.hintedUnits.has(unit.index)) break;
+    text += unit.unicode;
+  }
+  return text === '' ? null : text;
 }
 
 export function buildViewModel(src: ViewSources): AppViewModel {
