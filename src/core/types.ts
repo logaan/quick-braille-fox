@@ -2,6 +2,7 @@
 
 import { Map, Record, Set } from 'immutable';
 import type { RecordOf } from 'immutable';
+import type { TranslationUnit } from './braille';
 
 // --- Game constants --------------------------------------------------------
 
@@ -74,18 +75,19 @@ export interface PromptProps {
   typed: string;
   /**
    * Mistake events per translation-unit index of `text` (missing = 0).
-   * The second mistake on the same unit costs its skills a point and
-   * force-shows the hint (see keystroke()).
+   * This is *history*: a mistake that has since been backspaced away still
+   * happened, and the second mistake on the same unit still costs its
+   * skills a point and force-shows the hint (see keystroke()).
    */
   unitMistakes: Map<number, number>;
   /**
-   * Award keys (print start + skill ids, see unitAwardKey in session.ts) of
-   * units whose skills have already scored this prompt. Keyed by identity,
-   * not positional index: attributed unit lists change shape when chords are
-   * backspaced and the same print is respelled differently, and the award
-   * must follow the sign, not the slot it happened to occupy.
+   * The signs the learner actually chorded, when the state layer knows them
+   * (fox runs in emulated mode; see keystroke()). Scoring attributes awards
+   * to these instead of the canonical translation, so a word spelled out
+   * letter by letter credits the letters. Never persisted — a resumed fox
+   * run restarts anyway — and null whenever input arrives as print.
    */
-  awardedUnits: Set<string>;
+  typedUnits: readonly TranslationUnit[] | null;
   /**
    * Indexes of units whose hint has been revealed. Per unit, not per
    * prompt: a unit typed before *its own* hint appeared still scores
@@ -107,7 +109,7 @@ export const makePrompt = Record<PromptProps>(
     isFox: false,
     typed: '',
     unitMistakes: Map<number, number>(),
-    awardedUnits: Set<string>(),
+    typedUnits: null,
     hintedUnits: Set<number>(),
     diverged: false,
     completed: false,

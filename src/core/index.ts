@@ -54,12 +54,16 @@ export {
   unitTypedClean,
 } from './types';
 
+export { derivedScores, pendingScoreDeltas } from './scoring';
+
 export {
   activeSkills,
   hintDelayFor,
+  isLearntIn,
   isSkillLearnt,
   knownSkillIds,
   learntSkills,
+  learntSkillsIn,
   scoreFor,
 } from './progress';
 

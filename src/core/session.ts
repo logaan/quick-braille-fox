@@ -3,24 +3,13 @@
 
 import { Map, Set } from 'immutable';
 import type { TranslationUnit } from './braille';
-import { tryTranslate } from './braille';
 import { generatePromptText, pickTarget } from './prompts';
-import { scoreFor } from './progress';
 import { FOX_SENTENCE } from './fox';
 import { drawSeed, mulberry32 } from './rng';
 import { commonPrefixLength } from './text';
+import { derivedScores, promptUnits } from './scoring';
 import type { Prompt, TutorState } from './types';
-import {
-  BASE_AWARD,
-  CLEAN_AWARD,
-  MISTAKE_PENALTY,
-  MISTAKES_BEFORE_PENALTY,
-  FOX_AWARD,
-  FOX_INTERVAL,
-  makePrompt,
-  makeTutorState,
-  unitTypedClean,
-} from './types';
+import { MISTAKES_BEFORE_PENALTY, FOX_INTERVAL, makePrompt, makeTutorState } from './types';
 
 /** Start a fresh session. Pass a seed (e.g. Date.now()) for variety. */
 export function startSession(seed = 1): TutorState {
@@ -33,6 +22,9 @@ export function startSession(seed = 1): TutorState {
  * the learner's first prompt (counters 0, FOX_INTERVAL, 2*FOX_INTERVAL, …),
  * so a fresh learner meets the challenge immediately.
  * Consumes state.seed and stores a fresh one.
+ *
+ * Scores are untouched: the new round starts from the committed baseline,
+ * and a prompt replaced before it completed contributes nothing.
  */
 export function nextPrompt(state: TutorState): TutorState {
   const rng = mulberry32(state.seed);
@@ -49,14 +41,14 @@ export function nextPrompt(state: TutorState): TutorState {
   return state.set('prompt', prompt).set('seed', drawSeed(rng));
 }
 
-function addScore(state: TutorState, skillId: string, delta: number): TutorState {
-  const next = Math.max(0, scoreFor(state, skillId) + delta);
-  return state.set('scores', state.scores.set(skillId, next));
-}
-
-/** The prompt text's translation units ([] if it is not translatable). */
-function promptUnits(p: Prompt): readonly TranslationUnit[] {
-  return tryTranslate(p.text)?.units ?? [];
+/**
+ * Finish the round: put the completed prompt on the state, fold what it
+ * earned into the committed scores, and count it. This is the *only* place
+ * scores change — during a round they are derived, never stored.
+ */
+function completePrompt(state: TutorState, prompt: Prompt): TutorState {
+  const done = state.set('prompt', prompt);
+  return done.set('scores', derivedScores(done)).set('promptCounter', done.promptCounter + 1);
 }
 
 /**
@@ -77,71 +69,20 @@ function mistakeUnitIndex(units: readonly TranslationUnit[], caret: number): num
 }
 
 /**
- * Identity of a translation unit for award bookkeeping: its print start and
- * the skills it carries. Stable where a positional index is not — an
- * attributed unit list changes shape when chords are backspaced and the same
- * print is respelled differently, and the award must follow the sign, not
- * the slot it happened to occupy.
- */
-function unitAwardKey(u: TranslationUnit): string {
-  return `${u.start}:${u.skillIds.join('+')}`;
-}
-
-/**
- * Score every unit the correct prefix (length `caret`) has newly finished:
- * each of the unit's skills gains CLEAN_AWARD if the occurrence was typed
- * with no mistakes and before *its own* hint was revealed, BASE_AWARD
- * otherwise. Cleanliness is per occurrence, not per prompt — a sign typed
- * promptly keeps its clean award however much of the rest of the prompt
- * had to be hinted.
- *
- * `fixedAward` overrides that for the fox challenge, where every finished
- * occurrence is worth FOX_AWARD (no hints exist there, and the run is over
- * at the first mistake, so anything finished was typed cold).
- */
-function awardFinishedUnits(
-  state: TutorState,
-  p: Prompt,
-  units: readonly TranslationUnit[],
-  caret: number,
-  fixedAward?: number,
-): { state: TutorState; prompt: Prompt } {
-  let next = state;
-  let awarded = p.awardedUnits;
-  for (let i = 0; i < units.length; i++) {
-    const u = units[i]!;
-    if (u.end > caret) break;
-    if (u.skillIds.length === 0) continue;
-    const key = unitAwardKey(u);
-    if (awarded.has(key)) continue;
-    const delta = fixedAward ?? (unitTypedClean(p, i) ? CLEAN_AWARD : BASE_AWARD);
-    for (const id of u.skillIds) next = addScore(next, id, delta);
-    awarded = awarded.add(key);
-  }
-  return { state: next, prompt: p.set('awardedUnits', awarded) };
-}
-
-/**
  * Feed the current *resulting* typed text (not a single key) after an input
  * event. Progressive matching against the expected text:
  *
- * - Every skill occurrence (translation unit) the correctly typed prefix
- *   finishes scores *immediately* for each of the unit's skills:
- *   +CLEAN_AWARD when typed with no mistake on the occurrence and before
- *   that occurrence's own hint was revealed, +BASE_AWARD otherwise (typing
- *   a skill always earns at least BASE_AWARD).
- * - typed == expected text: prompt completed (the final units score the
- *   same way); promptCounter increments.
+ * - typed == expected text: prompt completed; what the round earned is
+ *   committed to state.scores and promptCounter increments.
  * - typed is a proper prefix: fine, no event.
  * - typed diverges from the expected prefix: one mistake *event*, charged
  *   to the occurrence at the caret (further keystrokes while still
  *   diverged are the same mistake; the learner must backspace to the
  *   matching prefix, after which a new divergence counts again). The
- *   second mistake on the same occurrence costs its skills
- *   MISTAKE_PENALTY (floored at 0, and learnt skills may drop below the
- *   learnt threshold) and reveals that occurrence's hint. On a fox prompt any
- *   mistake fails the challenge immediately and completes the prompt, and
- *   every occurrence finished before that scores FOX_AWARD per skill.
+ *   second mistake on the same occurrence reveals that occurrence's hint
+ *   and, when the round is committed, costs its skills MISTAKE_PENALTY. On
+ *   a fox prompt any mistake fails the challenge immediately and completes
+ *   the prompt, committing the occurrences finished before it.
  *
  * `typedUnits`, when given, replaces the canonical translation as the award
  * attribution for a fox run: the state layer passes the signs the learner
@@ -150,6 +91,10 @@ function awardFinishedUnits(
  * solution. Without it (VoiceOver input hands us print, not cells) the
  * canonical units remain the only attribution available. Non-fox prompts
  * ignore it: their mistake/hint bookkeeping is tied to canonical units.
+ *
+ * Scores themselves are *not* touched here. What the prompt is currently
+ * worth is derived from it on demand (see scoring.ts), so backspacing over
+ * a word — or VoiceOver rewriting an earlier one — takes its points back.
  *
  * Once the prompt is completed, further keystrokes are ignored; the state
  * layer should call nextPrompt().
@@ -160,66 +105,32 @@ export function keystroke(
   typedUnits?: readonly TranslationUnit[],
 ): TutorState {
   const p = state.prompt;
-  if (!p || p.completed || typed === p.typed) return state;
-
-  if (p.isFox) {
-    // Occurrences finished by the correct prefix score FOX_AWARD each, even
-    // on the keystroke that ends the run — what was typed correctly counts.
-    const scored = awardFinishedUnits(
-      state,
-      p,
-      typedUnits ?? promptUnits(p),
-      commonPrefixLength(p.text, typed),
-      FOX_AWARD,
-    );
-    const next = scored.state;
-    const prompt = scored.prompt;
-    if (typed === p.text) {
-      return next
-        .set('prompt', prompt.merge({ typed, diverged: false, completed: true }))
-        .set('promptCounter', state.promptCounter + 1);
-    }
-    if (p.text.startsWith(typed)) return next.set('prompt', prompt.set('typed', typed));
-    return next
-      .set('prompt', prompt.merge({ typed, diverged: true, failed: true, completed: true }))
-      .set('promptCounter', state.promptCounter + 1);
-  }
-
-  const units = promptUnits(p);
-  const caret = commonPrefixLength(p.text, typed);
-  // Correctly typed occurrences score first, with the hint state as it was
-  // when they were typed — even when the same event also brings a mistake
-  // further along.
-  const scored = awardFinishedUnits(state, p, units, caret);
-  let next = scored.state;
-  let prompt = scored.prompt;
+  if (!p || p.completed || (typed === p.typed && typedUnits === undefined)) return state;
+  const base = p.merge({ typed, typedUnits: p.isFox ? (typedUnits ?? null) : null });
 
   if (typed === p.text) {
-    return next
-      .set('prompt', prompt.merge({ typed, diverged: false, completed: true }))
-      .set('promptCounter', state.promptCounter + 1);
+    return completePrompt(state, base.merge({ diverged: false, completed: true }));
   }
-
-  if (p.text.startsWith(typed)) {
-    return next.set('prompt', prompt.merge({ typed, diverged: false }));
+  if (p.text.startsWith(typed)) return state.set('prompt', base.set('diverged', false));
+  if (p.isFox) {
+    // The run is over, but the occurrences the correct prefix finished
+    // before the mistake still count, and are committed with it.
+    return completePrompt(state, base.merge({ diverged: true, failed: true, completed: true }));
   }
-
-  if (p.diverged) return next.set('prompt', prompt.set('typed', typed));
+  if (p.diverged) return state.set('prompt', base);
 
   // A new mistake event (prefix -> divergence transition).
-  prompt = prompt.merge({ typed, diverged: true });
-  const idx = mistakeUnitIndex(units, caret);
+  let prompt = base.set('diverged', true);
+  const units = promptUnits(p);
+  const idx = mistakeUnitIndex(units, commonPrefixLength(p.text, typed));
   if (idx !== null) {
     const mistakes = prompt.unitMistakes.get(idx, 0) + 1;
     prompt = prompt.set('unitMistakes', prompt.unitMistakes.set(idx, mistakes));
     if (mistakes >= MISTAKES_BEFORE_PENALTY) {
       prompt = prompt.set('hintedUnits', prompt.hintedUnits.add(idx));
-      for (const id of (units[idx]!).skillIds) {
-        next = addScore(next, id, -MISTAKE_PENALTY);
-      }
     }
   }
-  return next.set('prompt', prompt);
+  return state.set('prompt', prompt);
 }
 
 /**
@@ -255,9 +166,6 @@ export interface SerializedTutorState {
     isQbf: boolean;
     typed: string;
     unitMistakes: Record<string, number>;
-    /** Award keys; entries from older saves are positional unit indexes,
-     * migrated onto the canonical translation on read. */
-    awardedUnits: (string | number)[];
     hintedUnits: number[];
     diverged: boolean;
     completed: boolean;
@@ -265,7 +173,15 @@ export interface SerializedTutorState {
   } | null;
 }
 
-/** Convert state to a plain object that survives JSON.stringify/parse. */
+/**
+ * Convert state to a plain object that survives JSON.stringify/parse.
+ *
+ * `typedUnits` is deliberately not persisted: it only matters to a fox run
+ * in flight, and a half-typed fox restarts on resume anyway. The old
+ * `awardedUnits` field is gone too — with derived scoring a resumed round
+ * recomputes what it is worth from the prompt itself, so there is nothing
+ * to remember (and stale entries in old saves are simply ignored on read).
+ */
 export function serialize(state: TutorState): SerializedTutorState {
   const p = state.prompt;
   return {
@@ -282,7 +198,6 @@ export function serialize(state: TutorState): SerializedTutorState {
             isQbf: p.isFox,
             typed: p.typed,
             unitMistakes: p.unitMistakes.mapKeys(String).toObject(),
-            awardedUnits: p.awardedUnits.toArray(),
             hintedUnits: p.hintedUnits.toArray(),
             diverged: p.diverged,
             completed: p.completed,
@@ -327,28 +242,6 @@ function unitIndexesFrom(value: unknown): Set<number> {
   return indexes;
 }
 
-/**
- * Persisted award keys, garbage filtered out. Older saves stored positional
- * unit indexes; those are migrated by mapping them onto the canonical
- * translation of the prompt text (the only attribution old saves could have
- * used), so an in-flight prompt does not re-award on resume.
- */
-function awardKeysFrom(value: unknown, text: string): Set<string> {
-  let keys = Set<string>();
-  if (!Array.isArray(value)) return keys;
-  let units: readonly TranslationUnit[] | undefined;
-  for (const entry of value) {
-    if (typeof entry === 'string') {
-      keys = keys.add(entry);
-    } else if (Number.isInteger(entry) && (entry as number) >= 0) {
-      units ??= tryTranslate(text)?.units ?? [];
-      const u = units[entry as number];
-      if (u !== undefined && u.skillIds.length > 0) keys = keys.add(unitAwardKey(u));
-    }
-  }
-  return keys;
-}
-
 /** Rebuild a TutorState from serialize() output. Throws on garbage input. */
 export function deserialize(raw: unknown): TutorState {
   if (typeof raw !== 'object' || raw === null) {
@@ -375,7 +268,6 @@ export function deserialize(raw: unknown): TutorState {
           isFox: bool(p.isQbf),
           typed: str(p.typed, ''),
           unitMistakes: unitMistakesFrom(p.unitMistakes),
-          awardedUnits: awardKeysFrom(p.awardedUnits, str(p.text, '')),
           hintedUnits: unitIndexesFrom(p.hintedUnits),
           diverged: bool(p.diverged),
           completed: bool(p.completed),

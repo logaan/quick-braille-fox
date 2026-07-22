@@ -2,6 +2,8 @@
 // the handler interface the UI wires to DOM events. UI components are pure
 // render functions of these props; the dependency direction is ui -> state.
 
+// Immutable's Map, aliased so the native Map stays available below.
+import type { Map as ScoreMap } from 'immutable';
 import type { ChangeEvent, KeyboardEvent } from 'react';
 import type { Cell, FoxResult, TutorState } from '../core';
 import {
@@ -11,13 +13,13 @@ import {
   FOX_MIN_CELLS,
   activeSkills,
   commonPrefixLength,
+  derivedScores,
   divergentCells,
   dotsToUnicode,
   expectedSignAt,
   hintWordForPrompt,
-  isSkillLearnt,
-  learntSkills,
-  scoreFor,
+  isLearntIn,
+  learntSkillsIn,
 } from '../core';
 import type { SkillGroup } from '../data/skills';
 import { skills } from '../data/skills';
@@ -144,7 +146,7 @@ function nextFoxIn(promptCounter: number): number {
   return since === 0 ? 1 : FOX_INTERVAL - since + 1;
 }
 
-function groupProgress(state: TutorState): GroupProgressView[] {
+function groupProgress(scores: ScoreMap<string, number>): GroupProgressView[] {
   const byGroup = new Map<SkillGroup, { learnt: number; total: number }>();
   for (const s of skills) {
     let entry = byGroup.get(s.group);
@@ -153,7 +155,7 @@ function groupProgress(state: TutorState): GroupProgressView[] {
       byGroup.set(s.group, entry);
     }
     entry.total += 1;
-    if (isSkillLearnt(state, s.id)) entry.learnt += 1;
+    if (isLearntIn(scores, s.id)) entry.learnt += 1;
   }
   return [...byGroup.entries()].map(([group, { learnt, total }]) => ({ group, learnt, total }));
 }
@@ -222,6 +224,10 @@ function foxFailureView(src: ViewSources): FoxFailureView | null {
 export function buildViewModel(src: ViewSources): AppViewModel {
   const { tutor } = src;
   const p = tutor.prompt;
+  // Everything the learner sees moves with the round in flight; which
+  // skills are *shown* as active still comes from the committed scores, so
+  // the window does not churn mid-prompt.
+  const shown = derivedScores(tutor);
   return {
     promptText: p?.text ?? '',
     typed: p?.typed ?? '',
@@ -236,7 +242,7 @@ export function buildViewModel(src: ViewSources): AppViewModel {
     nextFoxIn: nextFoxIn(tutor.promptCounter),
     hint: hintText(src),
     activeSkills: activeSkills(tutor).map((s) => {
-      const score = scoreFor(tutor, s.id);
+      const score = shown.get(s.id, 0);
       return {
         id: s.id,
         print: s.print,
@@ -245,10 +251,10 @@ export function buildViewModel(src: ViewSources): AppViewModel {
         progress: Math.min(1, score / LEARNT_THRESHOLD),
       };
     }),
-    learntCount: learntSkills(tutor).length,
+    learntCount: learntSkillsIn(shown).length,
     totalSkills: skills.length,
     promptsCompleted: tutor.promptCounter,
-    groups: groupProgress(tutor),
+    groups: groupProgress(shown),
     confirmingReset: src.confirmingReset,
     resetConfirmText: src.resetConfirmText,
     canConfirmReset: matchesResetWord(src.resetConfirmText),

@@ -1,29 +1,47 @@
-// Read-only views over TutorState: scores, learnt/active skills, hints.
+// Read-only views over TutorState: scores (committed and derived),
+// learnt/active skills, hints.
 
+import type { Map } from 'immutable';
 import type { Skill } from '../data/skills';
 import { skills } from '../data/skills';
 import type { TutorState } from './types';
 import { ACTIVE_SKILL_COUNT, hintDelayMs, isLearntScore } from './types';
 
-/** The score for a skill (0 if never touched). */
+/** The committed score for a skill (0 if never touched). */
 export function scoreFor(state: TutorState, skillId: string): number {
   return state.scores.get(skillId, 0);
 }
 
-/** Whether a skill currently counts as learnt (score > threshold). */
-export function isSkillLearnt(state: TutorState, skillId: string): boolean {
-  return isLearntScore(scoreFor(state, skillId));
+/** Whether a score map counts a skill as learnt. */
+export function isLearntIn(scores: Map<string, number>, skillId: string): boolean {
+  return isLearntScore(scores.get(skillId, 0));
 }
 
-/** All learnt skills, in curriculum order. */
+/**
+ * Whether a skill currently counts as learnt by its *committed* score.
+ * Selection (which skills are active, which are learnt) deliberately
+ * ignores the round in flight so the active window does not churn
+ * mid-prompt; for what the learner is shown, use derivedScores().
+ */
+export function isSkillLearnt(state: TutorState, skillId: string): boolean {
+  return isLearntIn(state.scores, skillId);
+}
+
+/** All skills a score map counts as learnt, in curriculum order. */
+export function learntSkillsIn(scores: Map<string, number>): readonly Skill[] {
+  return skills.filter((s) => isLearntIn(scores, s.id));
+}
+
+/** All learnt skills by committed score, in curriculum order. */
 export function learntSkills(state: TutorState): readonly Skill[] {
-  return skills.filter((s) => isSkillLearnt(state, s.id));
+  return learntSkillsIn(state.scores);
 }
 
 /**
  * The (up to) 5 unlearnt skills earliest in curriculum order — the skills
  * currently being taught. A learnt skill that drops back below the
- * threshold rejoins this pool automatically.
+ * threshold rejoins this pool automatically. Committed scores only: the
+ * window holds still for the length of a prompt.
  */
 export function activeSkills(state: TutorState): readonly Skill[] {
   const active: Skill[] = [];

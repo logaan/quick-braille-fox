@@ -150,9 +150,8 @@ everything from `src/core` (`import { startSession, keystroke } from
   (`ACTIVE_SKILL_COUNT = 5`). When one crosses the threshold the next
   unlearnt skill takes its place; a learnt skill knocked back below the
   threshold rejoins the pool automatically.
-- **Every skill occurrence in the prompt scores, immediately as it is
-  typed** — not just the target skill, and not at prompt completion. An
-  occurrence is a translation unit of the prompt text (a letter, a
+- **Every skill occurrence in the prompt scores** — not just the target
+  skill. An occurrence is a translation unit of the prompt text (a letter, a
   contraction, a digit; indicators like capitals and the number sign ride
   along with their unit and score too). Typing an occurrence earns its
   skills +2 (`CLEAN_AWARD`) when typed with **no mistake on that occurrence
@@ -166,10 +165,21 @@ everything from `src/core` (`import { startSession, keystroke } from
   `unitTypedClean` in `types.ts`), never per prompt: needing the hint on one
   sign costs that sign's bonus and nothing else, so a sign typed promptly
   keeps its +2 however hinted the rest of the prompt was.
+- **A round's score is derived, not banked as you type** (`scoring.ts`).
+  `state.scores` is a baseline, fixed for the whole prompt; what the prompt
+  has earned so far is recomputed from what is on screen *now* and shown
+  added to that baseline (`derivedScores`, floored at 0 per skill). Only on
+  completion is it folded into `state.scores`. So a word typed correctly and
+  then backspaced away — or rewritten by VoiceOver into something wrong —
+  takes its points back with it, and a prompt abandoned via `nextPrompt`
+  scores nothing at all.
 - One mistake on an occurrence is free (it just drops that occurrence's
   award to +1); the **second mistake on the same occurrence** costs its
-  skills 1 point (`MISTAKE_PENALTY`, floored at 0 — this can drop learnt
-  skills below the threshold) and reveals that occurrence's hint. A "mistake" is the
+  skills 1 point (`MISTAKE_PENALTY`, once per occurrence however many
+  mistakes follow) and reveals that occurrence's hint. Mistakes are
+  *history*: backspacing the mistake away does not refund the penalty, and
+  the same occurrence typed correctly afterwards nets zero (+1 award, −1
+  penalty) rather than +1. A "mistake" is the
   transition from matching-prefix to diverged, charged to the occurrence at
   the caret; typing further while already diverged is the same mistake, and
   a fresh divergence after backspacing to a correct prefix is a new one.
@@ -205,7 +215,7 @@ everything from `src/core` (`import { startSession, keystroke } from
 
 ```ts
 TutorState = Record<{
-  scores: Map<string, number>;  // skill id -> score (missing = 0)
+  scores: Map<string, number>;  // committed baseline; skill id -> score (missing = 0)
   promptCounter: number;        // completed prompts ever (incl. failed fox)
   prompt: Prompt | null;        // what's on screen
   seed: number;                 // PRNG seed; consumed/replaced by nextPrompt
@@ -215,8 +225,7 @@ Prompt = Record<{
   targetSkillId: string | null; // null for fox
   isFox: boolean;
   typed: string;                // latest typed text fed to keystroke()
-  unitMistakes: Map<number, number>; // mistakes per translation-unit index
-  awardedUnits: Set<number>;    // unit indexes already scored this prompt
+  unitMistakes: Map<number, number>; // mistakes per unit index (history)
   hintedUnits: Set<number>;     // unit indexes whose hint has been revealed
   diverged: boolean;            // typed currently diverges from the text
   completed: boolean;           // finished (typed correctly, or fox failed)
@@ -234,21 +243,31 @@ correct answer can still earn the +2.
 |---|---|
 | `startSession(seed?)` | fresh state with the first prompt generated; pass e.g. `Date.now()` for variety (defaults to 1, fully deterministic) |
 | `nextPrompt(state)` | replace the current prompt with a new one (call after completion, or to skip). Serves the fox challenge when `promptCounter % FOX_INTERVAL === 0`. Consumes and refreshes `seed` |
-| `keystroke(state, typed, typedUnits?)` | feed the full *resulting* typed text after an input event (not a single key). Handles progressive prefix matching, per-occurrence immediate scoring, mistake events, fox instant-fail, completion, and `promptCounter`. Ignores input once completed. On a fox run, `typedUnits` (from `backTranslateBufferAttributed`) replaces the canonical translation as award attribution, so chord-mode runs credit the signs actually typed; without it (VoiceOver hands us print, not cells) canonical attribution applies |
+| `keystroke(state, typed, typedUnits?)` | feed the full *resulting* typed text after an input event (not a single key). Handles progressive prefix matching, mistake events, fox instant-fail, completion, and `promptCounter`. Touches `scores` only on completion, committing `derivedScores`. Ignores input once completed. On a fox run, `typedUnits` (from `backTranslateBufferAttributed`) replaces the canonical translation as award attribution, so chord-mode runs credit the signs actually typed; without it (VoiceOver hands us print, not cells) canonical attribution applies |
 | `revealHint(state, unitIndex)` | uncover one sign's hint (state layer calls this when that sign's timer fires). No-op for fox |
 | `isPromptComplete(state)` | whether to move on (then call `nextPrompt`) |
 | `serialize(state)` | plain `SerializedTutorState` object, JSON-safe (versioned, `version: 1`) |
 | `deserialize(obj)` | rebuild a `TutorState`; lenient about missing fields, throws `TypeError` on garbage/unknown version |
 
+### Derived scores (`scoring.ts`)
+
+| function | returns |
+|---|---|
+| `pendingScoreDeltas(state)` | `Map` of skill id -> the score change the prompt on screen would contribute if it completed as it stands |
+| `derivedScores(state)` | `state.scores` plus those deltas, floored at 0 per skill — scores as the learner should see them *now* |
+
+`session.ts` commits `derivedScores` when a prompt completes; `progress.ts`
+and the view layer display it while the round runs.
+
 ### Progress views (`progress.ts`)
 
 | function | returns |
 |---|---|
-| `scoreFor(state, skillId)` | current score (0 default) |
-| `isSkillLearnt(state, skillId)` | score >= 10 |
-| `learntSkills(state)` / `activeSkills(state)` | `Skill[]` in curriculum order |
+| `scoreFor(state, skillId)` | committed score (0 default) |
+| `isSkillLearnt(state, skillId)` | committed score >= 10 |
+| `isLearntIn(scores, skillId)` / `learntSkillsIn(scores)` | the same against any score map (pass `derivedScores(state)` for the live view) |
+| `learntSkills(state)` / `activeSkills(state)` | `Skill[]` in curriculum order, by *committed* score — selection deliberately ignores the round in flight so the active window does not churn mid-prompt |
 | `knownSkillIds(state)` | `Set` of learnt ∪ active ids |
-| `progressSummary(state)` | `{ totalSkills, learntCount, promptsCompleted, active: [{ id, print, score }] }` |
 | `hintDelayFor(state)` | ms a sign waits before the *first* hint of the current prompt, or `null` (no prompt / fox / learnt-skill revision) |
 
 ### Prompt generation (`prompts.ts`, `corpus.ts`)
