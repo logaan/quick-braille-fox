@@ -6,7 +6,7 @@ import type { TranslationUnit } from './braille';
 import { translate } from './braille';
 import { generatePromptText, pickTarget } from './prompts';
 import { scoreFor } from './progress';
-import { QBF_SENTENCE } from './qbf';
+import { FOX_SENTENCE } from './fox';
 import { drawSeed, mulberry32 } from './rng';
 import type { Prompt, TutorState } from './types';
 import {
@@ -14,8 +14,8 @@ import {
   CLEAN_AWARD,
   MISTAKE_PENALTY,
   MISTAKES_BEFORE_PENALTY,
-  QBF_AWARD,
-  QBF_INTERVAL,
+  FOX_AWARD,
+  FOX_INTERVAL,
   makePrompt,
   makeTutorState,
   unitTypedClean,
@@ -28,16 +28,16 @@ export function startSession(seed: number = 1): TutorState {
 
 /**
  * Replace the current prompt with a freshly generated one (also used to
- * skip). Every QBF_INTERVAL-th prompt is the qbf challenge, counting from
- * the learner's first prompt (counters 0, QBF_INTERVAL, 2*QBF_INTERVAL, …),
+ * skip). Every FOX_INTERVAL-th prompt is the fox challenge, counting from
+ * the learner's first prompt (counters 0, FOX_INTERVAL, 2*FOX_INTERVAL, …),
  * so a fresh learner meets the challenge immediately.
  * Consumes state.seed and stores a fresh one.
  */
 export function nextPrompt(state: TutorState): TutorState {
   const rng = mulberry32(state.seed);
   let prompt: Prompt;
-  if (state.promptCounter % QBF_INTERVAL === 0) {
-    prompt = makePrompt({ text: QBF_SENTENCE, isQbf: true });
+  if (state.promptCounter % FOX_INTERVAL === 0) {
+    prompt = makePrompt({ text: FOX_SENTENCE, isFox: true });
   } else {
     const target = pickTarget(state, rng);
     prompt = makePrompt({
@@ -94,8 +94,8 @@ function mistakeUnitIndex(units: ReadonlyArray<TranslationUnit>, caret: number):
  * promptly keeps its clean award however much of the rest of the prompt
  * had to be hinted.
  *
- * `fixedAward` overrides that for the qbf challenge, where every finished
- * occurrence is worth QBF_AWARD (no hints exist there, and the run is over
+ * `fixedAward` overrides that for the fox challenge, where every finished
+ * occurrence is worth FOX_AWARD (no hints exist there, and the run is over
  * at the first mistake, so anything finished was typed cold).
  */
 function awardFinishedUnits(
@@ -136,16 +136,16 @@ function awardFinishedUnits(
  *   matching prefix, after which a new divergence counts again). The
  *   second mistake on the same occurrence costs its skills
  *   MISTAKE_PENALTY (floored at 0, and learnt skills may drop below the
- *   learnt threshold) and reveals that occurrence's hint. On a qbf prompt any
+ *   learnt threshold) and reveals that occurrence's hint. On a fox prompt any
  *   mistake fails the challenge immediately and completes the prompt, and
- *   every occurrence finished before that scores QBF_AWARD per skill.
+ *   every occurrence finished before that scores FOX_AWARD per skill.
  *
  * `typedUnits`, when given, replaces the canonical translation as the award
- * attribution for a qbf run: the state layer passes the signs the learner
+ * attribution for a fox run: the state layer passes the signs the learner
  * *actually chorded* (backTranslateBufferAttributed), so spelling a word out
  * letter by letter credits the letters, not the contraction of the shortest
  * solution. Without it (VoiceOver input hands us print, not cells) the
- * canonical units remain the only attribution available. Non-qbf prompts
+ * canonical units remain the only attribution available. Non-fox prompts
  * ignore it: their mistake/hint bookkeeping is tied to canonical units.
  *
  * Once the prompt is completed, further keystrokes are ignored; the state
@@ -159,15 +159,15 @@ export function keystroke(
   const p = state.prompt;
   if (!p || p.completed || typed === p.typed) return state;
 
-  if (p.isQbf) {
-    // Occurrences finished by the correct prefix score QBF_AWARD each, even
+  if (p.isFox) {
+    // Occurrences finished by the correct prefix score FOX_AWARD each, even
     // on the keystroke that ends the run — what was typed correctly counts.
     const scored = awardFinishedUnits(
       state,
       p,
       typedUnits ?? promptUnits(p),
       commonPrefixLength(p.text, typed),
-      QBF_AWARD,
+      FOX_AWARD,
     );
     const next = scored.state;
     const prompt = scored.prompt;
@@ -223,16 +223,16 @@ export function keystroke(
  * Uncover one sign's hint (the state layer calls this when the timer for
  * the unit nextHintFor() named fires). That occurrence now earns
  * BASE_AWARD instead of CLEAN_AWARD; every *other* occurrence keeps its own
- * clean chance. No-op on qbf prompts (never hinted) and completed/absent
+ * clean chance. No-op on fox prompts (never hinted) and completed/absent
  * prompts.
  */
 export function revealHint(state: TutorState, unitIndex: number): TutorState {
   const p = state.prompt;
-  if (!p || p.completed || p.isQbf || p.hintedUnits.has(unitIndex)) return state;
+  if (!p || p.completed || p.isFox || p.hintedUnits.has(unitIndex)) return state;
   return state.set('prompt', p.set('hintedUnits', p.hintedUnits.add(unitIndex)));
 }
 
-/** Whether the current prompt is finished (correct, or qbf failed). */
+/** Whether the current prompt is finished (correct, or fox failed). */
 export function isPromptComplete(state: TutorState): boolean {
   return state.prompt?.completed ?? false;
 }
@@ -248,6 +248,7 @@ export interface SerializedTutorState {
   prompt: {
     text: string;
     targetSkillId: string | null;
+    /** Wire name predates the "fox challenge" naming; kept for stored data. */
     isQbf: boolean;
     typed: string;
     unitMistakes: { [unitIndex: string]: number };
@@ -273,7 +274,7 @@ export function serialize(state: TutorState): SerializedTutorState {
         : {
             text: p.text,
             targetSkillId: p.targetSkillId,
-            isQbf: p.isQbf,
+            isQbf: p.isFox,
             typed: p.typed,
             unitMistakes: p.unitMistakes.mapKeys(String).toObject(),
             awardedUnits: p.awardedUnits.toArray(),
@@ -344,7 +345,7 @@ export function deserialize(raw: unknown): TutorState {
       ? makePrompt({
           text: str(p.text, ''),
           targetSkillId: typeof p.targetSkillId === 'string' ? p.targetSkillId : null,
-          isQbf: bool(p.isQbf),
+          isFox: bool(p.isQbf),
           typed: str(p.typed, ''),
           unitMistakes: unitMistakesFrom(p.unitMistakes),
           awardedUnits: unitIndexesFrom(p.awardedUnits),

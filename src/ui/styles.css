@@ -1,4 +1,4 @@
-/* qbf — warm, clean, modern, soft.
+/* Quick Braille Fox — warm, clean, modern, soft.
  *
  * Light warm theme is the primary look; a warm-dark (charcoal/brown)
  * variant follows prefers-color-scheme. All text colours hold WCAG AA
@@ -194,20 +194,26 @@ input:focus-visible {
 .brand {
   margin: 0;
   display: inline-flex;
-  gap: 0.3rem;
-  font-size: 1.6rem;
+  flex-direction: column;
+  gap: 0.15rem;
+  font-size: 0.8rem;
   font-weight: 400;
   line-height: 1;
   font-family: var(--braille-font);
+}
+
+.brand-row {
+  display: inline-flex;
+  gap: 0.15rem;
 }
 
 .brand-cell {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  min-width: 1.7rem;
-  min-height: 2.1rem;
-  padding: 0.1rem 0.15rem;
+  min-width: 0.95rem;
+  min-height: 1.15rem;
+  padding: 0.05rem 0.1rem;
   color: var(--accent);
   background: var(--surface);
   border: 1px solid var(--line);
@@ -223,7 +229,7 @@ input:focus-visible {
   flex-wrap: wrap;
 }
 
-.best-qbf {
+.best-fox {
   color: var(--dim);
   font-size: 0.9rem;
   display: inline-flex;
@@ -502,33 +508,33 @@ input:focus-visible {
   align-items: center;
 }
 
-/* --- qbf challenge ------------------------------------------------------ */
+/* --- fox challenge ------------------------------------------------------ */
 
-.drill-qbf {
+.drill-fox {
   background: linear-gradient(180deg, var(--gold-tint), transparent 50%), var(--surface);
   box-shadow:
     inset 0 0 0 1.5px var(--gold),
     var(--shadow-md);
 }
 
-.qbf-banner {
+.fox-banner {
   margin: 0;
   color: var(--gold-text);
   font-size: 0.95rem;
 }
 
-.qbf-banner strong {
+.fox-banner strong {
   text-transform: uppercase;
   letter-spacing: 0.08em;
 }
 
-.qbf-rules {
+.fox-rules {
   display: flex;
   flex-direction: column;
   gap: 0.4rem;
 }
 
-.qbf-rule-list {
+.fox-rule-list {
   margin: 0;
   padding-left: 1.15rem;
   display: flex;
@@ -539,18 +545,18 @@ input:focus-visible {
   line-height: 1.45;
 }
 
-.qbf-result-area {
+.fox-result-area {
   min-height: 4.6rem;
 }
 
-.qbf-result {
+.fox-result {
   display: flex;
   flex-direction: column;
   align-items: flex-start;
   gap: 0.5rem;
 }
 
-.qbf-outcome {
+.fox-outcome {
   margin: 0;
   font-size: 2.6rem;
   line-height: 1.1;
@@ -558,48 +564,48 @@ input:focus-visible {
   font-variant-numeric: tabular-nums;
 }
 
-.qbf-badge {
+.fox-badge {
   color: var(--gold-text);
 }
 
-.qbf-crown {
+.fox-crown {
   font-size: 3.2rem;
 }
 
-.qbf-failed {
+.fox-failed {
   color: var(--wrong);
   font-size: 1.9rem;
 }
 
-.qbf-detail {
+.fox-detail {
   margin: 0;
   color: var(--dim);
 }
 
 /* Why the run broke, in cells: the sign that was owed, and — in chord mode,
    where the learner's own cells are known — the ones actually entered. */
-.qbf-failure {
+.fox-failure {
   display: flex;
   flex-direction: column;
   gap: 0.45rem;
   margin: 0.2rem 0 0.1rem;
 }
 
-.qbf-failure-row {
+.fox-failure-row {
   display: flex;
   align-items: center;
   gap: 0.6rem;
   flex-wrap: wrap;
 }
 
-.qbf-failure-label {
+.fox-failure-label {
   flex: 0 0 auto;
   min-width: 5.5rem;
   color: var(--dim);
   font-size: 0.9rem;
 }
 
-.qbf-failure-print {
+.fox-failure-print {
   color: var(--dim);
   font-size: 0.95rem;
 }

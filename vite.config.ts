@@ -1,7 +1,7 @@
 import { configDefaults, defineConfig } from 'vitest/config'
 
 export default defineConfig({
-  // Deployed under a subpath (http://logpi.local/braille-grade2/), so built
+  // Deployed under a subpath (http://logpi.local/quick-braille-fox/), so built
   // asset URLs must be relative to index.html rather than rooted at "/".
   base: './',
 

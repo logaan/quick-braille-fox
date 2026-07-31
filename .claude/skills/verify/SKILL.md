@@ -1,9 +1,9 @@
 ---
 name: verify
-description: Build, launch, and drive the braille tutor app to verify a change end-to-end (headless Chrome over CDP against the Vite dev server).
+description: Build, launch, and drive the Quick Braille Fox app to verify a change end-to-end (headless Chrome over CDP against the Vite dev server).
 ---
 
-# Verifying changes to the braille tutor
+# Verifying changes to Quick Braille Fox
 
 The surface is a browser GUI (Vite + React, real `<input>` for typing).
 There is no Playwright/puppeteer in the repo; use the installed Google

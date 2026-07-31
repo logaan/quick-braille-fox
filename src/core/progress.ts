@@ -71,7 +71,7 @@ export function progressSummary(state: TutorState): ProgressSummary {
 
 /**
  * How long (ms) a sign waits before the *first* hint of the current prompt
- * shows, or null if no time-based hint applies: no/finished prompt, the qbf
+ * shows, or null if no time-based hint applies: no/finished prompt, the fox
  * challenge (never hinted), or a learnt-skill revision (hint only after two
  * consecutive mistakes, which keystroke() handles internally). Later signs
  * of the same prompt wait HINT_REVEAL_COOLDOWN_MS instead — see
@@ -80,7 +80,7 @@ export function progressSummary(state: TutorState): ProgressSummary {
  */
 export function hintDelayFor(state: TutorState): number | null {
   const p = state.prompt;
-  if (!p || p.completed || p.isQbf) return null;
+  if (!p || p.completed || p.isFox) return null;
   if (p.targetSkillId === null) return null;
   if (isSkillLearnt(state, p.targetSkillId)) return null;
   return hintDelayMs(scoreFor(state, p.targetSkillId));

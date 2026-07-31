@@ -9,7 +9,7 @@ import {
   progressSummary,
   scoreFor,
 } from './progress';
-import { QBF_SENTENCE } from './qbf';
+import { FOX_SENTENCE } from './fox';
 import {
   deserialize,
   isPromptComplete,
@@ -21,16 +21,16 @@ import {
 } from './session';
 import { translate } from './braille';
 import type { TutorState } from './types';
-import { QBF_AWARD, QBF_INTERVAL, hintDelayMs, makePrompt, makeTutorState } from './types';
+import { FOX_AWARD, FOX_INTERVAL, hintDelayMs, makePrompt, makeTutorState } from './types';
 
 /** A state showing a hand-built prompt (bypasses generation). */
 function withPrompt(
   base: TutorState,
   text: string,
   targetSkillId: string | null,
-  isQbf = false,
+  isFox = false,
 ): TutorState {
-  return base.set('prompt', makePrompt({ text, targetSkillId, isQbf }));
+  return base.set('prompt', makePrompt({ text, targetSkillId, isFox }));
 }
 
 /** Reveal every sign's hint, as a fully hinted prompt would end up. */
@@ -91,12 +91,12 @@ describe('hint timing', () => {
     expect(hintDelayFor(state)).toBe(1600);
   });
 
-  it('learnt-skill and qbf prompts get no time-based hint', () => {
+  it('learnt-skill and fox prompts get no time-based hint', () => {
     let state = makeTutorState().set('scores', Map({ 'letter-a': 11 }));
     state = withPrompt(state, 'a', 'letter-a');
     expect(hintDelayFor(state)).toBeNull();
-    const qbf = withPrompt(makeTutorState(), QBF_SENTENCE, null, true);
-    expect(hintDelayFor(qbf)).toBeNull();
+    const fox = withPrompt(makeTutorState(), FOX_SENTENCE, null, true);
+    expect(hintDelayFor(fox)).toBeNull();
   });
 });
 
@@ -243,25 +243,25 @@ describe('keystroke', () => {
   });
 });
 
-describe('qbf flow', () => {
-  it('serves the qbf sentence on the first prompt and every QBF_INTERVAL-th after', () => {
+describe('fox flow', () => {
+  it('serves the fox sentence on the first prompt and every FOX_INTERVAL-th after', () => {
     const learnt = Map(allLetterIds.map((id) => [id, 20] as [string, number]));
     // The learner's very first prompt, before anything is completed.
     const first = nextPrompt(makeTutorState({ seed: 3 }));
-    expect(first.prompt?.isQbf).toBe(true);
-    expect(first.prompt?.text).toBe(QBF_SENTENCE);
+    expect(first.prompt?.isFox).toBe(true);
+    expect(first.prompt?.text).toBe(FOX_SENTENCE);
     expect(first.prompt?.targetSkillId).toBeNull();
 
-    let state = makeTutorState({ seed: 3, promptCounter: QBF_INTERVAL }).set('scores', learnt);
+    let state = makeTutorState({ seed: 3, promptCounter: FOX_INTERVAL }).set('scores', learnt);
     state = nextPrompt(state);
-    expect(state.prompt?.isQbf).toBe(true);
+    expect(state.prompt?.isFox).toBe(true);
     // ...and the one after that is a normal prompt again
-    const after = nextPrompt(state.set('promptCounter', QBF_INTERVAL + 1));
-    expect(after.prompt?.isQbf).toBe(false);
+    const after = nextPrompt(state.set('promptCounter', FOX_INTERVAL + 1));
+    expect(after.prompt?.isFox).toBe(false);
   });
 
   it('fails instantly on the first wrong character', () => {
-    let state = withPrompt(makeTutorState({ promptCounter: 99 }), QBF_SENTENCE, null, true);
+    let state = withPrompt(makeTutorState({ promptCounter: 99 }), FOX_SENTENCE, null, true);
     state = keystroke(state, 'T');
     state = keystroke(state, 'Th');
     state = keystroke(state, 'Tx');
@@ -270,34 +270,34 @@ describe('qbf flow', () => {
     expect(state.promptCounter).toBe(100);
   });
 
-  it('completes flawlessly, scoring QBF_AWARD for every skill in the sentence', () => {
-    let state = withPrompt(makeTutorState({ promptCounter: 99 }), QBF_SENTENCE, null, true);
-    state = keystroke(state, QBF_SENTENCE);
+  it('completes flawlessly, scoring FOX_AWARD for every skill in the sentence', () => {
+    let state = withPrompt(makeTutorState({ promptCounter: 99 }), FOX_SENTENCE, null, true);
+    state = keystroke(state, FOX_SENTENCE);
     expect(state.prompt?.completed).toBe(true);
     expect(state.prompt?.failed).toBe(false);
     expect(state.promptCounter).toBe(100);
     expect(state.scores.size).toBeGreaterThan(0);
-    // One QBF_AWARD per occurrence — 'o' appears three times, so it scores thrice.
-    for (const [, score] of state.scores) expect(score % QBF_AWARD).toBe(0);
-    expect(scoreFor(state, 'letter-o')).toBe(QBF_AWARD * 3);
-    expect(scoreFor(state, 'contraction-the')).toBe(QBF_AWARD * 2); // "The" and "the"
+    // One FOX_AWARD per occurrence — 'o' appears three times, so it scores thrice.
+    for (const [, score] of state.scores) expect(score % FOX_AWARD).toBe(0);
+    expect(scoreFor(state, 'letter-o')).toBe(FOX_AWARD * 3);
+    expect(scoreFor(state, 'contraction-the')).toBe(FOX_AWARD * 2); // "The" and "the"
     // A single flawless occurrence learns the skill outright.
     expect(isSkillLearnt(state, 'contraction-the')).toBe(true);
   });
 
   it('scores the occurrences typed before a run fails, and no more', () => {
-    let state = withPrompt(makeTutorState(), QBF_SENTENCE, null, true);
+    let state = withPrompt(makeTutorState(), FOX_SENTENCE, null, true);
     // "The quick" typed correctly, then a wrong character.
     state = keystroke(state, 'The quick');
     state = keystroke(state, 'The quickx');
     expect(state.prompt?.failed).toBe(true);
-    expect(scoreFor(state, 'contraction-the')).toBe(QBF_AWARD);
+    expect(scoreFor(state, 'contraction-the')).toBe(FOX_AWARD);
     // "brown" comes after the mistake and never scored.
     expect(scoreFor(state, 'groupsign-ow')).toBe(0);
   });
 
   it('never reveals a hint, by mistake or by timer', () => {
-    let state = withPrompt(makeTutorState(), QBF_SENTENCE, null, true);
+    let state = withPrompt(makeTutorState(), FOX_SENTENCE, null, true);
     state = keystroke(state, 'x');
     expect(state.prompt?.hintedUnits.isEmpty()).toBe(true);
     expect(revealHint(state, 0).prompt?.hintedUnits.isEmpty()).toBe(true);

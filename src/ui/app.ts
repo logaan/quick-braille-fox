@@ -18,7 +18,7 @@ export function App(props: AppProps): ReactElement {
     'div',
     { className: 'app' },
     e(Header, {
-      bestQbf: vm.bestQbf,
+      bestFox: vm.bestFox,
       confirmingReset: vm.confirmingReset,
       resetConfirmText: vm.resetConfirmText,
       canConfirmReset: vm.canConfirmReset,

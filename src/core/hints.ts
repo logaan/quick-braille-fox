@@ -55,14 +55,14 @@ function wordSpanAt(text: string, index: number): { start: number; end: number }
 /**
  * The hint for the current prompt: the braille of the word at the caret
  * (the first position where typed and expected text disagree), one string
- * per reveal unit. Null when there is nothing to hint — no prompt, the qbf
+ * per reveal unit. Null when there is nothing to hint — no prompt, the fox
  * challenge (never hinted), or nothing left after the caret. Which of the
  * units are actually *uncovered* is prompt.hintedUnits; callers gate each
  * unit on that.
  */
 export function hintWordForPrompt(state: TutorState): HintWord | null {
   const p = state.prompt;
-  if (!p || p.isQbf) return null;
+  if (!p || p.isFox) return null;
   const caret = commonPrefixLength(p.text, p.typed);
   const span = wordSpanAt(p.text, caret);
   if (span === null) return null;
@@ -104,7 +104,7 @@ export interface PendingHint {
  */
 export function nextHintFor(state: TutorState): PendingHint | null {
   const p = state.prompt;
-  if (!p || p.completed || p.isQbf) return null;
+  if (!p || p.completed || p.isFox) return null;
   const caret = commonPrefixLength(p.text, p.typed);
   const units = translate(p.text).units;
   const unitIndex = units.findIndex((u) => u.start <= caret && caret < u.end);

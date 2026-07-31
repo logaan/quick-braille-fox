@@ -1,24 +1,24 @@
 // The interaction store: wraps the core's pure TutorState with event
-// handling, the hint timer, qbf cell counting, and localStorage persistence.
+// handling, the hint timer, fox cell counting, and localStorage persistence.
 // The UI renders viewModel() snapshots and wires `handlers` to DOM events;
 // it never calls core transitions itself.
 
 import type { ChangeEvent, KeyboardEvent } from 'react';
-import type { Cell, QbfResult, TutorState } from '../core';
+import type { Cell, FoxResult, TutorState } from '../core';
 import {
   backTranslateBuffer,
   backTranslateBufferAttributed,
   keystroke,
   nextHintFor,
   nextPrompt,
-  qbfResult,
+  foxResult,
   revealHint,
   startSession,
   textToCells,
 } from '../core';
 import type { ChordState } from './chords';
 import { EMPTY_CHORD_STATE, chordKeyDown, chordKeyUp, isChordCode } from './chords';
-import type { BestQbf, StorageLike } from './persistence';
+import type { BestFox, StorageLike } from './persistence';
 import { clearProgress, loadProgress, saveProgress } from './persistence';
 import type { AppHandlers, AppViewModel } from './view';
 import { buildViewModel, matchesResetWord } from './view';
@@ -34,11 +34,11 @@ export interface TutorStoreOptions {
 
 export class TutorStore {
   private tutor: TutorState;
-  private bestQbf: BestQbf | null = null;
-  /** Result of the most recently completed qbf run (shown until Continue). */
-  private lastQbf: QbfResult | null = null;
-  /** Insertion events during the current qbf prompt (1 event = 1 cell). */
-  private qbfCellsTyped = 0;
+  private bestFox: BestFox | null = null;
+  /** Result of the most recently completed fox run (shown until Continue). */
+  private lastFox: FoxResult | null = null;
+  /** Insertion events during the current fox prompt (1 event = 1 cell). */
+  private foxCellsTyped = 0;
   /**
    * Bumped every time a new prompt is shown (advance/reset). The UI keys the
    * uncontrolled drill input on it so the field clears (remounts) exactly at
@@ -82,15 +82,15 @@ export class TutorStore {
     if (persisted === null) {
       this.tutor = startSession(this.freshSeed());
     } else {
-      this.bestQbf = persisted.bestQbf;
+      this.bestFox = persisted.bestFox;
       this.voiceOverInput = persisted.voiceOverInput;
       const p = persisted.tutor.prompt;
       // Resume an in-flight prompt as-is. Move on from a prompt saved after
-      // completion (e.g. mid result screen). A half-typed qbf restarts
+      // completion (e.g. mid result screen). A half-typed fox restarts
       // cleanly (its cell count was not persisted), which nextPrompt does
-      // automatically because promptCounter still selects the qbf slot.
+      // automatically because promptCounter still selects the fox slot.
       this.tutor =
-        p === null || p.completed || (p.isQbf && p.typed !== '')
+        p === null || p.completed || (p.isFox && p.typed !== '')
           ? nextPrompt(persisted.tutor)
           : persisted.tutor;
     }
@@ -101,7 +101,7 @@ export class TutorStore {
       onDrillKeyDown: (event) => this.handleKeyDown(event),
       onDrillKeyUp: (event) => this.handleKeyUp(event),
       onInputModeToggle: () => this.toggleInputMode(),
-      onQbfContinue: () => this.continueAfterQbf(),
+      onFoxContinue: () => this.continueAfterFox(),
       onResetRequest: () => {
         this.confirmingReset = true;
         this.resetConfirmText = '';
@@ -148,8 +148,8 @@ export class TutorStore {
   viewModel(): AppViewModel {
     return buildViewModel({
       tutor: this.tutor,
-      bestQbf: this.bestQbf,
-      lastQbf: this.lastQbf,
+      bestFox: this.bestFox,
+      lastFox: this.lastFox,
       confirmingReset: this.confirmingReset,
       resetConfirmText: this.resetConfirmText,
       voiceOverInput: this.voiceOverInput,
@@ -195,12 +195,12 @@ export class TutorStore {
         ? native.inputType.startsWith('insert')
         : value.length > prompt.typed.length;
 
-    // qbf cell counting: one cell per insertion event — VoiceOver braille
+    // fox cell counting: one cell per insertion event — VoiceOver braille
     // screen input commits a whole contraction as a single insertion, a
     // regular keypress inserts one char. Deletions never decrement. An
     // event whose value was normalised back to what was already typed (a
     // stripped VoiceOver space) is not a cell.
-    if (prompt.isQbf && inserted && value !== prompt.typed) this.qbfCellsTyped += 1;
+    if (prompt.isFox && inserted && value !== prompt.typed) this.foxCellsTyped += 1;
 
     this.tutor = keystroke(this.tutor, value);
     this.afterKeystroke();
@@ -247,7 +247,7 @@ export class TutorStore {
 
     if (action.kind === 'cell') {
       this.cellBuffer = [...this.cellBuffer, action.cell];
-      if (prompt.isQbf) this.qbfCellsTyped += 1;
+      if (prompt.isFox) this.foxCellsTyped += 1;
       this.commitBuffer();
       return;
     }
@@ -257,7 +257,7 @@ export class TutorStore {
     const derived = backTranslateBuffer(candidate, prompt.text);
     if (stripUnexpectedTrailingSpaces(derived, prompt.text) !== derived) return; // artifact
     this.cellBuffer = candidate;
-    if (prompt.isQbf) this.qbfCellsTyped += 1;
+    if (prompt.isFox) this.foxCellsTyped += 1;
     this.commitBuffer();
   }
 
@@ -265,11 +265,11 @@ export class TutorStore {
   private commitBuffer(): void {
     const prompt = this.tutor.prompt;
     if (prompt === null || prompt.completed) return;
-    // On a qbf run the attributed units carry the signs actually chorded, so
+    // On a fox run the attributed units carry the signs actually chorded, so
     // the challenge credits what the learner typed, not the canonical
     // translation's contractions.
     const derived = backTranslateBufferAttributed(this.cellBuffer, prompt.text);
-    this.tutor = keystroke(this.tutor, derived.text, prompt.isQbf ? derived.units : undefined);
+    this.tutor = keystroke(this.tutor, derived.text, prompt.isFox ? derived.units : undefined);
     this.afterKeystroke();
     this.changed();
   }
@@ -309,22 +309,22 @@ export class TutorStore {
     this.changed();
   }
 
-  /** Shared post-keystroke handling: qbf scoring/result, or advance. */
+  /** Shared post-keystroke handling: fox scoring/result, or advance. */
   private afterKeystroke(): void {
     const after = this.tutor.prompt;
     if (after === null || !after.completed) return;
-    if (after.isQbf) {
-      const result: QbfResult = after.failed ? { kind: 'failed' } : qbfResult(this.qbfCellsTyped);
-      this.lastQbf = result;
-      if (result.kind !== 'failed' && this.isNewBest(result)) this.bestQbf = result;
-      // Stay on the result screen until onQbfContinue().
+    if (after.isFox) {
+      const result: FoxResult = after.failed ? { kind: 'failed' } : foxResult(this.foxCellsTyped);
+      this.lastFox = result;
+      if (result.kind !== 'failed' && this.isNewBest(result)) this.bestFox = result;
+      // Stay on the result screen until onFoxContinue().
     } else {
       this.advance();
     }
   }
 
-  private continueAfterQbf(): void {
-    if (this.lastQbf === null) return;
+  private continueAfterFox(): void {
+    if (this.lastFox === null) return;
     this.advance();
     this.changed();
   }
@@ -332,15 +332,15 @@ export class TutorStore {
   /** Move to the next prompt and reset per-prompt bookkeeping. */
   private advance(): void {
     this.tutor = nextPrompt(this.tutor);
-    this.qbfCellsTyped = 0;
-    this.lastQbf = null;
+    this.foxCellsTyped = 0;
+    this.lastFox = null;
     this.cellBuffer = [];
     this.chordState = EMPTY_CHORD_STATE;
     this.promptEpoch += 1;
   }
 
-  private isNewBest(result: BestQbf): boolean {
-    const best = this.bestQbf;
+  private isNewBest(result: BestFox): boolean {
+    const best = this.bestFox;
     if (best === null) return true;
     if (best.kind === 'crown') return false;
     if (result.kind === 'crown') return true;
@@ -350,9 +350,9 @@ export class TutorStore {
   private resetProgress(): void {
     if (this.storage !== null) clearProgress(this.storage);
     this.tutor = startSession(this.freshSeed());
-    this.bestQbf = null;
-    this.lastQbf = null;
-    this.qbfCellsTyped = 0;
+    this.bestFox = null;
+    this.lastFox = null;
+    this.foxCellsTyped = 0;
     this.confirmingReset = false;
     this.resetConfirmText = '';
     this.cellBuffer = [];
@@ -409,7 +409,7 @@ export class TutorStore {
     if (this.storage === null) return;
     saveProgress(this.storage, {
       tutor: this.tutor,
-      bestQbf: this.bestQbf,
+      bestFox: this.bestFox,
       voiceOverInput: this.voiceOverInput,
     });
   }

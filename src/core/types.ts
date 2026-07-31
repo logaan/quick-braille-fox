@@ -25,17 +25,17 @@ export const MISTAKE_PENALTY = 1;
 /** Mistakes on the same occurrence before penalty + forced hint. */
 export const MISTAKES_BEFORE_PENALTY = 2;
 /**
- * The qbf challenge runs on every Nth prompt, counting from the learner's
+ * The fox challenge runs on every Nth prompt, counting from the learner's
  * very first one (prompt counters 0, N, 2N, …).
  */
-export const QBF_INTERVAL = 50;
+export const FOX_INTERVAL = 50;
 /**
- * Score gained per skill for each occurrence typed correctly during a qbf
+ * Score gained per skill for each occurrence typed correctly during a fox
  * run. The challenge offers no hints and ends on the first mistake, so
  * typing an occurrence there proves the skill outright — one occurrence is
  * worth LEARNT_THRESHOLD, i.e. instantly learnt.
  */
-export const QBF_AWARD = LEARNT_THRESHOLD;
+export const FOX_AWARD = LEARNT_THRESHOLD;
 /** Chance that a prompt revises a learnt skill instead of an active one. */
 export const REVISION_PROBABILITY = 1 / 3;
 
@@ -66,10 +66,10 @@ export const HINT_REVEAL_COOLDOWN_MS = 1000;
 export interface PromptProps {
   /** The print text the learner must type, exactly. */
   text: string;
-  /** Skill this prompt drills; null for the qbf challenge. */
+  /** Skill this prompt drills; null for the fox challenge. */
   targetSkillId: string | null;
-  /** Whether this is the every-QBF_INTERVAL-th qbf challenge. */
-  isQbf: boolean;
+  /** Whether this is the every-FOX_INTERVAL-th fox challenge. */
+  isFox: boolean;
   /** What the learner has typed so far (as reported by keystroke()). */
   typed: string;
   /**
@@ -88,9 +88,9 @@ export interface PromptProps {
   hintedUnits: Set<number>;
   /** Whether the typed text currently diverges from the expected prefix. */
   diverged: boolean;
-  /** Whether the prompt is finished (typed correctly, or qbf failed). */
+  /** Whether the prompt is finished (typed correctly, or fox failed). */
   completed: boolean;
-  /** qbf only: the challenge was failed by a mistake. */
+  /** fox only: the challenge was failed by a mistake. */
   failed: boolean;
 }
 
@@ -98,7 +98,7 @@ export const makePrompt = Record<PromptProps>(
   {
     text: '',
     targetSkillId: null,
-    isQbf: false,
+    isFox: false,
     typed: '',
     unitMistakes: Map<number, number>(),
     awardedUnits: Set<number>(),
@@ -116,7 +116,7 @@ export type Prompt = RecordOf<PromptProps>;
 export interface TutorStateProps {
   /** skill id -> score. Missing key = 0. */
   scores: Map<string, number>;
-  /** Number of completed prompts (correct, or qbf-failed), ever. */
+  /** Number of completed prompts (correct, or fox-failed), ever. */
   promptCounter: number;
   /** The prompt currently on screen, if any. */
   prompt: Prompt | null;

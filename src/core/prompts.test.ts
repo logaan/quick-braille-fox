@@ -308,7 +308,7 @@ describe('full-session smoke test', () => {
       const p = state.prompt;
       expect(p).not.toBeNull();
       if (!p) break;
-      if (!p.isQbf) {
+      if (!p.isFox) {
         expect(p.text.length).toBeGreaterThan(0);
         if (p.targetSkillId) {
           assertUsesOnlyKnown(state, p.text, p.targetSkillId);

@@ -20,14 +20,14 @@ export {
   backTranslateWord,
 } from './backtranslate';
 
-export type { QbfResult, QbfSign } from './qbf';
+export type { FoxResult, FoxSign } from './fox';
 export {
-  QBF_MIN_CELLS,
-  QBF_SENTENCE,
+  FOX_MIN_CELLS,
+  FOX_SENTENCE,
   divergentCells,
   expectedSignAt,
-  qbfResult,
-} from './qbf';
+  foxResult,
+} from './fox';
 
 export type { Prompt, PromptProps, TutorState, TutorStateProps } from './types';
 export {
@@ -38,8 +38,8 @@ export {
   LEARNT_THRESHOLD,
   MISTAKE_PENALTY,
   MISTAKES_BEFORE_PENALTY,
-  QBF_AWARD,
-  QBF_INTERVAL,
+  FOX_AWARD,
+  FOX_INTERVAL,
   REVISION_PROBABILITY,
   hintDelayMs,
   isLearntScore,

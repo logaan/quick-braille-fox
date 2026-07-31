@@ -4,9 +4,9 @@ import { hintWordForPrompt, nextHintFor } from './hints';
 import type { TutorState } from './types';
 import { HINT_REVEAL_COOLDOWN_MS, hintDelayMs, makePrompt, makeTutorState } from './types';
 
-function state(text: string, typed: string, isQbf = false): TutorState {
+function state(text: string, typed: string, isFox = false): TutorState {
   return makeTutorState({
-    prompt: makePrompt({ text, typed, isQbf, targetSkillId: isQbf ? null : 'letter-d' }),
+    prompt: makePrompt({ text, typed, isFox, targetSkillId: isFox ? null : 'letter-d' }),
   });
 }
 
@@ -16,7 +16,7 @@ function unicode(state: TutorState): string[] | undefined {
 }
 
 describe('hintWordForPrompt', () => {
-  it('is null without a prompt and for the qbf challenge', () => {
+  it('is null without a prompt and for the fox challenge', () => {
     expect(hintWordForPrompt(makeTutorState())).toBeNull();
     expect(hintWordForPrompt(state('the dog', '', true))).toBeNull();
   });
@@ -101,7 +101,7 @@ describe('nextHintFor', () => {
     expect(nextHintFor(drill('thx'))).toEqual({ unitIndex: 0, delayMs: hintDelayMs(0) });
   });
 
-  it('is null for qbf, completed, and finished-text prompts', () => {
+  it('is null for fox, completed, and finished-text prompts', () => {
     expect(nextHintFor(makeTutorState())).toBeNull();
     expect(nextHintFor(state('the dog', '', true))).toBeNull();
     expect(

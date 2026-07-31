@@ -1,12 +1,12 @@
 #!/usr/bin/env bash
-# Publish dist/ to http://logpi.local/braille-grade2/.
+# Publish dist/ to http://logpi.local/quick-braille-fox/.
 #
 # The trailing "/" on dist/ copies the *contents* of the directory, not the
-# directory itself — `scp -r dist host:www/braille-grade2` only did the right
-# thing on the very first deploy and nested a dist/ inside the target on every
-# run after that. --delete clears out assets from earlier builds, whose
+# directory itself — `scp -r dist host:www/quick-braille-fox` only did the
+# right thing on the very first deploy and nested a dist/ inside the target on
+# every run after that. --delete clears out assets from earlier builds, whose
 # filenames are content-hashed and so never get overwritten.
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
-rsync -a --delete dist/ logan@logpi.local:www/braille-grade2/
+rsync -av --delete dist/ logan@logpi.local:www/quick-braille-fox/

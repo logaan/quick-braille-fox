@@ -1,10 +1,10 @@
 // Render-path smoke tests: the full App renders from real store view-models
-// (fresh session, hint showing, qbf challenge, qbf result) without throwing.
+// (fresh session, hint showing, fox challenge, fox result) without throwing.
 
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { createElement as e } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
-import { QBF_INTERVAL, QBF_SENTENCE, makePrompt, makeTutorState, serialize } from '../core';
+import { FOX_INTERVAL, FOX_SENTENCE, makePrompt, makeTutorState, serialize } from '../core';
 import type { AppHandlers, StorageLike, TutorStore } from '../state';
 import { STORAGE_KEY, createTutorStore } from '../state';
 import { App } from './index';
@@ -33,14 +33,14 @@ function memoryStorage(): StorageLike {
   };
 }
 
-/** A store whose next prompt is an ordinary drill (prompt 0 is the qbf). */
+/** A store whose next prompt is an ordinary drill (prompt 0 is the fox). */
 function drillStore(): TutorStore {
   return storeAt(1);
 }
 
-/** A store whose next prompt is the qbf challenge. */
-function qbfReadyStore(): TutorStore {
-  return storeAt(QBF_INTERVAL);
+/** A store whose next prompt is the fox challenge. */
+function foxReadyStore(): TutorStore {
+  return storeAt(FOX_INTERVAL);
 }
 
 function storeAt(promptCounter: number): TutorStore {
@@ -52,7 +52,7 @@ function storeAt(promptCounter: number): TutorStore {
   });
   storage.setItem(
     STORAGE_KEY,
-    JSON.stringify({ version: 1, tutor: serialize(state), bestQbf: null }),
+    JSON.stringify({ version: 1, tutor: serialize(state), bestFox: null }),
   );
   return createTutorStore({ storage, seed: 1 });
 }
@@ -89,7 +89,7 @@ describe('App rendering', () => {
     const store = createTutorStore({ seed: 1 });
     const html = render(store);
     expect(html).toContain('⠟'); // brand cell
-    expect(html).toContain('aria-label="qbf"');
+    expect(html).toContain('aria-label="Quick Braille Fox"');
     expect(html).toContain('id="drill-input"');
     expect(html).toContain('Learning now');
     expect(html).toContain('of 258 skills learnt');
@@ -131,11 +131,11 @@ describe('App rendering', () => {
     expect(html).toContain('id="drill-input"');
   });
 
-  it('renders the qbf challenge and its result screen', () => {
-    const store = qbfReadyStore();
+  it('renders the fox challenge and its result screen', () => {
+    const store = foxReadyStore();
     let html = render(store);
-    expect(html).toContain('qbf challenge');
-    expect(html).toContain(QBF_SENTENCE.slice(0, 9));
+    expect(html).toContain('fox challenge');
+    expect(html).toContain(FOX_SENTENCE.slice(0, 9));
     expect(html).not.toContain('hint-area');
 
     type(store, 'X'); // instant fail
@@ -145,8 +145,8 @@ describe('App rendering', () => {
     expect(html).not.toContain('id="drill-input"');
   });
 
-  it('shows the sign that was due on the qbf failure screen', () => {
-    const store = qbfReadyStore();
+  it('shows the sign that was due on the fox failure screen', () => {
+    const store = foxReadyStore();
     type(store, 'X'); // expected the capital "T" of "The"
     const html = render(store);
     expect(html).toContain('Expected');
@@ -158,7 +158,7 @@ describe('App rendering', () => {
   });
 
   it('also shows the chorded cells that broke a run in chord mode', () => {
-    const store = qbfReadyStore();
+    const store = foxReadyStore();
     store.handlers.onInputModeToggle(); // chord mode
     for (const code of ['KeyF', 'KeyS', 'KeyK']) chordDown(store, code); // ⠕ = "o"
     for (const code of ['KeyF', 'KeyS', 'KeyK']) chordUp(store, code);

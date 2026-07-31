@@ -22,7 +22,7 @@
 // Decoding works in attributed pieces — (print, skill ids, cells) — so the
 // same pass that derives the text also reports which signs the learner
 // *actually* chorded. backTranslateBufferAttributed() exposes that as
-// translation units; the qbf challenge scores those instead of the canonical
+// translation units; the fox challenge scores those instead of the canonical
 // translation, so spelling a word out letter by letter credits the letters,
 // not the contraction the learner never typed.
 

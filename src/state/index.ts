@@ -6,10 +6,10 @@ export type {
   AppHandlers,
   AppViewModel,
   GroupProgressView,
-  QbfFailureView,
+  FoxFailureView,
 } from './view';
 export { RESET_CONFIRM_WORD, matchesResetWord } from './view';
-export type { BestQbf, StorageLike } from './persistence';
+export type { BestFox, StorageLike } from './persistence';
 export { STORAGE_KEY } from './persistence';
 export type { TutorStoreOptions } from './store';
 export { TutorStore, createTutorStore } from './store';

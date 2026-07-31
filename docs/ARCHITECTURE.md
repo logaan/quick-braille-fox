@@ -195,10 +195,10 @@ everything from `src/core` (`import { startSession, keystroke } from
   within that word only the signs already revealed (`hintWordForPrompt`
   supplies the word's units with their prompt-wide indexes; the view shows
   their leading revealed run).
-- Every `QBF_INTERVAL`-th prompt (50), counting from the learner's first, is
-  the qbf challenge — the fixed sentence `QBF_SENTENCE`, no hints ever, any
+- Every `FOX_INTERVAL`-th prompt (50), counting from the learner's first, is
+  the fox challenge — the fixed sentence `FOX_SENTENCE`, no hints ever, any
   first wrong character fails it instantly and moves on. Occurrences the
-  correct prefix finishes score `QBF_AWARD` (10 = `LEARNT_THRESHOLD`) per
+  correct prefix finishes score `FOX_AWARD` (10 = `LEARNT_THRESHOLD`) per
   skill, including those typed before a failing keystroke.
 
 ### State shapes (`types.ts`)
@@ -206,21 +206,21 @@ everything from `src/core` (`import { startSession, keystroke } from
 ```ts
 TutorState = Record<{
   scores: Map<string, number>;  // skill id -> score (missing = 0)
-  promptCounter: number;        // completed prompts ever (incl. failed qbf)
+  promptCounter: number;        // completed prompts ever (incl. failed fox)
   prompt: Prompt | null;        // what's on screen
   seed: number;                 // PRNG seed; consumed/replaced by nextPrompt
 }>
 Prompt = Record<{
   text: string;                 // print text to type, matched exactly
-  targetSkillId: string | null; // null for qbf
-  isQbf: boolean;
+  targetSkillId: string | null; // null for fox
+  isFox: boolean;
   typed: string;                // latest typed text fed to keystroke()
   unitMistakes: Map<number, number>; // mistakes per translation-unit index
   awardedUnits: Set<number>;    // unit indexes already scored this prompt
   hintedUnits: Set<number>;     // unit indexes whose hint has been revealed
   diverged: boolean;            // typed currently diverges from the text
-  completed: boolean;           // finished (typed correctly, or qbf failed)
-  failed: boolean;              // qbf only
+  completed: boolean;           // finished (typed correctly, or fox failed)
+  failed: boolean;              // fox only
 }>
 ```
 
@@ -233,9 +233,9 @@ correct answer can still earn the +2.
 | function | behaviour |
 |---|---|
 | `startSession(seed?)` | fresh state with the first prompt generated; pass e.g. `Date.now()` for variety (defaults to 1, fully deterministic) |
-| `nextPrompt(state)` | replace the current prompt with a new one (call after completion, or to skip). Serves the qbf challenge when `promptCounter % QBF_INTERVAL === 0`. Consumes and refreshes `seed` |
-| `keystroke(state, typed, typedUnits?)` | feed the full *resulting* typed text after an input event (not a single key). Handles progressive prefix matching, per-occurrence immediate scoring, mistake events, qbf instant-fail, completion, and `promptCounter`. Ignores input once completed. On a qbf run, `typedUnits` (from `backTranslateBufferAttributed`) replaces the canonical translation as award attribution, so chord-mode runs credit the signs actually typed; without it (VoiceOver hands us print, not cells) canonical attribution applies |
-| `revealHint(state, unitIndex)` | uncover one sign's hint (state layer calls this when that sign's timer fires). No-op for qbf |
+| `nextPrompt(state)` | replace the current prompt with a new one (call after completion, or to skip). Serves the fox challenge when `promptCounter % FOX_INTERVAL === 0`. Consumes and refreshes `seed` |
+| `keystroke(state, typed, typedUnits?)` | feed the full *resulting* typed text after an input event (not a single key). Handles progressive prefix matching, per-occurrence immediate scoring, mistake events, fox instant-fail, completion, and `promptCounter`. Ignores input once completed. On a fox run, `typedUnits` (from `backTranslateBufferAttributed`) replaces the canonical translation as award attribution, so chord-mode runs credit the signs actually typed; without it (VoiceOver hands us print, not cells) canonical attribution applies |
+| `revealHint(state, unitIndex)` | uncover one sign's hint (state layer calls this when that sign's timer fires). No-op for fox |
 | `isPromptComplete(state)` | whether to move on (then call `nextPrompt`) |
 | `serialize(state)` | plain `SerializedTutorState` object, JSON-safe (versioned, `version: 1`) |
 | `deserialize(obj)` | rebuild a `TutorState`; lenient about missing fields, throws `TypeError` on garbage/unknown version |
@@ -249,7 +249,7 @@ correct answer can still earn the +2.
 | `learntSkills(state)` / `activeSkills(state)` | `Skill[]` in curriculum order |
 | `knownSkillIds(state)` | `Set` of learnt ∪ active ids |
 | `progressSummary(state)` | `{ totalSkills, learntCount, promptsCompleted, active: [{ id, print, score }] }` |
-| `hintDelayFor(state)` | ms a sign waits before the *first* hint of the current prompt, or `null` (no prompt / qbf / learnt-skill revision) |
+| `hintDelayFor(state)` | ms a sign waits before the *first* hint of the current prompt, or `null` (no prompt / fox / learnt-skill revision) |
 
 ### Prompt generation (`prompts.ts`, `corpus.ts`)
 
@@ -313,7 +313,7 @@ a–e are known).
 | `textToCells(text)` / `textToUnicode(text)` | cells / U+2800 string for braille display |
 | `cellCount(text)` | number of cells (spaces count as one blank cell each) |
 | `dotsToUnicode(cells)` | dot-number arrays → U+2800 string |
-| `hintWordForPrompt(state)` (`hints.ts`) | the caret word's braille as reveal units: `{ wordStart, units: { index, unicode }[] }`, `null` for qbf/no prompt/nothing after the caret |
+| `hintWordForPrompt(state)` (`hints.ts`) | the caret word's braille as reveal units: `{ wordStart, units: { index, unicode }[] }`, `null` for fox/no prompt/nothing after the caret |
 | `nextHintFor(state)` (`hints.ts`) | the sign whose hint is on the clock and its wait: `{ unitIndex, delayMs }`, or `null` when nothing is counting down |
 | `CAPITAL_INDICATOR` | the dot-6 capital letter indicator cell |
 
@@ -326,7 +326,7 @@ Capitalisation uses the capital skills: one `capital-letter-indicator` cell
 per capital letter, or a single `capital-word-indicator` (⠠⠠) before an
 ALL-CAPS word — both appear in `skillIds`, so gating counts them. It is
 deliberately not liblouis — good enough for hints, prompt gating, and the
-qbf minimum, per the caveats below.
+fox minimum, per the caveats below.
 
 ### Back-translation (`backtranslate.ts`)
 
@@ -338,7 +338,7 @@ contextual, so decoding is word-buffered and progressive.
 |---|---|
 | `backTranslateWord(cells, { expected?, final? })` | decode one word's cells (no blanks) to print; always returns a string |
 | `backTranslateBuffer(cells, expectedText)` | decode a whole prompt buffer (blank cells mark spaces) against the prompt text |
-| `backTranslateBufferAttributed(cells, expectedText)` | as `backTranslateBuffer`, but also returns the decoded signs as translation units over the derived text — the skills the learner *actually* chorded. The state layer passes these to `keystroke` on qbf runs so the challenge credits what was typed, not the canonical solution's contractions |
+| `backTranslateBufferAttributed(cells, expectedText)` | as `backTranslateBuffer`, but also returns the decoded signs as translation units over the derived text — the skills the learner *actually* chorded. The state layer passes these to `keystroke` on fox runs so the challenge credits what was typed, not the canonical solution's contractions |
 
 Two strategies combine. Given the `expected` prompt word, the buffer is matched
 cell-by-cell against `translate(expected).cells`/`.units` and the matching print
@@ -346,7 +346,7 @@ span is emitted — so a correctly-typed prefix shows the matching print prefix
 (no phantom mistakes) and a full match round-trips exactly. The **round-trip
 property `backTranslateBuffer(translate(text).cells, text) === text` holds for
 every promptable text** (corpus words, capitalised/ALL-CAPS forms, digit
-strings, punctuation-in-context, the qbf sentence), enforced by a generated test
+strings, punctuation-in-context, the fox sentence), enforced by a generated test
 universe, and it depends only on this matching — not on the canonical decoder.
 The diverged tail (a wrong chord), text with no expected context, and extra
 words are decoded by a greedy context-free decoder that mirrors `translate`'s
@@ -354,17 +354,17 @@ rules (capitals, standalone signs, number mode, positional in-word signs with an
 open-word lookahead waiver). It never throws; cells it cannot read become their
 U+2800 glyph, which never matches prompt text, so a mistake stays visible.
 
-### qbf challenge (`qbf.ts`)
+### fox challenge (`fox.ts`)
 
-- `QBF_SENTENCE` — `The quick brown fox jumps over the lazy dog.` ("jumps",
+- `FOX_SENTENCE` — `The quick brown fox jumps over the lazy dog.` ("jumps",
   not "jumped": the perfect pangram lets an uncontracted run exercise the
   whole alphabet)
-- `QBF_MIN_CELLS` — minimum grade-2 cell count, derived from the skills data
+- `FOX_MIN_CELLS` — minimum grade-2 cell count, derived from the skills data
   at module load. It is **36**, not the 39 sketched in early planning:
   "quick" is itself a UEB shortform (⠟⠅, 2 cells rather than 5).
   Breakdown: The 2, quick 2, brown 4, fox 3, jumps 5, over 3, the 1,
   lazy 4, dog 3, period 1, spaces 8.
-- `qbfResult(cellsTyped)` — for a flawless run, `{ kind: 'crown' }` at
+- `foxResult(cellsTyped)` — for a flawless run, `{ kind: 'crown' }` at
   exactly the minimum, else `{ kind: 'badge', percentAbove }` (percentage
   above minimum, unrounded); counts below the minimum (or non-finite) are
   `{ kind: 'failed' }`. The state layer counts cells typed (input insertion
@@ -380,7 +380,7 @@ U+2800 glyph, which never matches prompt text, so a mistake stays visible.
   a word out letter by letter is correct print at a higher cell cost, which
   the challenge grades separately rather than failing.
 
-Together these drive the failure screen (`AppViewModel.qbfFailure`), which
+Together these drive the failure screen (`AppViewModel.foxFailure`), which
 shows the sign that was owed and — in chord mode only — the cells actually
 entered. VoiceOver braille screen input hands the app print rather than the
 cells behind it, so there "what you typed" would only echo the app's own
@@ -404,12 +404,12 @@ straight to core transition functions and call `notify()`):
 
 - `viewModel(): AppViewModel` — a plain-data snapshot of everything the UI
   renders (prompt/typed/diverged, hint unicode, active skills with scores,
-  per-group progress, best qbf, qbf failure detail, reset-confirm flag, …).
+  per-group progress, best fox, fox failure detail, reset-confirm flag, …).
   Built by `view.ts` from the core's read-only views. The failure detail also
   draws on the store's chord-mode `cellBuffer`, which is the only record of
   the cells a learner actually pressed.
 - `handlers: AppHandlers` — a stable object of DOM event handlers the UI
-  wires up: `onInput`, `onQbfContinue`, `onResetRequest/Confirm/Cancel`.
+  wires up: `onInput`, `onFoxContinue`, `onResetRequest/Confirm/Cancel`.
 - `subscribe(listener)` — `main.ts` subscribes and re-renders the React
   root with a fresh view model on every change.
 
@@ -431,10 +431,10 @@ never touches the field), and feeds the result to core `keystroke`. Note the
 consequence of a visible field plus that normalisation: the raw value on
 screen and the coloured prompt can disagree about spacing — the field shows
 what VoiceOver actually produced, while the colouring follows the normalised
-`typed`. For qbf cell counting, each input event whose `inputType` starts with
+`typed`. For fox cell counting, each input event whose `inputType` starts with
 `insert` counts as **one cell** (VoiceOver commits a whole contraction as a
 single insertion; a keypress inserts one char); deletions never decrement. On
-a flawless qbf completion the count goes to core `qbfResult`; the best
+a flawless fox completion the count goes to core `foxResult`; the best
 crown/badge result is kept (crown beats badge, lower `percentAbove` beats
 higher) and persisted.
 
@@ -450,11 +450,11 @@ control is unchanged for assistive tech) preventDefault the chord keys, Enter,
 and stray printables, and append each committed cell to a per-prompt
 `cellBuffer` (blank cells mark spaces). After every commit the buffer is decoded
 with core `backTranslateBuffer(cellBuffer, prompt.text)` and fed to `keystroke`,
-so scoring, hints, and qbf work unchanged; Backspace pops the last cell.
+so scoring, hints, and fox work unchanged; Backspace pops the last cell.
 `handleInput` short-circuits while chord mode is on, and the key handlers
 no-op while it is off. Toggling mid-prompt (or resuming a persisted chord-mode
 session) reconstructs the buffer from a clean typed prefix, or clears the typing
-if it had diverged. For qbf cell counting each committed chord (cell **or**
+if it had diverged. For fox cell counting each committed chord (cell **or**
 space) counts as one cell; Backspace never decrements — so chording the
 canonical 36 cells earns the crown and spelling a shortform out costs extra.
 
@@ -473,13 +473,14 @@ reload rather than being store-local.
 
 **Persistence (`persistence.ts`).** A versioned envelope
 (`qbf-progress-v1`) in localStorage: `{ version, tutor: serialize(state),
-bestQbf, voiceOverInput }`. `voiceOverInput` was added
+bestQbf, voiceOverInput }` — the key and field names predate the "fox
+challenge" naming and are kept so existing progress survives. `voiceOverInput` was added
 later as an optional field (no version bump): an absent/garbage value loads as
 `true`, so older envelopes keep the original behaviour. Saves are debounced
 (250 ms) after every
 change and flushed on `pagehide`. On boot: absent/corrupt/unknown-version
 data ⇒ fresh `startSession(Date.now())`; an in-flight prompt resumes as-is;
-a completed prompt (or half-typed qbf, whose cell count wasn't persisted)
+a completed prompt (or half-typed fox, whose cell count wasn't persisted)
 moves on via `nextPrompt`. "Reset progress" (confirm step in the UI) clears
 storage and starts over.
 
@@ -501,9 +502,11 @@ every component uses `createElement as e`. No component owns state, timers,
 or effects — `main.ts` re-renders the root on every store notification.
 
 - `app.ts` — layout: header, drill view, skill panel.
-- `header.ts` — the brand "qbf" as three braille cells ⠟⠃⠋ (aria-label
-  "qbf"), the input-mode switch (`role="switch"`, "VoiceOver input", on by
-  default), the persisted best qbf result (👑 or `+N%`), and the two-step
+- `header.ts` — the logo: "Quick braille fox" as a 3×3 grid of braille
+  cells, one word per row — ⠠⠟⠅ (capital sign + shortform "qk"), ⠃⠗⠇
+  (shortform "brl"), ⠋⠕⠭ ("fox" in full) — with aria-label "Quick Braille
+  Fox"; the input-mode switch (`role="switch"`, "VoiceOver input", on by
+  default), the persisted best fox result (👑 or `+N%`), and the two-step
   reset-progress control.
 - `drill.ts` — the prompt with monkeytype-style progressive colouring
   (correct prefix / wrong / untyped, plus a caret); diverged positions show
@@ -513,7 +516,7 @@ or effects — `main.ts` re-renders the root on every store notification.
   for the input; the autofocused monospace input (also carrying the chord-mode
   `onKeyDown`/`onKeyUp` handlers, which no-op in VoiceOver mode); the hint area (an
   `aria-live=polite` region that fills with the caret word's braille as
-  large segmented cells, one sign at a time); the qbf challenge
+  large segmented cells, one sign at a time); the fox challenge
   styling (gold, no hint area) and result screen (crown / `+N%` badge /
   failed, in an `aria-live=assertive` region, with a Continue button).
 - `skills.ts` — the 5 active skills (cells, print, score bar toward 10) and
@@ -534,8 +537,8 @@ or effects — `main.ts` re-renders the root on every store notification.
   with the on-screen keyboard up; no horizontal page scroll.
 
 Rendering tests (`app.test.ts`) render the full App through
-`react-dom/server` for the fresh-session, hint-showing, qbf-challenge, and
-qbf-result states.
+`react-dom/server` for the fresh-session, hint-showing, fox-challenge, and
+fox-result states.
 
 ## Table-parsing caveats (for future phases)
 

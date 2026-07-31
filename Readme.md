@@ -1,6 +1,14 @@
-# qbf ⠟⠃⠋
+# Quick Braille Fox
 
-qbf is a web app that teaches you to type Unified English Braille — grade 1
+> ⠠⠟⠅
+> ⠃⠗⠇
+> ⠋⠕⠭
+
+The logo spells "Quick braille fox" as a 3×3 grid of braille cells, one word
+per row: the capital sign + the shortform "qk", the shortform "brl", and
+"fox" in full.
+
+Quick Braille Fox is a web app that teaches you to type Unified English Braille — grade 1
 (uncontracted) first, then grade 2 (contractions and shortforms). It drills
 258 skills, five at a time, monkeytype-style: type the printed prompt, and
 if you hesitate or slip twice the answer appears as braille cells. Learnt
@@ -9,7 +17,7 @@ liblouis tables that macOS VoiceOver ships, so what you learn matches what a
 Mac actually produces. A real text field receives all typing, so VoiceOver
 braille screen input works throughout.
 
-Every 50th prompt — starting with your very first — is the qbf challenge:
+Every 50th prompt — starting with your very first — is the fox challenge:
 type "The quick brown fox jumps over the lazy dog." flawlessly, with no
 hints and instant failure on any wrong character. Its rules are shown on
 screen for the whole round. Every skill you type correctly there scores 10

@@ -2,9 +2,9 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { ChangeEvent, KeyboardEvent } from 'react';
 import {
   HINT_REVEAL_COOLDOWN_MS,
-  QBF_INTERVAL,
-  QBF_MIN_CELLS,
-  QBF_SENTENCE,
+  FOX_INTERVAL,
+  FOX_MIN_CELLS,
+  FOX_SENTENCE,
   makePrompt,
   makeTutorState,
   serialize,
@@ -135,7 +135,7 @@ function midPromptStorage(): MemoryStorage {
 
 /**
  * Storage whose saved session is one completed prompt into the curriculum,
- * so the store serves an ordinary drill — prompt 0 is the qbf challenge.
+ * so the store serves an ordinary drill — prompt 0 is the fox challenge.
  */
 function drillReadyStorage(): MemoryStorage {
   const storage = memoryStorage();
@@ -151,12 +151,12 @@ function drillReadyStorage(): MemoryStorage {
   return storage;
 }
 
-/** Storage whose saved session lands the next prompt on the qbf challenge. */
-function qbfReadyStorage(): MemoryStorage {
+/** Storage whose saved session lands the next prompt on the fox challenge. */
+function foxReadyStorage(): MemoryStorage {
   const storage = memoryStorage();
   const state = makeTutorState({
     seed: 7,
-    promptCounter: QBF_INTERVAL,
+    promptCounter: FOX_INTERVAL,
     prompt: makePrompt({ text: 'done', typed: 'done', completed: true }),
   });
   storage.setItem(
@@ -176,25 +176,25 @@ afterEach(() => {
 // --- tests -------------------------------------------------------------
 
 describe('TutorStore basics', () => {
-  it('starts a fresh session on the qbf challenge with five active skills', () => {
+  it('starts a fresh session on the fox challenge with five active skills', () => {
     const store = createTutorStore({ seed: 1 });
     const vm = store.viewModel();
-    expect(vm.promptText).toBe(QBF_SENTENCE);
+    expect(vm.promptText).toBe(FOX_SENTENCE);
     expect(vm.activeSkills).toHaveLength(5);
     expect(vm.promptsCompleted).toBe(0);
     expect(vm.hint).toBeNull();
-    expect(vm.isQbf).toBe(true);
-    expect(vm.nextQbfIn).toBe(1);
+    expect(vm.isFox).toBe(true);
+    expect(vm.nextFoxIn).toBe(1);
     expect(vm.groups[0]).toEqual({ group: 'letters', learnt: 0, total: 26 });
     expect(vm.totalSkills).toBe(258);
   });
 
-  it('serves an ordinary drill once the opening qbf is behind the learner', () => {
+  it('serves an ordinary drill once the opening fox is behind the learner', () => {
     const store = createTutorStore({ storage: drillReadyStorage(), seed: 1 });
     const vm = store.viewModel();
     expect(vm.promptText.length).toBeGreaterThan(0);
-    expect(vm.isQbf).toBe(false);
-    expect(vm.nextQbfIn).toBe(QBF_INTERVAL);
+    expect(vm.isFox).toBe(false);
+    expect(vm.nextFoxIn).toBe(FOX_INTERVAL);
   });
 
   it('completing a prompt scores the target and advances to a new prompt', () => {
@@ -379,70 +379,70 @@ describe('persistence', () => {
   });
 });
 
-describe('qbf challenge', () => {
-  it('serves the pangram on the qbf slot with no hints ever', () => {
-    const store = createTutorStore({ storage: qbfReadyStorage(), seed: 1 });
+describe('fox challenge', () => {
+  it('serves the pangram on the fox slot with no hints ever', () => {
+    const store = createTutorStore({ storage: foxReadyStorage(), seed: 1 });
     const vm = store.viewModel();
-    expect(vm.isQbf).toBe(true);
-    expect(vm.promptText).toBe(QBF_SENTENCE);
-    expect(vm.nextQbfIn).toBe(1);
+    expect(vm.isFox).toBe(true);
+    expect(vm.promptText).toBe(FOX_SENTENCE);
+    expect(vm.nextFoxIn).toBe(1);
     vi.advanceTimersByTime(60_000);
     expect(store.viewModel().hint).toBeNull();
   });
 
   it('counts one cell per insertion event and awards a badge', () => {
-    const store = createTutorStore({ storage: qbfReadyStorage(), seed: 1 });
-    typeText(store, QBF_SENTENCE); // 45 single-char insertions
+    const store = createTutorStore({ storage: foxReadyStorage(), seed: 1 });
+    typeText(store, FOX_SENTENCE); // 45 single-char insertions
     const vm = store.viewModel();
-    const expectedPercent = ((QBF_SENTENCE.length - QBF_MIN_CELLS) / QBF_MIN_CELLS) * 100;
-    expect(vm.qbfResult).toEqual({ kind: 'badge', percentAbove: expectedPercent });
-    expect(vm.bestQbf).toEqual({ kind: 'badge', percentAbove: expectedPercent });
+    const expectedPercent = ((FOX_SENTENCE.length - FOX_MIN_CELLS) / FOX_MIN_CELLS) * 100;
+    expect(vm.foxResult).toEqual({ kind: 'badge', percentAbove: expectedPercent });
+    expect(vm.bestFox).toEqual({ kind: 'badge', percentAbove: expectedPercent });
 
-    store.handlers.onQbfContinue();
+    store.handlers.onFoxContinue();
     const next = store.viewModel();
-    expect(next.isQbf).toBe(false);
-    expect(next.qbfResult).toBeNull();
-    expect(next.promptsCompleted).toBe(QBF_INTERVAL + 1);
+    expect(next.isFox).toBe(false);
+    expect(next.foxResult).toBeNull();
+    expect(next.promptsCompleted).toBe(FOX_INTERVAL + 1);
   });
 
   it('awards the crown for a minimum-cell run (contraction-sized insertions)', () => {
-    const store = createTutorStore({ storage: qbfReadyStorage(), seed: 1 });
-    typeInChunks(store, QBF_SENTENCE, QBF_MIN_CELLS); // 36 insertions
-    expect(store.viewModel().qbfResult).toEqual({ kind: 'crown' });
-    expect(store.viewModel().bestQbf).toEqual({ kind: 'crown' });
+    const store = createTutorStore({ storage: foxReadyStorage(), seed: 1 });
+    typeInChunks(store, FOX_SENTENCE, FOX_MIN_CELLS); // 36 insertions
+    expect(store.viewModel().foxResult).toEqual({ kind: 'crown' });
+    expect(store.viewModel().bestFox).toEqual({ kind: 'crown' });
   });
 
   it('does not decrement the cell count on deletions', () => {
-    const store = createTutorStore({ storage: qbfReadyStorage(), seed: 1 });
+    const store = createTutorStore({ storage: foxReadyStorage(), seed: 1 });
     insert(store, 'T');
     insert(store, 'Th');
     del(store, 'T'); // backspace: count stays at 2
-    for (let i = 2; i <= QBF_SENTENCE.length; i += 1) insert(store, QBF_SENTENCE.slice(0, i));
-    const result = store.viewModel().qbfResult;
+    for (let i = 2; i <= FOX_SENTENCE.length; i += 1) insert(store, FOX_SENTENCE.slice(0, i));
+    const result = store.viewModel().foxResult;
     expect(result?.kind).toBe('badge');
     // 2 insertions before the backspace + 44 finishing ('Th' -> full text).
-    const cells = QBF_SENTENCE.length + 1;
+    const cells = FOX_SENTENCE.length + 1;
     if (result?.kind === 'badge') {
-      expect(result.percentAbove).toBeCloseTo(((cells - QBF_MIN_CELLS) / QBF_MIN_CELLS) * 100, 6);
+      expect(result.percentAbove).toBeCloseTo(((cells - FOX_MIN_CELLS) / FOX_MIN_CELLS) * 100, 6);
     }
   });
 
   it('fails instantly on a wrong character and does not record a best', () => {
-    const store = createTutorStore({ storage: qbfReadyStorage(), seed: 1 });
+    const store = createTutorStore({ storage: foxReadyStorage(), seed: 1 });
     insert(store, 'X'); // expected 'T'
     const vm = store.viewModel();
-    expect(vm.qbfResult).toEqual({ kind: 'failed' });
-    expect(vm.bestQbf).toBeNull();
-    expect(vm.promptsCompleted).toBe(QBF_INTERVAL + 1); // a failed qbf still counts
+    expect(vm.foxResult).toEqual({ kind: 'failed' });
+    expect(vm.bestFox).toBeNull();
+    expect(vm.promptsCompleted).toBe(FOX_INTERVAL + 1); // a failed fox still counts
 
-    store.handlers.onQbfContinue();
-    expect(store.viewModel().isQbf).toBe(false);
+    store.handlers.onFoxContinue();
+    expect(store.viewModel().isFox).toBe(false);
   });
 
   it('explains a failure with the sign that was due', () => {
-    const store = createTutorStore({ storage: qbfReadyStorage(), seed: 1 });
+    const store = createTutorStore({ storage: foxReadyStorage(), seed: 1 });
     typeText(store, 'The quick brot'); // "ow" was due
-    expect(store.viewModel().qbfFailure).toEqual({
+    expect(store.viewModel().foxFailure).toEqual({
       expected: '⠪',
       expectedPrint: 'ow',
       typed: null, // VoiceOver input hands us print, not the cells behind it
@@ -450,36 +450,36 @@ describe('qbf challenge', () => {
   });
 
   it('offers no failure detail while a run is still going', () => {
-    const store = createTutorStore({ storage: qbfReadyStorage(), seed: 1 });
+    const store = createTutorStore({ storage: foxReadyStorage(), seed: 1 });
     typeText(store, 'The qu');
-    expect(store.viewModel().qbfFailure).toBeNull();
+    expect(store.viewModel().foxFailure).toBeNull();
   });
 
   it('offers no failure detail after a clean run', () => {
-    const store = createTutorStore({ storage: qbfReadyStorage(), seed: 1 });
-    typeInChunks(store, QBF_SENTENCE, QBF_MIN_CELLS);
-    expect(store.viewModel().qbfResult).toEqual({ kind: 'crown' });
-    expect(store.viewModel().qbfFailure).toBeNull();
+    const store = createTutorStore({ storage: foxReadyStorage(), seed: 1 });
+    typeInChunks(store, FOX_SENTENCE, FOX_MIN_CELLS);
+    expect(store.viewModel().foxResult).toEqual({ kind: 'crown' });
+    expect(store.viewModel().foxFailure).toBeNull();
   });
 
   it('clears the failure detail on continuing to the next prompt', () => {
-    const store = createTutorStore({ storage: qbfReadyStorage(), seed: 1 });
+    const store = createTutorStore({ storage: foxReadyStorage(), seed: 1 });
     insert(store, 'X');
-    expect(store.viewModel().qbfFailure).not.toBeNull();
-    store.handlers.onQbfContinue();
-    expect(store.viewModel().qbfFailure).toBeNull();
+    expect(store.viewModel().foxFailure).not.toBeNull();
+    store.handlers.onFoxContinue();
+    expect(store.viewModel().foxFailure).toBeNull();
   });
 
   it('never replaces a better best result with a worse one', () => {
-    const storage = qbfReadyStorage();
+    const storage = foxReadyStorage();
     const store = createTutorStore({ storage, seed: 1 });
-    typeInChunks(store, QBF_SENTENCE, QBF_MIN_CELLS);
-    expect(store.viewModel().bestQbf).toEqual({ kind: 'crown' });
+    typeInChunks(store, FOX_SENTENCE, FOX_MIN_CELLS);
+    expect(store.viewModel().bestFox).toEqual({ kind: 'crown' });
     store.flushSave();
 
-    // Wind the persisted session forward to the next qbf and fumble it.
+    // Wind the persisted session forward to the next fox and fumble it.
     const next = createTutorStore({ storage, seed: 1 });
-    expect(next.viewModel().bestQbf).toEqual({ kind: 'crown' });
+    expect(next.viewModel().bestFox).toEqual({ kind: 'crown' });
   });
 });
 
@@ -528,24 +528,24 @@ describe('VoiceOver trailing spaces', () => {
     expect(store.viewModel().typed).toBe('z ');
   });
 
-  it('does not fail a qbf run on the final trailing space', () => {
-    const store = createTutorStore({ storage: qbfReadyStorage(), seed: 1 });
-    for (let i = 1; i < QBF_SENTENCE.length; i += 1) insert(store, QBF_SENTENCE.slice(0, i));
-    insert(store, `${QBF_SENTENCE} `);
-    const expectedPercent = ((QBF_SENTENCE.length - QBF_MIN_CELLS) / QBF_MIN_CELLS) * 100;
-    expect(store.viewModel().qbfResult).toEqual({ kind: 'badge', percentAbove: expectedPercent });
+  it('does not fail a fox run on the final trailing space', () => {
+    const store = createTutorStore({ storage: foxReadyStorage(), seed: 1 });
+    for (let i = 1; i < FOX_SENTENCE.length; i += 1) insert(store, FOX_SENTENCE.slice(0, i));
+    insert(store, `${FOX_SENTENCE} `);
+    const expectedPercent = ((FOX_SENTENCE.length - FOX_MIN_CELLS) / FOX_MIN_CELLS) * 100;
+    expect(store.viewModel().foxResult).toEqual({ kind: 'badge', percentAbove: expectedPercent });
   });
 
-  it('does not count a stripped stray space as a qbf cell', () => {
-    const store = createTutorStore({ storage: qbfReadyStorage(), seed: 1 });
+  it('does not count a stripped stray space as a fox cell', () => {
+    const store = createTutorStore({ storage: foxReadyStorage(), seed: 1 });
     insert(store, 'T');
     insert(store, 'Th');
     insert(store, 'Th '); // stray: expected next char is 'e', space is stripped
     expect(store.viewModel().typed).toBe('Th');
-    for (let i = 3; i <= QBF_SENTENCE.length; i += 1) insert(store, QBF_SENTENCE.slice(0, i));
+    for (let i = 3; i <= FOX_SENTENCE.length; i += 1) insert(store, FOX_SENTENCE.slice(0, i));
     // The stripped space must not have counted: still one cell per character.
-    const expectedPercent = ((QBF_SENTENCE.length - QBF_MIN_CELLS) / QBF_MIN_CELLS) * 100;
-    expect(store.viewModel().qbfResult).toEqual({ kind: 'badge', percentAbove: expectedPercent });
+    const expectedPercent = ((FOX_SENTENCE.length - FOX_MIN_CELLS) / FOX_MIN_CELLS) * 100;
+    expect(store.viewModel().foxResult).toEqual({ kind: 'badge', percentAbove: expectedPercent });
   });
 
   it('drops a stray leading space so the learner can still recover', () => {
@@ -725,53 +725,53 @@ describe('chord input', () => {
     expect(store.viewModel().typed).toBe('');
   });
 
-  it('awards the crown for a minimum-cell chorded qbf run', () => {
-    const store = createTutorStore({ storage: qbfReadyStorage(), seed: 1 });
+  it('awards the crown for a minimum-cell chorded fox run', () => {
+    const store = createTutorStore({ storage: foxReadyStorage(), seed: 1 });
     chordMode(store);
-    chordText(store, QBF_SENTENCE); // canonical: exactly QBF_MIN_CELLS commits
-    expect(store.viewModel().qbfResult).toEqual({ kind: 'crown' });
+    chordText(store, FOX_SENTENCE); // canonical: exactly FOX_MIN_CELLS commits
+    expect(store.viewModel().foxResult).toEqual({ kind: 'crown' });
   });
 
   it('awards a badge when a shortform is chorded uncontracted', () => {
-    const store = createTutorStore({ storage: qbfReadyStorage(), seed: 1 });
+    const store = createTutorStore({ storage: foxReadyStorage(), seed: 1 });
     chordMode(store);
     chordText(store, 'The '); // caps + the + space
     for (const d of [[1, 2, 3, 4, 5], [1, 3, 6], [2, 4], [1, 4], [1, 3]]) chordCell(store, d); // q u i c k
     chordText(store, ' brown fox jumps over the lazy dog.');
     // "quick" is a 2-cell shortform; spelling it out adds 3 cells -> 39 total.
-    const cells = QBF_MIN_CELLS + 3;
-    const result = store.viewModel().qbfResult;
+    const cells = FOX_MIN_CELLS + 3;
+    const result = store.viewModel().foxResult;
     expect(result?.kind).toBe('badge');
     if (result?.kind === 'badge') {
-      expect(result.percentAbove).toBeCloseTo(((cells - QBF_MIN_CELLS) / QBF_MIN_CELLS) * 100, 6);
+      expect(result.percentAbove).toBeCloseTo(((cells - FOX_MIN_CELLS) / FOX_MIN_CELLS) * 100, 6);
     }
   });
 
   it('accepts "The" spelled letter by letter, not reading ⠠⠞ as "That"', () => {
-    const store = createTutorStore({ storage: qbfReadyStorage(), seed: 1 });
+    const store = createTutorStore({ storage: foxReadyStorage(), seed: 1 });
     chordMode(store);
     chordCell(store, [6]); // capital indicator
     chordCell(store, [2, 3, 4, 5]); // t — standalone this would be "that", but the word is open
-    expect(store.viewModel().qbfResult).toBeNull();
+    expect(store.viewModel().foxResult).toBeNull();
     expect(store.viewModel().diverged).toBe(false);
     chordCell(store, [1, 2, 5]); // h
     chordCell(store, [1, 5]); // e
     chordText(store, ' quick brown fox jumps over the lazy dog.');
     // "The" is 2 cells contracted; t-h-e behind the capital adds 2 more.
-    const cells = QBF_MIN_CELLS + 2;
-    const result = store.viewModel().qbfResult;
+    const cells = FOX_MIN_CELLS + 2;
+    const result = store.viewModel().foxResult;
     expect(result?.kind).toBe('badge');
     if (result?.kind === 'badge') {
-      expect(result.percentAbove).toBeCloseTo(((cells - QBF_MIN_CELLS) / QBF_MIN_CELLS) * 100, 6);
+      expect(result.percentAbove).toBeCloseTo(((cells - FOX_MIN_CELLS) / FOX_MIN_CELLS) * 100, 6);
     }
   });
 
   it('credits the skills actually chorded, not the canonical solution', () => {
-    const storage = qbfReadyStorage();
+    const storage = foxReadyStorage();
     const store = createTutorStore({ storage, seed: 1 });
     chordMode(store);
     // The whole pangram in grade 1: capital indicator plus plain letters.
-    for (const [i, word] of QBF_SENTENCE.split(' ').entries()) {
+    for (const [i, word] of FOX_SENTENCE.split(' ').entries()) {
       if (i > 0) chordSpace(store);
       for (const ch of word) {
         const lower = ch.toLowerCase();
@@ -779,7 +779,7 @@ describe('chord input', () => {
         chordCell(store, [...(textToCells(lower)[0] as ReadonlyArray<number>)]);
       }
     }
-    expect(store.viewModel().qbfResult?.kind).toBe('badge');
+    expect(store.viewModel().foxResult?.kind).toBe('badge');
 
     store.flushSave();
     const saved = JSON.parse(storage.data.get(STORAGE_KEY) as string) as {
@@ -787,7 +787,7 @@ describe('chord input', () => {
     };
     const scores = saved.tutor.scores;
     // Spelling the pangram out exercises the whole alphabet...
-    const letters = new Set(QBF_SENTENCE.toLowerCase().replace(/[^a-z]/g, ''));
+    const letters = new Set(FOX_SENTENCE.toLowerCase().replace(/[^a-z]/g, ''));
     expect(letters.size).toBe(26);
     for (const c of letters) {
       expect(scores[`letter-${c}`] ?? 0).toBeGreaterThan(0);
@@ -798,32 +798,32 @@ describe('chord input', () => {
     }
   });
 
-  it('does not decrement the qbf cell count on backspace', () => {
-    const store = createTutorStore({ storage: qbfReadyStorage(), seed: 1 });
+  it('does not decrement the fox cell count on backspace', () => {
+    const store = createTutorStore({ storage: foxReadyStorage(), seed: 1 });
     chordMode(store);
     chordCell(store, [6]); // a stray capital-indicator cell
     keyDown(store, 'Backspace'); // removed, but the cell already counted
-    chordText(store, QBF_SENTENCE);
-    const cells = QBF_MIN_CELLS + 1;
-    const result = store.viewModel().qbfResult;
+    chordText(store, FOX_SENTENCE);
+    const cells = FOX_MIN_CELLS + 1;
+    const result = store.viewModel().foxResult;
     expect(result?.kind).toBe('badge');
     if (result?.kind === 'badge') {
-      expect(result.percentAbove).toBeCloseTo(((cells - QBF_MIN_CELLS) / QBF_MIN_CELLS) * 100, 6);
+      expect(result.percentAbove).toBeCloseTo(((cells - FOX_MIN_CELLS) / FOX_MIN_CELLS) * 100, 6);
     }
   });
 
-  it('fails a qbf run instantly on a wrong chord', () => {
-    const store = createTutorStore({ storage: qbfReadyStorage(), seed: 1 });
+  it('fails a fox run instantly on a wrong chord', () => {
+    const store = createTutorStore({ storage: foxReadyStorage(), seed: 1 });
     chordMode(store);
     chordCell(store, [1, 3, 5]); // ⠕ = "o", expected the capital "T"
-    expect(store.viewModel().qbfResult).toEqual({ kind: 'failed' });
+    expect(store.viewModel().foxResult).toEqual({ kind: 'failed' });
   });
 
   it('shows both the sign that was due and the cell actually chorded', () => {
-    const store = createTutorStore({ storage: qbfReadyStorage(), seed: 1 });
+    const store = createTutorStore({ storage: foxReadyStorage(), seed: 1 });
     chordMode(store);
     chordCell(store, [1, 3, 5]); // ⠕ = "o", expected ⠠⠮ for "The"
-    expect(store.viewModel().qbfFailure).toEqual({
+    expect(store.viewModel().foxFailure).toEqual({
       expected: '⠠⠮',
       expectedPrint: 'The',
       typed: '⠕',
@@ -831,14 +831,14 @@ describe('chord input', () => {
   });
 
   it('blames only the chord that broke a run, not the cells before it', () => {
-    const store = createTutorStore({ storage: qbfReadyStorage(), seed: 1 });
+    const store = createTutorStore({ storage: foxReadyStorage(), seed: 1 });
     chordMode(store);
     chordText(store, 'The quick ');
     // Spell "brown" out: correct print, more cells, no failure yet.
     for (const d of [[1, 2], [1, 2, 3, 5], [1, 3, 5]]) chordCell(store, d); // b r o
-    expect(store.viewModel().qbfFailure).toBeNull();
+    expect(store.viewModel().foxFailure).toBeNull();
     chordCell(store, [2, 3, 4, 5]); // ⠞ — "brot", diverged at last
-    expect(store.viewModel().qbfFailure).toEqual({
+    expect(store.viewModel().foxFailure).toEqual({
       expected: '⠪',
       expectedPrint: 'ow',
       typed: '⠞',

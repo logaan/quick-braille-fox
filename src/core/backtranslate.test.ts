@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import type { Cell } from './braille';
 import { textToCells, translate } from './braille';
 import { WORDS } from './corpus';
-import { QBF_SENTENCE } from './qbf';
+import { FOX_SENTENCE } from './fox';
 import {
   backTranslateBuffer,
   backTranslateBufferAttributed,
@@ -168,10 +168,10 @@ describe('backTranslateBuffer — round-trip over the promptable universe', () =
     universe.add(`${d}>${d}`); universe.add(`${d}^${d}`);
     universe.add(`~${d}`); universe.add(`#${d}`); universe.add(`$${d}`); universe.add(`${d}%`);
   }
-  // multi-word sequences and the qbf sentence
+  // multi-word sequences and the fox sentence
   universe.add('the quick brown fox');
   universe.add('big red dog');
-  universe.add(QBF_SENTENCE);
+  universe.add(FOX_SENTENCE);
 
   it('covers a broad universe', () => {
     expect(universe.size).toBeGreaterThan(300);
@@ -215,9 +215,9 @@ describe('backTranslate fuzz', () => {
 
 describe('backTranslateBufferAttributed — signs actually chorded', () => {
   it('matches translate() attribution when the buffer is canonical', () => {
-    const { text, units } = backTranslateBufferAttributed(cellsOf(QBF_SENTENCE), QBF_SENTENCE);
-    expect(text).toBe(QBF_SENTENCE);
-    expect(units).toEqual(translate(QBF_SENTENCE).units);
+    const { text, units } = backTranslateBufferAttributed(cellsOf(FOX_SENTENCE), FOX_SENTENCE);
+    expect(text).toBe(FOX_SENTENCE);
+    expect(units).toEqual(translate(FOX_SENTENCE).units);
   });
 
   it('credits the letters actually chorded, not the canonical contraction', () => {
@@ -225,7 +225,7 @@ describe('backTranslateBufferAttributed — signs actually chorded', () => {
     // contraction-the; the learner typed the letters.
     const { text, units } = backTranslateBufferAttributed(
       [[6], [2, 3, 4, 5], [1, 2, 5], [1, 5], []],
-      QBF_SENTENCE,
+      FOX_SENTENCE,
     );
     expect(text).toBe('The ');
     expect(units.map((u) => u.skillIds)).toEqual([
@@ -237,7 +237,7 @@ describe('backTranslateBufferAttributed — signs actually chorded', () => {
   });
 
   it('credits the contraction when the learner chorded it', () => {
-    const { units } = backTranslateBufferAttributed([[6], [2, 3, 4, 6], []], QBF_SENTENCE);
+    const { units } = backTranslateBufferAttributed([[6], [2, 3, 4, 6], []], FOX_SENTENCE);
     expect(units.map((u) => u.skillIds)).toEqual([
       ['capital-letter-indicator', 'contraction-the'],
       [],
@@ -247,7 +247,7 @@ describe('backTranslateBufferAttributed — signs actually chorded', () => {
   it('credits the th groupsign in the mixed spelling', () => {
     const { text, units } = backTranslateBufferAttributed(
       [[6], [1, 4, 5, 6], [1, 5], []],
-      QBF_SENTENCE,
+      FOX_SENTENCE,
     );
     expect(text).toBe('The ');
     expect(units.map((u) => u.skillIds)).toEqual([

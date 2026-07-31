@@ -1,4 +1,4 @@
-// Display strings for curriculum groups and qbf percentages.
+// Display strings for curriculum groups and fox percentages.
 
 import type { SkillGroup } from '../data/skills';
 

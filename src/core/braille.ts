@@ -4,7 +4,7 @@
 // "Table-parsing caveats"): it applies the canonical patterns from the skill
 // records with a small set of positional usage rules. It is used for
 //   - rendering hints/answers as braille cells,
-//   - computing the minimum cell count of the qbf challenge sentence,
+//   - computing the minimum cell count of the fox challenge sentence,
 //   - deciding which prompts only contain cells the learner knows
 //     (a prompt text is usable iff its translation uses only known skills).
 //

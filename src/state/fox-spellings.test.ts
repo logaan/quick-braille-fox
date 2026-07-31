@@ -1,4 +1,4 @@
-// Every valid way of chording the qbf sentence — grade 1 (letter by letter),
+// Every valid way of chording the fox sentence — grade 1 (letter by letter),
 // grade 2 (fully contracted), and every mixture in between — must be accepted:
 // no chord along the way may fail the run, the finished run must score by
 // cell count alone (crown at the minimum, badge above it), and the skills
@@ -14,10 +14,10 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { KeyboardEvent } from 'react';
 import type { Cell } from '../core';
 import {
-  QBF_AWARD,
-  QBF_INTERVAL,
-  QBF_MIN_CELLS,
-  QBF_SENTENCE,
+  FOX_AWARD,
+  FOX_INTERVAL,
+  FOX_MIN_CELLS,
+  FOX_SENTENCE,
   dotsToUnicode,
   makePrompt,
   makeTutorState,
@@ -48,12 +48,12 @@ function memoryStorage(): MemoryStorage {
   };
 }
 
-/** Storage whose saved session lands the next prompt on the qbf challenge. */
-function qbfReadyStorage(): MemoryStorage {
+/** Storage whose saved session lands the next prompt on the fox challenge. */
+function foxReadyStorage(): MemoryStorage {
   const storage = memoryStorage();
   const state = makeTutorState({
     seed: 7,
-    promptCounter: QBF_INTERVAL,
+    promptCounter: FOX_INTERVAL,
     prompt: makePrompt({ text: 'done', typed: 'done', completed: true }),
   });
   storage.setItem(
@@ -255,7 +255,7 @@ function wordRenderings(word: string): Variant[] {
   });
 }
 
-const words = QBF_SENTENCE.split(' ');
+const words = FOX_SENTENCE.split(' ');
 const perWord = words.map(wordRenderings);
 
 /** Cross product of per-word variants -> every full-sentence rendering. */
@@ -303,7 +303,7 @@ afterEach(() => {
   vi.useRealTimers();
 });
 
-describe('qbf accepts every grade-1/grade-2 spelling', () => {
+describe('fox accepts every grade-1/grade-2 spelling', () => {
   it('enumerates the expected variants per word', () => {
     // The/the render three ways (⠮, ⠹e, the); quick/brown/over each have one
     // optional contraction; fox, jumps, lazy and "dog." have none.
@@ -312,14 +312,14 @@ describe('qbf accepts every grade-1/grade-2 spelling', () => {
     expect(perWord.map((v) => v.length)).toEqual([3, 2, 2, 1, 1, 2, 3, 1, 1]);
     expect(sentences).toHaveLength(72);
     // The fully-contracted rendering is among them, at the known minimum.
-    expect(cases.some((c) => c.cellsTyped === QBF_MIN_CELLS)).toBe(true);
+    expect(cases.some((c) => c.cellsTyped === FOX_MIN_CELLS)).toBe(true);
   });
 
   it.each(cases)('$label', ({ rendering, cellsTyped, expectedCounts }) => {
-    const storage = qbfReadyStorage();
+    const storage = foxReadyStorage();
     const store = createTutorStore({ storage, seed: 1 });
     chordMode(store);
-    expect(store.viewModel().isQbf).toBe(true);
+    expect(store.viewModel().isFox).toBe(true);
 
     let chords = 0;
     for (let w = 0; w < rendering.length; w += 1) {
@@ -333,28 +333,28 @@ describe('qbf accepts every grade-1/grade-2 spelling', () => {
         if (chords < cellsTyped) {
           // Mid-run: no chord of a valid spelling may register as a mistake.
           const vm = store.viewModel();
-          expect(vm.qbfResult).toBeNull();
+          expect(vm.foxResult).toBeNull();
           expect(vm.diverged).toBe(false);
         }
       }
     }
 
-    const result = store.viewModel().qbfResult;
+    const result = store.viewModel().foxResult;
     expect(result).not.toBeNull();
     expect(result?.kind).not.toBe('failed');
-    if (cellsTyped === QBF_MIN_CELLS) {
+    if (cellsTyped === FOX_MIN_CELLS) {
       expect(result).toEqual({ kind: 'crown' });
     } else {
       expect(result?.kind).toBe('badge');
       if (result?.kind === 'badge') {
         expect(result.percentAbove).toBeCloseTo(
-          ((cellsTyped - QBF_MIN_CELLS) / QBF_MIN_CELLS) * 100,
+          ((cellsTyped - FOX_MIN_CELLS) / FOX_MIN_CELLS) * 100,
           6,
         );
       }
     }
 
-    // The run must credit exactly the signs chorded: QBF_AWARD per occurrence
+    // The run must credit exactly the signs chorded: FOX_AWARD per occurrence
     // for each skill used, nothing for any skill of any unused rendering.
     store.flushSave();
     const saved = JSON.parse(storage.data.get(STORAGE_KEY) as string) as {
@@ -362,7 +362,7 @@ describe('qbf accepts every grade-1/grade-2 spelling', () => {
     };
     const scores = saved.tutor.scores;
     for (const [id, count] of expectedCounts) {
-      expect(scores[id] ?? 0, id).toBe(QBF_AWARD * count);
+      expect(scores[id] ?? 0, id).toBe(FOX_AWARD * count);
     }
     for (const id of idUniverse) {
       if (!expectedCounts.has(id)) expect(scores[id] ?? 0, id).toBe(0);

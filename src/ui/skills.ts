@@ -67,7 +67,7 @@ export function OverallPanel(props: SkillPanelProps): ReactElement {
     e(
       'p',
       { className: 'overall-sub' },
-      `${vm.promptsCompleted} prompts · qbf in ${vm.nextQbfIn}`,
+      `${vm.promptsCompleted} prompts · fox in ${vm.nextFoxIn}`,
     ),
     e(
       'ul',

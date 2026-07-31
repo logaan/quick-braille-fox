@@ -1,14 +1,14 @@
 // The main drill view: prompt with progressive match colouring, a visible raw
 // text input (VoiceOver braille screen input types into it, and showing its
 // literal DOM value lets the learner see and recover from VoiceOver mangling a
-// word), the hint area, and the qbf challenge/result presentation.
+// word), the hint area, and the fox challenge/result presentation.
 // The input's native caret is hidden in CSS so the prompt's caret is the only
 // cursor on screen; only its text is shown.
 // Pure render functions of props — all behaviour lives in src/state.
 
 import { createElement as e, type ReactElement } from 'react';
-import type { QbfResult } from '../core';
-import type { AppHandlers, AppViewModel, QbfFailureView } from '../state';
+import type { FoxResult } from '../core';
+import type { AppHandlers, AppViewModel, FoxFailureView } from '../state';
 import { BrailleCells } from './braille';
 import { formatPercent, signLabel } from './labels';
 
@@ -52,33 +52,33 @@ function PromptText(props: { readonly text: string; readonly typed: string }): R
  * the learner chorded it themselves — the cells they actually entered. Print
  * alone does not settle "but I typed that right"; two rows of cells do.
  */
-function QbfFailureDetail(props: { readonly failure: QbfFailureView }): ReactElement {
+function FoxFailureDetail(props: { readonly failure: FoxFailureView }): ReactElement {
   const { failure } = props;
   const rows: ReactElement[] = [
     e(
       'div',
-      { className: 'qbf-failure-row', key: 'expected' },
-      e('span', { className: 'qbf-failure-label' }, 'Expected'),
+      { className: 'fox-failure-row', key: 'expected' },
+      e('span', { className: 'fox-failure-label' }, 'Expected'),
       e(BrailleCells, { unicode: failure.expected, size: 'md' }),
-      e('span', { className: 'qbf-failure-print' }, signLabel(failure.expectedPrint)),
+      e('span', { className: 'fox-failure-print' }, signLabel(failure.expectedPrint)),
     ),
   ];
   if (failure.typed !== null) {
     rows.push(
       e(
         'div',
-        { className: 'qbf-failure-row', key: 'typed' },
-        e('span', { className: 'qbf-failure-label' }, 'You typed'),
+        { className: 'fox-failure-row', key: 'typed' },
+        e('span', { className: 'fox-failure-label' }, 'You typed'),
         e(BrailleCells, { unicode: failure.typed, size: 'md', className: 'cells-wrong' }),
       ),
     );
   }
-  return e('div', { className: 'qbf-failure' }, rows);
+  return e('div', { className: 'fox-failure' }, rows);
 }
 
-function QbfResultPanel(props: {
-  readonly result: QbfResult;
-  readonly failure: QbfFailureView | null;
+function FoxResultPanel(props: {
+  readonly result: FoxResult;
+  readonly failure: FoxFailureView | null;
   readonly minCells: number;
   readonly interval: number;
   readonly onContinue: () => void;
@@ -87,19 +87,19 @@ function QbfResultPanel(props: {
   let outcome: ReactElement;
   let detail: string;
   if (result.kind === 'failed') {
-    outcome = e('p', { className: 'qbf-outcome qbf-failed' }, '✗ Run failed');
-    detail = `One wrong character ends a qbf run. It comes back every ${interval} prompts.`;
+    outcome = e('p', { className: 'fox-outcome fox-failed' }, '✗ Run failed');
+    detail = `One wrong character ends a fox run. It comes back every ${interval} prompts.`;
   } else if (result.kind === 'crown') {
     outcome = e(
       'p',
-      { className: 'qbf-outcome qbf-crown' },
+      { className: 'fox-outcome fox-crown' },
       e('span', { role: 'img', 'aria-label': 'crown' }, '👑'),
     );
     detail = `Perfect — the minimum ${minCells} cells. Flawless grade 2.`;
   } else {
     outcome = e(
       'p',
-      { className: 'qbf-outcome qbf-badge' },
+      { className: 'fox-outcome fox-badge' },
       `+${formatPercent(result.percentAbove)}%`,
     );
     detail =
@@ -108,10 +108,10 @@ function QbfResultPanel(props: {
   }
   return e(
     'div',
-    { className: 'qbf-result' },
+    { className: 'fox-result' },
     outcome,
-    e('p', { className: 'qbf-detail' }, detail),
-    failure === null ? null : e(QbfFailureDetail, { failure }),
+    e('p', { className: 'fox-detail' }, detail),
+    failure === null ? null : e(FoxFailureDetail, { failure }),
     e(
       'button',
       { className: 'btn btn-primary', autoFocus: true, onClick: onContinue },
@@ -121,11 +121,11 @@ function QbfResultPanel(props: {
 }
 
 /**
- * The challenge's rules, on screen for the whole qbf round — it turns up
+ * The challenge's rules, on screen for the whole fox round — it turns up
  * rarely enough (and scores differently enough) that the learner should
  * never have to remember how it works.
  */
-function QbfRules(props: {
+function FoxRules(props: {
   readonly interval: number;
   readonly award: number;
   readonly minCells: number;
@@ -133,16 +133,16 @@ function QbfRules(props: {
   const { interval, award, minCells } = props;
   return e(
     'div',
-    { className: 'qbf-rules' },
+    { className: 'fox-rules' },
     e(
       'p',
-      { className: 'qbf-banner' },
-      e('strong', null, 'qbf challenge'),
+      { className: 'fox-banner' },
+      e('strong', null, 'fox challenge'),
       ` — every ${interval} prompts, starting with your first.`,
     ),
     e(
       'ul',
-      { className: 'qbf-rule-list' },
+      { className: 'fox-rule-list' },
       e('li', { key: 'exact' }, 'Type the sentence exactly. No hints are given.'),
       e('li', { key: 'fail' }, 'One wrong character ends the run on the spot.'),
       e(
@@ -167,7 +167,7 @@ export interface DrillProps {
 
 export function Drill(props: DrillProps): ReactElement {
   const { vm, on } = props;
-  const showResult = vm.qbfResult !== null;
+  const showResult = vm.foxResult !== null;
 
   // Uncontrolled on purpose: VoiceOver braille screen input owns this field.
   // We only read its value and compare against the prompt — we never write the
@@ -198,14 +198,14 @@ export function Drill(props: DrillProps): ReactElement {
   return e(
     'section',
     {
-      className: vm.isQbf ? 'drill drill-qbf' : 'drill',
-      'aria-label': vm.isQbf ? 'qbf challenge' : 'Typing drill',
+      className: vm.isFox ? 'drill drill-fox' : 'drill',
+      'aria-label': vm.isFox ? 'fox challenge' : 'Typing drill',
     },
-    vm.isQbf
-      ? e(QbfRules, {
-          interval: vm.qbfInterval,
-          award: vm.qbfAward,
-          minCells: vm.qbfMinCells,
+    vm.isFox
+      ? e(FoxRules, {
+          interval: vm.foxInterval,
+          award: vm.foxAward,
+          minCells: vm.foxMinCells,
         })
       : null,
     e(
@@ -214,18 +214,18 @@ export function Drill(props: DrillProps): ReactElement {
       e(PromptText, { text: vm.promptText, typed: vm.typed }),
     ),
     showResult ? null : input,
-    vm.isQbf
+    vm.isFox
       ? e(
           'div',
-          { className: 'qbf-result-area', 'aria-live': 'assertive' },
-          vm.qbfResult === null
+          { className: 'fox-result-area', 'aria-live': 'assertive' },
+          vm.foxResult === null
             ? null
-            : e(QbfResultPanel, {
-                result: vm.qbfResult,
-                failure: vm.qbfFailure,
-                minCells: vm.qbfMinCells,
-                interval: vm.qbfInterval,
-                onContinue: on.onQbfContinue,
+            : e(FoxResultPanel, {
+                result: vm.foxResult,
+                failure: vm.foxFailure,
+                minCells: vm.foxMinCells,
+                interval: vm.foxInterval,
+                onContinue: on.onFoxContinue,
               }),
         )
       : e(

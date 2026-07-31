@@ -1,10 +1,11 @@
 // Persistence: a versioned localStorage envelope around the core's
-// serialize()/deserialize(), plus the state-layer extras (best qbf result,
+// serialize()/deserialize(), plus the state-layer extras (best fox result,
 // input mode).
 
-import type { QbfResult, SerializedTutorState, TutorState } from '../core';
+import type { FoxResult, SerializedTutorState, TutorState } from '../core';
 import { deserialize, serialize } from '../core';
 
+// Predates the "fox challenge" naming ("qbf" era); kept so progress survives.
 export const STORAGE_KEY = 'qbf-progress-v1';
 
 /** Minimal Storage interface (subset of DOM Storage) for testability. */
@@ -14,12 +15,12 @@ export interface StorageLike {
   removeItem(key: string): void;
 }
 
-/** A best qbf outcome worth remembering (never 'failed'). */
-export type BestQbf = Exclude<QbfResult, { readonly kind: 'failed' }>;
+/** A best fox outcome worth remembering (never 'failed'). */
+export type BestFox = Exclude<FoxResult, { readonly kind: 'failed' }>;
 
 export interface PersistedData {
   readonly tutor: TutorState;
-  readonly bestQbf: BestQbf | null;
+  readonly bestFox: BestFox | null;
   /** Whether input flows through VoiceOver braille screen input (default). */
   readonly voiceOverInput: boolean;
 }
@@ -27,13 +28,14 @@ export interface PersistedData {
 interface Envelope {
   version: 1;
   tutor: SerializedTutorState;
-  bestQbf: BestQbf | null;
+  /** Wire name predates the "fox challenge" naming; kept for stored data. */
+  bestQbf: BestFox | null;
   /** Optional (added later); absent/garbage loads as true, keeping the
    * original VoiceOver-input behaviour for existing envelopes. */
   voiceOverInput?: boolean;
 }
 
-function coerceBestQbf(raw: unknown): BestQbf | null {
+function coerceBestFox(raw: unknown): BestFox | null {
   if (typeof raw !== 'object' || raw === null) return null;
   const o = raw as { kind?: unknown; percentAbove?: unknown };
   if (o.kind === 'crown') return { kind: 'crown' };
@@ -60,7 +62,7 @@ export function loadProgress(storage: StorageLike): PersistedData | null {
     const tutor = deserialize(env.tutor); // throws TypeError on garbage
     return {
       tutor,
-      bestQbf: coerceBestQbf(env.bestQbf),
+      bestFox: coerceBestFox(env.bestQbf),
       voiceOverInput: env.voiceOverInput !== false,
     };
   } catch {
@@ -72,7 +74,7 @@ export function saveProgress(storage: StorageLike, data: PersistedData): void {
   const envelope: Envelope = {
     version: 1,
     tutor: serialize(data.tutor),
-    bestQbf: data.bestQbf,
+    bestQbf: data.bestFox,
     voiceOverInput: data.voiceOverInput,
   };
   try {

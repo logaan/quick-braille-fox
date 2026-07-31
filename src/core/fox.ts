@@ -1,4 +1,4 @@
-// The "qbf" challenge: every 100th prompt is the fixed pangram sentence,
+// The "fox" challenge: every 100th prompt is the fixed pangram sentence,
 // typed with no hints; any mistake fails it instantly. A flawless run earns
 // a badge (how far above the minimum possible grade-2 cell count the
 // learner's cell usage was) or a crown (exactly the minimum).
@@ -12,10 +12,10 @@ import { dotsToUnicode, translate } from './braille';
  * "jumps", not "jumped": the -ed form has no s, and a perfect pangram lets an
  * uncontracted run exercise the whole alphabet.
  */
-export const QBF_SENTENCE = 'The quick brown fox jumps over the lazy dog.';
+export const FOX_SENTENCE = 'The quick brown fox jumps over the lazy dog.';
 
 /**
- * Minimum possible grade-2 cell count for QBF_SENTENCE, derived from the
+ * Minimum possible grade-2 cell count for FOX_SENTENCE, derived from the
  * skills data at module load.
  *
  * Breakdown (36 cells): The=2 (capital indicator + "the" contraction),
@@ -24,29 +24,29 @@ export const QBF_SENTENCE = 'The quick brown fox jumps over the lazy dog.';
  * fox=3, jumps=5 (no contraction), over=3 ("er"), the=1, lazy=4, dog=3,
  * period=1, spaces=8.
  */
-export const QBF_MIN_CELLS = translate(QBF_SENTENCE).cells.length;
+export const FOX_MIN_CELLS = translate(FOX_SENTENCE).cells.length;
 
-/** Outcome of a flawless (or not) qbf run. */
-export type QbfResult =
+/** Outcome of a flawless (or not) fox run. */
+export type FoxResult =
   | { readonly kind: 'crown' }
   | { readonly kind: 'badge'; readonly percentAbove: number }
   | { readonly kind: 'failed' };
 
 /**
- * Score a completed qbf challenge from the number of cells the learner
+ * Score a completed fox challenge from the number of cells the learner
  * typed (the state layer counts input insertion events). Only call this for
  * a flawlessly typed run; a run that already failed on a mistake is
  * 'failed' without consulting this. `cellsTyped` below the theoretical
  * minimum (or non-finite) is treated as invalid -> 'failed'.
  */
-export function qbfResult(cellsTyped: number): QbfResult {
-  if (!Number.isFinite(cellsTyped) || cellsTyped < QBF_MIN_CELLS) {
+export function foxResult(cellsTyped: number): FoxResult {
+  if (!Number.isFinite(cellsTyped) || cellsTyped < FOX_MIN_CELLS) {
     return { kind: 'failed' };
   }
-  if (cellsTyped === QBF_MIN_CELLS) return { kind: 'crown' };
+  if (cellsTyped === FOX_MIN_CELLS) return { kind: 'crown' };
   return {
     kind: 'badge',
-    percentAbove: ((cellsTyped - QBF_MIN_CELLS) / QBF_MIN_CELLS) * 100,
+    percentAbove: ((cellsTyped - FOX_MIN_CELLS) / FOX_MIN_CELLS) * 100,
   };
 }
 
@@ -65,7 +65,7 @@ function commonPrefixLength(a: string, b: string): number {
 }
 
 /** A sign of the challenge sentence, ready to show as cells. */
-export interface QbfSign {
+export interface FoxSign {
   /** The sign's cells as a U+2800 string (a sign may be several cells). */
   readonly unicode: string;
   /** The print it stands for: "ow", "The", "." — or " " for a space. */
@@ -82,7 +82,7 @@ export interface QbfSign {
  * after it: an omitted space is a real mistake and worth showing as one.
  * Null when the text does not translate or is empty.
  */
-export function expectedSignAt(text: string, typed: string): QbfSign | null {
+export function expectedSignAt(text: string, typed: string): FoxSign | null {
   let units: ReadonlyArray<TranslationUnit>;
   try {
     units = translate(text).units;

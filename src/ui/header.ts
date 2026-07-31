@@ -1,4 +1,4 @@
-// App header: the "qbf" brand as three braille cells, the best qbf result,
+// App header: the "fox" brand as three braille cells, the best fox result,
 // and the reset-progress control (with its confirm step).
 
 import {
@@ -7,12 +7,12 @@ import {
   type KeyboardEvent,
   type ReactElement,
 } from 'react';
-import type { AppHandlers, BestQbf } from '../state';
+import type { AppHandlers, BestFox } from '../state';
 import { RESET_CONFIRM_WORD } from '../state';
 import { formatPercent } from './labels';
 
 export interface HeaderProps {
-  readonly bestQbf: BestQbf | null;
+  readonly bestFox: BestFox | null;
   readonly confirmingReset: boolean;
   readonly resetConfirmText: string;
   readonly canConfirmReset: boolean;
@@ -20,14 +20,23 @@ export interface HeaderProps {
   readonly on: AppHandlers;
 }
 
-const BRAND_CELLS = ['⠟', '⠃', '⠋'];
+/**
+ * The logo: "Quick braille fox" as a 3×3 grid of braille cells, one word per
+ * row — ⠠⠟⠅ (capital sign + the shortform "qk"), ⠃⠗⠇ (the shortform "brl"),
+ * and ⠋⠕⠭ ("fox" in full).
+ */
+const BRAND_ROWS = [
+  ['⠠', '⠟', '⠅'],
+  ['⠃', '⠗', '⠇'],
+  ['⠋', '⠕', '⠭'],
+];
 
-function BestQbfBadge(props: { readonly best: BestQbf }): ReactElement {
+function BestFoxBadge(props: { readonly best: BestFox }): ReactElement {
   const { best } = props;
   return e(
     'span',
-    { className: 'best-qbf' },
-    'best qbf ',
+    { className: 'best-fox' },
+    'best fox ',
     best.kind === 'crown'
       ? e(
           'span',
@@ -103,22 +112,26 @@ function ResetConfirm(props: {
 }
 
 export function Header(props: HeaderProps): ReactElement {
-  const { bestQbf, confirmingReset, resetConfirmText, canConfirmReset, voiceOverInput, on } = props;
+  const { bestFox, confirmingReset, resetConfirmText, canConfirmReset, voiceOverInput, on } = props;
   return e(
     'header',
     { className: 'app-header' },
     e(
       'h1',
-      { className: 'brand', 'aria-label': 'qbf' },
-      BRAND_CELLS.map((c, i) =>
-        e('span', { key: i, className: 'brand-cell', 'aria-hidden': 'true' }, c),
+      { className: 'brand', 'aria-label': 'Quick Braille Fox' },
+      BRAND_ROWS.map((row, r) =>
+        e(
+          'span',
+          { key: r, className: 'brand-row', 'aria-hidden': 'true' },
+          row.map((c, i) => e('span', { key: i, className: 'brand-cell' }, c)),
+        ),
       ),
     ),
     e(
       'div',
       { className: 'header-right' },
       e(InputModeToggle, { voiceOverInput, onToggle: on.onInputModeToggle }),
-      bestQbf === null ? null : e(BestQbfBadge, { best: bestQbf }),
+      bestFox === null ? null : e(BestFoxBadge, { best: bestFox }),
       confirmingReset
         ? e(ResetConfirm, { text: resetConfirmText, canConfirm: canConfirmReset, on })
         : e(
