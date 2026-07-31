@@ -8,8 +8,9 @@
 // and for how long. The state layer runs that as a timer and dispatches
 // revealHint().
 
-import { dotsToUnicode, translate } from './braille';
+import { dotsToUnicode, tryTranslate } from './braille';
 import { hintDelayFor } from './progress';
+import { commonPrefixLength } from './text';
 import type { TutorState } from './types';
 import { HINT_REVEAL_COOLDOWN_MS } from './types';
 
@@ -27,13 +28,6 @@ export interface HintWord {
   readonly wordStart: number;
   /** The word's translation units, in order. */
   readonly units: ReadonlyArray<HintUnit>;
-}
-
-function commonPrefixLength(a: string, b: string): number {
-  const n = Math.min(a.length, b.length);
-  let i = 0;
-  while (i < n && a[i] === b[i]) i += 1;
-  return i;
 }
 
 /**
@@ -66,8 +60,12 @@ export function hintWordForPrompt(state: TutorState): HintWord | null {
   const caret = commonPrefixLength(p.text, p.typed);
   const span = wordSpanAt(p.text, caret);
   if (span === null) return null;
+  // A persisted prompt can stop translating when the curriculum changes
+  // between releases; an untranslatable prompt simply has nothing to hint.
+  const translation = tryTranslate(p.text);
+  if (translation === null) return null;
   const units: HintUnit[] = [];
-  translate(p.text).units.forEach((u, index) => {
+  translation.units.forEach((u, index) => {
     if (u.start >= span.start && u.start < span.end) {
       units.push({ index, unicode: dotsToUnicode(u.cells) });
     }
@@ -106,7 +104,8 @@ export function nextHintFor(state: TutorState): PendingHint | null {
   const p = state.prompt;
   if (!p || p.completed || p.isFox) return null;
   const caret = commonPrefixLength(p.text, p.typed);
-  const units = translate(p.text).units;
+  const units = tryTranslate(p.text)?.units;
+  if (units === undefined) return null; // untranslatable: nothing to hint
   const unitIndex = units.findIndex((u) => u.start <= caret && caret < u.end);
   if (unitIndex === -1) return null; // typed past the end of the text
   const unit = units[unitIndex] as (typeof units)[number];

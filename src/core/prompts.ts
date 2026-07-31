@@ -26,7 +26,9 @@ import type { Skill } from '../data/skills';
 import { skills } from '../data/skills';
 import { translate } from './braille';
 import { WORDS } from './corpus';
+import { STANDALONE_LOWER } from './lower-signs';
 import { learntSkills, activeSkills, knownSkillIds, scoreFor } from './progress';
+import { capitalizeFirst } from './text';
 import type { Rng } from './rng';
 import { choice, mulberry32 } from './rng';
 import type { TutorState } from './types';
@@ -273,7 +275,7 @@ function printIsRealWord(target: Skill): boolean {
     case 'contraction':
       return true;
     case 'lowersign':
-      return ['be', 'enough', 'his', 'in', 'was', 'were'].includes(target.print);
+      return STANDALONE_LOWER.has(target.print);
     case 'letter':
       return STANDALONE_LETTER_WORDS.has(target.print);
     default:
@@ -324,9 +326,7 @@ function numberSignPrompt(ctx: PromptContext, rng: Rng): string {
 function capitalPrompt(target: Skill, ctx: PromptContext, rng: Rng): string {
   const filler = ctx.filler.filter((w) => /^[a-z]+$/.test(w));
   const isWordIndicator = target.id === 'capital-word-indicator';
-  const transform = isWordIndicator
-    ? (w: string) => w.toUpperCase()
-    : (w: string) => (w[0] ?? '').toUpperCase() + w.slice(1);
+  const transform = isWordIndicator ? (w: string) => w.toUpperCase() : capitalizeFirst;
   const candidates = filler
     .filter((w) => (isWordIndicator ? w.length >= 2 : true))
     .map(transform)

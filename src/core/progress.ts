@@ -44,31 +44,6 @@ export function knownSkillIds(state: TutorState): ReadonlySet<string> {
   return known;
 }
 
-/** UI-friendly progress numbers. */
-export interface ProgressSummary {
-  readonly totalSkills: number;
-  readonly learntCount: number;
-  readonly promptsCompleted: number;
-  readonly active: ReadonlyArray<{
-    readonly id: string;
-    readonly print: string;
-    readonly score: number;
-  }>;
-}
-
-export function progressSummary(state: TutorState): ProgressSummary {
-  return {
-    totalSkills: skills.length,
-    learntCount: learntSkills(state).length,
-    promptsCompleted: state.promptCounter,
-    active: activeSkills(state).map((s) => ({
-      id: s.id,
-      print: s.print,
-      score: scoreFor(state, s.id),
-    })),
-  };
-}
-
 /**
  * How long (ms) a sign waits before the *first* hint of the current prompt
  * shows, or null if no time-based hint applies: no/finished prompt, the fox

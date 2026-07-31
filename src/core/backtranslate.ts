@@ -27,7 +27,21 @@
 // not the contraction the learner never typed.
 
 import type { Cell, TranslationUnit } from './braille';
-import { dotsToUnicode, translate } from './braille';
+import {
+  capitalLetterSkill,
+  capitalWordSkill,
+  dotsToUnicode,
+  numberSignSkill,
+  translate,
+} from './braille';
+import {
+  ANYWHERE_LOWER,
+  BEGWORD_LOWER,
+  INTERIOR_LOWER,
+  MIN_BEGWORD_TAIL,
+  STANDALONE_LOWER,
+} from './lower-signs';
+import { capitalizeFirst } from './text';
 import type { Skill } from '../data/skills';
 import { skills } from '../data/skills';
 
@@ -71,10 +85,6 @@ function matchAt(cells: ReadonlyArray<Cell>, pos: number, sign: ReadonlyArray<Ce
   return true;
 }
 
-function capitalizeFirst(s: string): string {
-  return s.length === 0 ? s : (s[0] as string).toUpperCase() + s.slice(1);
-}
-
 // --- reverse lookup tables, built once from the skills data ----------------
 
 const letterByKey = new Map<string, Skill>();
@@ -84,16 +94,14 @@ const standaloneByKey = new Map<string, Skill>(); // whole-word signs
 const inWordSigns: Skill[] = [];
 /** Punctuation/symbol signs, longest cell-sequence first (multi-cell exist). */
 const punctSigns: Skill[] = [];
-let numberSignCell: Cell = [3, 4, 5, 6];
-let numberSignId = 'number-sign';
-let capLetterId = 'capital-letter-indicator';
-let capWordId = 'capital-word-indicator';
-const CAP_LETTER: Cell = [6];
-const CAP_WORD: ReadonlyArray<Cell> = [[6], [6]];
-
-const STANDALONE_LOWER = new Set(['be', 'enough', 'his', 'in', 'was', 'were']);
-const INTERIOR_LOWER = new Set(['ea', 'bb', 'cc', 'ff', 'gg']);
-const BEGWORD_LOWER = new Set(['be', 'con', 'dis']);
+// The indicator cells and ids, from the same skills data braille.ts derives
+// its own from (no hard-coded fallbacks to drift out of sync).
+const numberSignCell: Cell = numberSignSkill.dots[0] as Cell;
+const numberSignId = numberSignSkill.id;
+const capLetterId = capitalLetterSkill.id;
+const capWordId = capitalWordSkill.id;
+const CAP_LETTER: Cell = capitalLetterSkill.dots[0] as Cell;
+const CAP_WORD: ReadonlyArray<Cell> = capitalWordSkill.dots;
 
 for (const skill of skills) {
   const dots = skill.dots.map((c) => [...c]);
@@ -103,14 +111,6 @@ for (const skill of skills) {
       break;
     case 'number':
       if (dots.length === 1) digitByKey.set(cellKey(dots[0] as Cell), skill);
-      break;
-    case 'number-sign':
-      numberSignCell = dots[0] as Cell;
-      numberSignId = skill.id;
-      break;
-    case 'capital':
-      if (skill.id === 'capital-letter-indicator') capLetterId = skill.id;
-      if (skill.id === 'capital-word-indicator') capWordId = skill.id;
       break;
     case 'punctuation':
       punctSigns.push(skill);
@@ -130,8 +130,11 @@ for (const skill of skills) {
       break;
     case 'lowersign':
       if (STANDALONE_LOWER.has(skill.print)) standaloneByKey.set(cellsKey(dots), skill);
-      if (INTERIOR_LOWER.has(skill.print) || BEGWORD_LOWER.has(skill.print) ||
-          skill.print === 'en' || skill.print === 'in') {
+      if (
+        INTERIOR_LOWER.has(skill.print) ||
+        BEGWORD_LOWER.has(skill.print) ||
+        ANYWHERE_LOWER.has(skill.print)
+      ) {
         inWordSigns.push(skill);
       }
       break;
@@ -165,7 +168,7 @@ function allowedInWord(sign: Skill, atStart: boolean, cells: ReadonlyArray<Cell>
     case 'final-letter':
       return !atStart;
     case 'lowersign':
-      if (sign.print === 'en' || sign.print === 'in') return true;
+      if (ANYWHERE_LOWER.has(sign.print)) return true;
       if (INTERIOR_LOWER.has(sign.print)) {
         if (atStart) return false;
         if (!final && end >= cells.length) return true; // more cells may come
@@ -174,7 +177,7 @@ function allowedInWord(sign: Skill, atStart: boolean, cells: ReadonlyArray<Cell>
       // begword: be/con/dis
       if (!atStart) return false;
       if (!final && end >= cells.length) return true;
-      return countLetterCellsFrom(cells, end) >= 3;
+      return countLetterCellsFrom(cells, end) >= MIN_BEGWORD_TAIL;
     default:
       return false;
   }

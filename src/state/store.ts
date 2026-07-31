@@ -15,6 +15,7 @@ import {
   revealHint,
   startSession,
   textToCells,
+  tryTranslate,
 } from '../core';
 import type { ChordState } from './chords';
 import { EMPTY_CHORD_STATE, chordKeyDown, chordKeyUp, isChordCode } from './chords';
@@ -88,9 +89,11 @@ export class TutorStore {
       // Resume an in-flight prompt as-is. Move on from a prompt saved after
       // completion (e.g. mid result screen). A half-typed fox restarts
       // cleanly (its cell count was not persisted), which nextPrompt does
-      // automatically because promptCounter still selects the fox slot.
+      // automatically because promptCounter still selects the fox slot. A
+      // prompt whose text no longer translates (the curriculum changed
+      // between releases) is replaced rather than resumed.
       this.tutor =
-        p === null || p.completed || (p.isFox && p.typed !== '')
+        p === null || p.completed || (p.isFox && p.typed !== '') || tryTranslate(p.text) === null
           ? nextPrompt(persisted.tutor)
           : persisted.tutor;
     }
@@ -433,9 +436,7 @@ export class TutorStore {
  */
 function normalizeTypedValue(value: string, text: string): string {
   const collapsed = value.replace(/^ +/u, '').replace(/ {2,}/gu, ' ');
-  if (text.startsWith(collapsed)) return collapsed;
-  const trimmed = collapsed.replace(/ +$/u, '');
-  return trimmed !== collapsed && text.startsWith(trimmed) ? trimmed : collapsed;
+  return stripUnexpectedTrailingSpaces(collapsed, text);
 }
 
 /**

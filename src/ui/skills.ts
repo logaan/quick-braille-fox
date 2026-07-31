@@ -3,6 +3,7 @@
 // They are separate cards so the single-column layout can stack them.
 
 import { createElement as e, type ReactElement } from 'react';
+import { LEARNT_THRESHOLD } from '../core';
 import type { AppViewModel } from '../state';
 import { BrailleCells } from './braille';
 import { GROUP_LABELS } from './labels';
@@ -35,9 +36,9 @@ export function LearningNowPanel(props: SkillPanelProps): ReactElement {
                 className: 'bar',
                 role: 'progressbar',
                 'aria-valuemin': 0,
-                'aria-valuemax': 10,
-                'aria-valuenow': Math.min(10, s.score),
-                'aria-label': `${s.print}: score ${s.score} of 10`,
+                'aria-valuemax': LEARNT_THRESHOLD,
+                'aria-valuenow': Math.min(LEARNT_THRESHOLD, s.score),
+                'aria-label': `${s.print}: score ${s.score} of ${LEARNT_THRESHOLD}`,
               },
               e('div', {
                 className: 'bar-fill',

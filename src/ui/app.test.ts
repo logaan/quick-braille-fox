@@ -5,6 +5,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { createElement as e } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { FOX_INTERVAL, FOX_SENTENCE, makePrompt, makeTutorState, serialize } from '../core';
+import { skills } from '../data/skills';
 import type { AppHandlers, StorageLike, TutorStore } from '../state';
 import { STORAGE_KEY, createTutorStore } from '../state';
 import { App } from './index';
@@ -92,7 +93,7 @@ describe('App rendering', () => {
     expect(html).toContain('aria-label="Quick Braille Fox"');
     expect(html).toContain('id="drill-input"');
     expect(html).toContain('Learning now');
-    expect(html).toContain('of 258 skills learnt');
+    expect(html).toContain(`of ${skills.length} skills learnt`);
   });
 
   it('renders the hint as braille cells once the timer fires', () => {

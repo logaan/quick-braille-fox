@@ -3,13 +3,15 @@
 
 export type { Cell, Translation, TranslationUnit } from './braille';
 export {
-  CAPITAL_INDICATOR,
   cellCount,
   dotsToUnicode,
   textToCells,
   textToUnicode,
   translate,
+  tryTranslate,
 } from './braille';
+
+export { capitalizeFirst, commonPrefixLength } from './text';
 
 export { WORDS } from './corpus';
 
@@ -48,14 +50,12 @@ export {
   unitTypedClean,
 } from './types';
 
-export type { ProgressSummary } from './progress';
 export {
   activeSkills,
   hintDelayFor,
   isSkillLearnt,
   knownSkillIds,
   learntSkills,
-  progressSummary,
   scoreFor,
 } from './progress';
 

@@ -28,6 +28,13 @@
 
 import type { Skill } from '../data/skills';
 import { skills } from '../data/skills';
+import {
+  ANYWHERE_LOWER,
+  BEGWORD_LOWER,
+  INTERIOR_LOWER,
+  MIN_BEGWORD_TAIL,
+  STANDALONE_LOWER,
+} from './lower-signs';
 
 /** One braille cell: ascending dot numbers 1-6. Empty array = blank cell. */
 export type Cell = ReadonlyArray<number>;
@@ -61,9 +68,6 @@ export interface Translation {
   readonly units: ReadonlyArray<TranslationUnit>;
 }
 
-/** The capital letter indicator cell (dot 6). */
-export const CAPITAL_INDICATOR: Cell = [6];
-
 /** Convert cells (arrays of dot numbers) to a U+2800-block string. */
 export function dotsToUnicode(cells: ReadonlyArray<Cell>): string {
   return cells
@@ -80,14 +84,9 @@ export function dotsToUnicode(cells: ReadonlyArray<Cell>): string {
 const charSkills = new Map<string, Skill>(); // letters, digits, punctuation
 const wholeWordSkills = new Map<string, Skill>(); // print -> standalone sign
 const inWordSkills: Skill[] = []; // signs usable inside a word, longest first
-let numberSignSkill: Skill | undefined;
-let capLetterSkill: Skill | undefined;
-let capWordSkill: Skill | undefined;
-
-const STANDALONE_LOWER = new Set(['be', 'enough', 'his', 'in', 'was', 'were']);
-const INTERIOR_LOWER = new Set(['ea', 'bb', 'cc', 'ff', 'gg']);
-const BEGWORD_LOWER = new Set(['be', 'con', 'dis']);
-const ANYWHERE_LOWER = new Set(['en', 'in']);
+let foundNumberSign: Skill | undefined;
+let foundCapLetter: Skill | undefined;
+let foundCapWord: Skill | undefined;
 
 for (const skill of skills) {
   switch (skill.kind) {
@@ -97,11 +96,11 @@ for (const skill of skills) {
       charSkills.set(skill.print, skill);
       break;
     case 'number-sign':
-      numberSignSkill = skill;
+      foundNumberSign = skill;
       break;
     case 'capital':
-      if (skill.id === 'capital-letter-indicator') capLetterSkill = skill;
-      if (skill.id === 'capital-word-indicator') capWordSkill = skill;
+      if (skill.id === 'capital-letter-indicator') foundCapLetter = skill;
+      if (skill.id === 'capital-word-indicator') foundCapWord = skill;
       break;
     case 'wordsign':
     case 'shortform':
@@ -129,13 +128,19 @@ for (const skill of skills) {
   }
 }
 inWordSkills.sort((a, b) => b.print.length - a.print.length);
-if (!numberSignSkill) throw new Error('skills data has no number-sign skill');
-if (!capLetterSkill || !capWordSkill) {
+if (!foundNumberSign) throw new Error('skills data has no number-sign skill');
+if (!foundCapLetter || !foundCapWord) {
   throw new Error('skills data has no capital indicator skills');
 }
+/** The number-sign skill, as defined by the skills data. */
+export const numberSignSkill: Skill = foundNumberSign;
+/** The capital-letter-indicator skill, as defined by the skills data. */
+export const capitalLetterSkill: Skill = foundCapLetter;
+/** The capital-word-indicator skill, as defined by the skills data. */
+export const capitalWordSkill: Skill = foundCapWord;
 const numberSign: Skill = numberSignSkill;
-const capLetter: Skill = capLetterSkill;
-const capWord: Skill = capWordSkill;
+const capLetter: Skill = capitalLetterSkill;
+const capWord: Skill = capitalWordSkill;
 
 /** May `skill` be used inside a word at [start, end) of a word of `len`? */
 function allowedInWord(skill: Skill, start: number, end: number, len: number): boolean {
@@ -150,8 +155,8 @@ function allowedInWord(skill: Skill, start: number, end: number, len: number): b
     case 'lowersign':
       if (INTERIOR_LOWER.has(skill.print)) return start > 0 && end < len;
       if (BEGWORD_LOWER.has(skill.print)) {
-        // Syllable heuristic: begword only, with >= 3 letters following.
-        return start === 0 && end < len && len - end >= 3;
+        // Syllable heuristic: begword only, with enough letters following.
+        return start === 0 && end < len && len - end >= MIN_BEGWORD_TAIL;
       }
       return ANYWHERE_LOWER.has(skill.print); // en, in
     default:
@@ -251,11 +256,7 @@ function translateDigitRun(run: string, base: number, out: MutableTranslation): 
   }
 }
 
-/**
- * Translate a print string to grade-2 braille cells (greedy longest-match).
- * Throws on characters the curriculum does not cover.
- */
-export function translate(text: string): Translation {
+function computeTranslation(text: string): Translation {
   const out: MutableTranslation = { cells: [], skillIds: [], units: [] };
   const tokens = text.match(/[a-zA-Z]+|[0-9]+|./gs) ?? [];
   let offset = 0;
@@ -275,6 +276,41 @@ export function translate(text: string): Translation {
     offset += token.length;
   }
   return out;
+}
+
+/**
+ * Translation is pure and gets asked for the same texts over and over (every
+ * keystroke re-derives the prompt's units; prompt generation weighs the same
+ * corpus words each time), so results are memoized. Bounded so a long
+ * session's one-off prompt texts cannot grow it without limit; eviction is
+ * oldest-inserted, which is as good as LRU for this access pattern.
+ */
+const translationCache = new Map<string, Translation>();
+const TRANSLATION_CACHE_MAX = 1024;
+
+/**
+ * Translate a print string to grade-2 braille cells (greedy longest-match).
+ * Throws on characters the curriculum does not cover.
+ */
+export function translate(text: string): Translation {
+  const hit = translationCache.get(text);
+  if (hit !== undefined) return hit;
+  const out = computeTranslation(text);
+  if (translationCache.size >= TRANSLATION_CACHE_MAX) {
+    const oldest = translationCache.keys().next().value as string;
+    translationCache.delete(oldest);
+  }
+  translationCache.set(text, out);
+  return out;
+}
+
+/** translate(), with untranslatable text as null instead of a throw. */
+export function tryTranslate(text: string): Translation | null {
+  try {
+    return translate(text);
+  } catch {
+    return null;
+  }
 }
 
 /** The braille cells for a print string (hint display). */

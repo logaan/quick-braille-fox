@@ -1,14 +1,7 @@
 import { Map, is } from 'immutable';
 import { describe, expect, it } from 'vitest';
 import { skills } from '../data/skills';
-import {
-  activeSkills,
-  hintDelayFor,
-  isSkillLearnt,
-  learntSkills,
-  progressSummary,
-  scoreFor,
-} from './progress';
+import { activeSkills, hintDelayFor, isSkillLearnt, learntSkills, scoreFor } from './progress';
 import { FOX_SENTENCE } from './fox';
 import {
   deserialize,
@@ -304,23 +297,19 @@ describe('fox flow', () => {
   });
 });
 
-describe('progressSummary', () => {
-  it('reports totals, learnt count, and the active window', () => {
+describe('progress views', () => {
+  it('report the learnt count and the active window', () => {
     let state = makeTutorState({ promptCounter: 12 });
     state = state.set('scores', Map({ 'letter-a': 11, 'letter-b': 3 }));
-    const summary = progressSummary(state);
-    expect(summary.totalSkills).toBe(skills.length);
-    expect(skills.length).toBe(258);
-    expect(summary.learntCount).toBe(1);
-    expect(summary.promptsCompleted).toBe(12);
-    expect(summary.active.map((a) => a.id)).toEqual([
+    expect(learntSkills(state).length).toBe(1);
+    expect(activeSkills(state).map((s) => s.id)).toEqual([
       'letter-b',
       'letter-c',
       'letter-d',
       'letter-e',
       'letter-f',
     ]);
-    expect(summary.active[0]?.score).toBe(3);
+    expect(scoreFor(state, 'letter-b')).toBe(3);
   });
 });
 

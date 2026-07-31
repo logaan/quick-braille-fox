@@ -3,11 +3,12 @@
 
 import { Map, Set } from 'immutable';
 import type { TranslationUnit } from './braille';
-import { translate } from './braille';
+import { translate, tryTranslate } from './braille';
 import { generatePromptText, pickTarget } from './prompts';
 import { scoreFor } from './progress';
 import { FOX_SENTENCE } from './fox';
 import { drawSeed, mulberry32 } from './rng';
+import { commonPrefixLength } from './text';
 import type { Prompt, TutorState } from './types';
 import {
   BASE_AWARD,
@@ -55,18 +56,7 @@ function addScore(state: TutorState, skillId: string, delta: number): TutorState
 
 /** The prompt text's translation units ([] if it is not translatable). */
 function promptUnits(p: Prompt): ReadonlyArray<TranslationUnit> {
-  try {
-    return translate(p.text).units;
-  } catch {
-    return [];
-  }
-}
-
-function commonPrefixLength(a: string, b: string): number {
-  const n = Math.min(a.length, b.length);
-  let i = 0;
-  while (i < n && a[i] === b[i]) i += 1;
-  return i;
+  return tryTranslate(p.text)?.units ?? [];
 }
 
 /**

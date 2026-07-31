@@ -1,4 +1,4 @@
-// The "fox" challenge: every 100th prompt is the fixed pangram sentence,
+// The "fox" challenge: every FOX_INTERVAL-th prompt is the fixed pangram sentence,
 // typed with no hints; any mistake fails it instantly. A flawless run earns
 // a badge (how far above the minimum possible grade-2 cell count the
 // learner's cell usage was) or a crown (exactly the minimum).
@@ -6,6 +6,7 @@
 import { backTranslateBuffer } from './backtranslate';
 import type { Cell, TranslationUnit } from './braille';
 import { dotsToUnicode, translate } from './braille';
+import { commonPrefixLength } from './text';
 
 /**
  * The challenge sentence, verbatim (capitalisation and full stop matter).
@@ -56,13 +57,6 @@ export function foxResult(cellsTyped: number): FoxResult {
 // explains why: a learner who is sure they typed the right word wants to see
 // the *braille* they owed at that point, and — when they chorded it
 // themselves — the braille they actually entered.
-
-function commonPrefixLength(a: string, b: string): number {
-  const n = Math.min(a.length, b.length);
-  let i = 0;
-  while (i < n && a[i] === b[i]) i += 1;
-  return i;
-}
 
 /** A sign of the challenge sentence, ready to show as cells. */
 export interface FoxSign {

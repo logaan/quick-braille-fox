@@ -10,6 +10,7 @@ import {
   serialize,
   textToCells,
 } from '../core';
+import { skills } from '../data/skills';
 import type { StorageLike, TutorStore } from './index';
 import { STORAGE_KEY, createTutorStore } from './index';
 
@@ -186,7 +187,7 @@ describe('TutorStore basics', () => {
     expect(vm.isFox).toBe(true);
     expect(vm.nextFoxIn).toBe(1);
     expect(vm.groups[0]).toEqual({ group: 'letters', learnt: 0, total: 26 });
-    expect(vm.totalSkills).toBe(258);
+    expect(vm.totalSkills).toBe(skills.length);
   });
 
   it('serves an ordinary drill once the opening fox is behind the learner', () => {

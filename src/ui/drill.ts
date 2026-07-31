@@ -8,16 +8,10 @@
 
 import { createElement as e, type ReactElement } from 'react';
 import type { FoxResult } from '../core';
+import { commonPrefixLength } from '../core';
 import type { AppHandlers, AppViewModel, FoxFailureView } from '../state';
 import { BrailleCells } from './braille';
 import { formatPercent, signLabel } from './labels';
-
-function commonPrefixLength(a: string, b: string): number {
-  const n = Math.min(a.length, b.length);
-  let i = 0;
-  while (i < n && a[i] === b[i]) i += 1;
-  return i;
-}
 
 /**
  * Monkeytype-style prompt colouring: correct prefix / wrong / untyped.
