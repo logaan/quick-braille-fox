@@ -18,6 +18,8 @@ import { HINT_REVEAL_COOLDOWN_MS } from './types';
 export interface HintUnit {
   /** Index of this unit in the whole prompt's translation units. */
   readonly index: number;
+  /** Print index just past the unit's span (where typing it lands the caret). */
+  readonly end: number;
   /** The unit's cells as a U+2800 string (a unit may be several cells). */
   readonly unicode: string;
 }
@@ -67,7 +69,7 @@ export function hintWordForPrompt(state: TutorState): HintWord | null {
   const units: HintUnit[] = [];
   translation.units.forEach((u, index) => {
     if (u.start >= span.start && u.start < span.end) {
-      units.push({ index, unicode: dotsToUnicode(u.cells) });
+      units.push({ index, end: u.end, unicode: dotsToUnicode(u.cells) });
     }
   });
   return units.length === 0 ? null : { wordStart: span.start, units };

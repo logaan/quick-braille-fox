@@ -294,6 +294,16 @@ describe('progressive hint reveal', () => {
     vi.advanceTimersByTime(60_000);
     expect(store.viewModel().hint).toBe('⠮');
   });
+
+  it('shows a hint revealed mid-word after a clean start', () => {
+    const store = createTutorStore({ storage: midPromptStorage(), seed: 1 });
+    typeText(store, 'the d'); // typed promptly: nothing revealed yet
+    expect(store.viewModel().hint).toBeNull();
+    // Stall on "o" until its hint fires: the cleanly-typed "d" must not
+    // hide it (the sign is charged as hinted, so it has to actually show).
+    vi.advanceTimersByTime(600_000);
+    expect(store.viewModel().hint).toBe('⠙⠕');
+  });
 });
 
 describe('persistence', () => {

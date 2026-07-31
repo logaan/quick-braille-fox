@@ -10,6 +10,7 @@ import {
   FOX_INTERVAL,
   FOX_MIN_CELLS,
   activeSkills,
+  commonPrefixLength,
   divergentCells,
   dotsToUnicode,
   expectedSignAt,
@@ -167,23 +168,30 @@ export interface ViewSources {
 }
 
 /**
- * The uncovered part of the caret word's hint: its leading run of revealed
- * units. Signs are revealed in order as the learner reaches them, so a
- * leading run is all there ever is — and stopping at the first unrevealed
- * unit keeps a sign hinted by the two-mistake rule from dragging later,
- * still-earnable signs of the word on screen with it.
+ * The uncovered part of the caret word's hint: its leading run of units that
+ * are revealed or already typed. Units the learner typed cleanly count as
+ * uncovered for display (they are never *revealed* — that would cost their
+ * clean award — but hiding a revealed sign behind them left a stuck learner
+ * with a hint the system had charged for and never showed). Stopping at the
+ * first still-covered unit keeps a sign hinted by the two-mistake rule from
+ * dragging later, still-earnable signs of the word on screen with it, and
+ * nothing shows until at least one sign has actually been revealed.
  */
 function hintText(src: ViewSources): string | null {
   const p = src.tutor.prompt;
   if (p === null || p.isFox) return null;
   const word = hintWordForPrompt(src.tutor);
   if (word === null) return null;
+  const caret = commonPrefixLength(p.text, p.typed);
   let text = '';
+  let anyRevealed = false;
   for (const unit of word.units) {
-    if (!p.hintedUnits.has(unit.index)) break;
+    const revealed = p.hintedUnits.has(unit.index);
+    if (!revealed && unit.end > caret) break; // neither revealed nor typed
+    if (revealed) anyRevealed = true;
     text += unit.unicode;
   }
-  return text === '' ? null : text;
+  return anyRevealed ? text : null;
 }
 
 /**

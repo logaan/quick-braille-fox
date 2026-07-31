@@ -24,7 +24,7 @@ describe('hintWordForPrompt', () => {
   it('hints only the word at the caret, one sign per unit', () => {
     const hint = hintWordForPrompt(state('the dog', ''));
     expect(hint?.wordStart).toBe(0);
-    expect(hint?.units).toEqual([{ index: 0, unicode: '⠮' }]);
+    expect(hint?.units).toEqual([{ index: 0, end: 3, unicode: '⠮' }]);
   });
 
   it('moves to the next word once the current one is typed', () => {
@@ -33,9 +33,9 @@ describe('hintWordForPrompt', () => {
       expect(hint?.wordStart).toBe(4);
       // Unit 1 is the space, so "dog" is units 2..4 of the whole prompt.
       expect(hint?.units).toEqual([
-        { index: 2, unicode: '⠙' },
-        { index: 3, unicode: '⠕' },
-        { index: 4, unicode: '⠛' },
+        { index: 2, end: 5, unicode: '⠙' },
+        { index: 3, end: 6, unicode: '⠕' },
+        { index: 4, end: 7, unicode: '⠛' },
       ]);
     }
   });
@@ -43,7 +43,7 @@ describe('hintWordForPrompt', () => {
   it('keeps hinting the word the typing diverged in', () => {
     const hint = hintWordForPrompt(state('the dog', 'thx'));
     expect(hint?.wordStart).toBe(0);
-    expect(hint?.units).toEqual([{ index: 0, unicode: '⠮' }]);
+    expect(hint?.units).toEqual([{ index: 0, end: 3, unicode: '⠮' }]);
   });
 
   it('bundles indicators into their sign’s unit', () => {
