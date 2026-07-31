@@ -96,6 +96,22 @@ describe('App rendering', () => {
     expect(html).toContain(`of ${skills.length} skills learnt`);
   });
 
+  it('mounts the drill input with the resumed typed text', () => {
+    const storage = memoryStorage();
+    const state = makeTutorState({
+      seed: 7,
+      promptCounter: 1,
+      prompt: makePrompt({ text: 'the dog', targetSkillId: 'letter-d', typed: 'the ' }),
+    });
+    storage.setItem(
+      STORAGE_KEY,
+      JSON.stringify({ version: 1, tutor: serialize(state), bestFox: null }),
+    );
+    const store = createTutorStore({ storage, seed: 1 });
+    const html = render(store);
+    expect(html).toContain('value="the "');
+  });
+
   it('renders the hint as braille cells once the timer fires', () => {
     const store = drillStore();
     vi.advanceTimersByTime(400);

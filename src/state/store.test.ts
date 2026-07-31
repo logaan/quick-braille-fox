@@ -484,6 +484,46 @@ describe('fox challenge', () => {
   });
 });
 
+describe('drill input field sync', () => {
+  it('resumes an in-flight prompt without a phantom mistake on the next word', () => {
+    const storage = midPromptStorage();
+    const first = createTutorStore({ storage, seed: 1 });
+    insert(first, 'the ');
+    first.flushSave();
+
+    // Reload: the remounted field starts from the persisted typed text (the
+    // UI mounts it with defaultValue vm.typed), so the next VoiceOver commit
+    // reports the whole value, not just the fresh word.
+    const store = createTutorStore({ storage, seed: 1 });
+    expect(store.viewModel().typed).toBe('the ');
+    insert(store, 'the d');
+    const vm = store.viewModel();
+    expect(vm.typed).toBe('the d');
+    expect(vm.diverged).toBe(false);
+  });
+
+  it('bumps promptKey when a mode toggle clears diverged typing', () => {
+    const store = createTutorStore({ storage: midPromptStorage(), seed: 1 });
+    insert(store, 'z');
+    expect(store.viewModel().diverged).toBe(true);
+    const before = store.viewModel().promptKey;
+    store.handlers.onInputModeToggle(); // chord mode: typing starts over
+    const vm = store.viewModel();
+    expect(vm.typed).toBe('');
+    expect(vm.promptKey).not.toBe(before);
+  });
+
+  it('keeps promptKey (and the buffer) when toggling with a clean prefix', () => {
+    const store = createTutorStore({ storage: midPromptStorage(), seed: 1 });
+    insert(store, 'the');
+    const before = store.viewModel().promptKey;
+    store.handlers.onInputModeToggle();
+    const vm = store.viewModel();
+    expect(vm.typed).toBe('the');
+    expect(vm.promptKey).toBe(before);
+  });
+});
+
 describe('VoiceOver trailing spaces', () => {
   /** Storage whose saved session resumes on an in-flight prompt of `text`. */
   function promptStorage(text: string): MemoryStorage {

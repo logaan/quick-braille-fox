@@ -299,6 +299,10 @@ export class TutorStore {
     }
     this.tutor = keystroke(this.tutor, '');
     this.cellBuffer = [];
+    // The typed text just changed under the uncontrolled drill input; bump
+    // the epoch so the field remounts to match, or its stale value would be
+    // fed back to keystroke() on the next VoiceOver input event.
+    this.promptEpoch += 1;
   }
 
   private toggleInputMode(): void {

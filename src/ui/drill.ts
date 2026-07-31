@@ -166,16 +166,19 @@ export function Drill(props: DrillProps): ReactElement {
   // Uncontrolled on purpose: VoiceOver braille screen input owns this field.
   // We only read its value and compare against the prompt — we never write the
   // value back, because a mid-word write-back desyncs VoiceOver's word buffer
-  // and makes a slip unrecoverable. Keying on the prompt epoch remounts (and so
-  // clears) the field at a genuine prompt change, never mid-typing. The field
-  // is visible so you can see exactly what VoiceOver put in the DOM and, if it
-  // mangles a word, clear/retype to recover.
+  // and makes a slip unrecoverable. Keying on the prompt epoch remounts the
+  // field at a genuine prompt change, never mid-typing. defaultValue only
+  // applies at those mounts: vm.typed there keeps a resumed session's field in
+  // step with its restored progress (an empty field would make the next
+  // keystroke read as replacing everything typed so far — a phantom mistake).
+  // The field is visible so you can see exactly what VoiceOver put in the DOM
+  // and, if it mangles a word, clear/retype to recover.
   const input = e('input', {
     key: `prompt-${vm.promptKey}`,
     className: 'drill-input',
     id: 'drill-input',
     type: 'text',
-    defaultValue: '',
+    defaultValue: vm.typed,
     onChange: on.onInput,
     // In chord mode these drive typing (dot keys, space, backspace); they
     // no-op while VoiceOver input is on.
