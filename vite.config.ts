@@ -1,6 +1,10 @@
 import { configDefaults, defineConfig } from 'vitest/config'
 
 export default defineConfig({
+  // Deployed under a subpath (http://logpi.local/braille-grade2/), so built
+  // asset URLs must be relative to index.html rather than rooted at "/".
+  base: './',
+
   test: {
     // Claude sessions work on branches in git worktrees under
     // `.claude/worktrees/`. Those are full checkouts, so without this the
