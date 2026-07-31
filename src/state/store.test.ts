@@ -747,6 +747,25 @@ describe('chord input', () => {
     }
   });
 
+  it('accepts "The" spelled letter by letter, not reading ⠠⠞ as "That"', () => {
+    const store = createTutorStore({ storage: qbfReadyStorage(), seed: 1 });
+    chordMode(store);
+    chordCell(store, [6]); // capital indicator
+    chordCell(store, [2, 3, 4, 5]); // t — standalone this would be "that", but the word is open
+    expect(store.viewModel().qbfResult).toBeNull();
+    expect(store.viewModel().diverged).toBe(false);
+    chordCell(store, [1, 2, 5]); // h
+    chordCell(store, [1, 5]); // e
+    chordText(store, ' quick brown fox jumped over the lazy dog.');
+    // "The" is 2 cells contracted; t-h-e behind the capital adds 2 more.
+    const cells = QBF_MIN_CELLS + 2;
+    const result = store.viewModel().qbfResult;
+    expect(result?.kind).toBe('badge');
+    if (result?.kind === 'badge') {
+      expect(result.percentAbove).toBeCloseTo(((cells - QBF_MIN_CELLS) / QBF_MIN_CELLS) * 100, 6);
+    }
+  });
+
   it('does not decrement the qbf cell count on backspace', () => {
     const store = createTutorStore({ storage: qbfReadyStorage(), seed: 1 });
     chordMode(store);

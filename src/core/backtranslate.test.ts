@@ -52,7 +52,19 @@ describe('backTranslateWord — with expected context', () => {
   it('shows the matching print prefix, not a standalone reading', () => {
     // ⠃ alone is "but"; while typing "bad" it must read "b" (no phantom miss).
     expect(backTranslateWord([[1, 2]], { expected: 'bad', final: false })).toBe('b');
-    expect(backTranslateWord([[1, 2]], { final: false })).toBe('but');
+    // Even with no expected word, "but" needs a closing space to exist: an
+    // open ⠃ may be the first letter of a spelled-out word.
+    expect(backTranslateWord([[1, 2]], { final: false })).toBe('b');
+    expect(backTranslateWord([[1, 2]], { final: true })).toBe('but');
+  });
+
+  it('never reads an open word as a standalone sign (letter-by-letter The)', () => {
+    // Spelling "The" as ⠠⠞... : after ⠠⠞ the diverged-from-canonical buffer
+    // must read "T", not the wordsign "That" — t-h-e is still on its way.
+    expect(backTranslateWord([[6], [2, 3, 4, 5]], { expected: 'The', final: false })).toBe('T');
+    const the: Cell[] = [[6], [2, 3, 4, 5], [1, 2, 5], [1, 5]];
+    expect(backTranslateWord(the, { expected: 'The', final: false })).toBe('The');
+    expect(backTranslateWord(the, { expected: 'The', final: true })).toBe('The');
   });
 
   it('lets context resolve a genuine cell collision', () => {

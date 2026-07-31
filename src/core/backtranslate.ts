@@ -242,8 +242,14 @@ function decodeWordStart(cells: ReadonlyArray<Cell>, final: boolean): string {
 }
 
 function decodeAfterCaps(cells: ReadonlyArray<Cell>, final: boolean): string {
-  const standalone = standaloneByKey.get(cellsKey(cells));
-  if (standalone !== undefined) return standalone;
+  // A standalone (whole-word) reading only exists once the word is closed by
+  // a space: while the word is open, ⠞ may be "that" or the start of a word
+  // spelled letter by letter ("the" as t-h-e). Judging it early fails runs
+  // that were on their way to correct print.
+  if (final) {
+    const standalone = standaloneByKey.get(cellsKey(cells));
+    if (standalone !== undefined) return standalone;
+  }
   if (cells.length >= 1 && cellsEqual(cells[0] as Cell, numberSignCell)) {
     if (cells.length === 1) return dotsToUnicode([numberSignCell]); // lone number sign
     const digits = decodeDigits(cells.slice(1), final);
