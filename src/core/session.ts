@@ -77,6 +77,17 @@ function mistakeUnitIndex(units: ReadonlyArray<TranslationUnit>, caret: number):
 }
 
 /**
+ * Identity of a translation unit for award bookkeeping: its print start and
+ * the skills it carries. Stable where a positional index is not — an
+ * attributed unit list changes shape when chords are backspaced and the same
+ * print is respelled differently, and the award must follow the sign, not
+ * the slot it happened to occupy.
+ */
+function unitAwardKey(u: TranslationUnit): string {
+  return `${u.start}:${u.skillIds.join('+')}`;
+}
+
+/**
  * Score every unit the correct prefix (length `caret`) has newly finished:
  * each of the unit's skills gains CLEAN_AWARD if the occurrence was typed
  * with no mistakes and before *its own* hint was revealed, BASE_AWARD
@@ -100,10 +111,12 @@ function awardFinishedUnits(
   for (let i = 0; i < units.length; i++) {
     const u = units[i] as TranslationUnit;
     if (u.end > caret) break;
-    if (u.skillIds.length === 0 || awarded.has(i)) continue;
+    if (u.skillIds.length === 0) continue;
+    const key = unitAwardKey(u);
+    if (awarded.has(key)) continue;
     const delta = fixedAward ?? (unitTypedClean(p, i) ? CLEAN_AWARD : BASE_AWARD);
     for (const id of u.skillIds) next = addScore(next, id, delta);
-    awarded = awarded.add(i);
+    awarded = awarded.add(key);
   }
   return { state: next, prompt: p.set('awardedUnits', awarded) };
 }
@@ -242,7 +255,9 @@ export interface SerializedTutorState {
     isQbf: boolean;
     typed: string;
     unitMistakes: { [unitIndex: string]: number };
-    awardedUnits: number[];
+    /** Award keys; entries from older saves are positional unit indexes,
+     * migrated onto the canonical translation on read. */
+    awardedUnits: (string | number)[];
     hintedUnits: number[];
     diverged: boolean;
     completed: boolean;
@@ -312,6 +327,28 @@ function unitIndexesFrom(value: unknown): Set<number> {
   return indexes;
 }
 
+/**
+ * Persisted award keys, garbage filtered out. Older saves stored positional
+ * unit indexes; those are migrated by mapping them onto the canonical
+ * translation of the prompt text (the only attribution old saves could have
+ * used), so an in-flight prompt does not re-award on resume.
+ */
+function awardKeysFrom(value: unknown, text: string): Set<string> {
+  let keys = Set<string>();
+  if (!Array.isArray(value)) return keys;
+  let units: ReadonlyArray<TranslationUnit> | undefined;
+  for (const entry of value) {
+    if (typeof entry === 'string') {
+      keys = keys.add(entry);
+    } else if (Number.isInteger(entry) && (entry as number) >= 0) {
+      units ??= tryTranslate(text)?.units ?? [];
+      const u = units[entry as number];
+      if (u !== undefined && u.skillIds.length > 0) keys = keys.add(unitAwardKey(u));
+    }
+  }
+  return keys;
+}
+
 /** Rebuild a TutorState from serialize() output. Throws on garbage input. */
 export function deserialize(raw: unknown): TutorState {
   if (typeof raw !== 'object' || raw === null) {
@@ -338,7 +375,7 @@ export function deserialize(raw: unknown): TutorState {
           isFox: bool(p.isQbf),
           typed: str(p.typed, ''),
           unitMistakes: unitMistakesFrom(p.unitMistakes),
-          awardedUnits: unitIndexesFrom(p.awardedUnits),
+          awardedUnits: awardKeysFrom(p.awardedUnits, str(p.text, '')),
           hintedUnits: unitIndexesFrom(p.hintedUnits),
           diverged: bool(p.diverged),
           completed: bool(p.completed),

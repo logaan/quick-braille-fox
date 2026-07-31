@@ -866,6 +866,29 @@ describe('chord input', () => {
     }
   });
 
+  it('awards a sign respelled differently after backspacing in a fox run', () => {
+    const storage = foxReadyStorage();
+    const store = createTutorStore({ storage, seed: 1 });
+    chordMode(store);
+    chordText(store, 'The ');
+    chordCell(store, [1, 2, 3, 4, 5]); // q — awarded as letter-q
+    chordCell(store, [1, 3, 6]); // u — awarded as letter-u
+    keyDown(store, 'Backspace');
+    keyDown(store, 'Backspace');
+    chordCell(store, [1, 2, 3, 4, 5]); // ⠟
+    chordCell(store, [1, 3]); // ⠅ — the "quick" shortform this time
+    chordText(store, ' brown fox jumps over the lazy dog.');
+    expect(store.viewModel().foxResult?.kind).toBe('badge');
+    // The shortform occupies the print span the letters q/u were awarded at;
+    // a positional dedup would swallow its award entirely.
+    store.flushSave();
+    const raw = JSON.parse(storage.data.get(STORAGE_KEY) as string) as {
+      tutor: { scores: Record<string, number> };
+    };
+    expect(raw.tutor.scores['shortform-quick']).toBe(10);
+    expect(raw.tutor.scores['letter-q']).toBe(10);
+  });
+
   it('accepts "The" spelled letter by letter, not reading ⠠⠞ as "That"', () => {
     const store = createTutorStore({ storage: foxReadyStorage(), seed: 1 });
     chordMode(store);

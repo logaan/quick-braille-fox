@@ -329,7 +329,21 @@ describe('serialization', () => {
     const revived = deserialize(JSON.parse(JSON.stringify(serialize(state))));
     expect(is(revived, state)).toBe(true);
     expect(revived.prompt?.unitMistakes.get(1)).toBe(1);
-    expect(revived.prompt?.awardedUnits.has(0)).toBe(true);
+    expect(revived.prompt?.awardedUnits.has('0:letter-c')).toBe(true);
+  });
+
+  it('migrates legacy numeric awardedUnits onto canonical award keys', () => {
+    let state = withPrompt(makeTutorState({ seed: 5 }), 'cat', 'letter-c');
+    state = keystroke(state, 'c');
+    const json = JSON.parse(JSON.stringify(serialize(state))) as {
+      prompt: { awardedUnits: unknown[] };
+    };
+    json.prompt.awardedUnits = [0]; // as an old save would have stored it
+    const revived = deserialize(json);
+    expect(revived.prompt?.awardedUnits.has('0:letter-c')).toBe(true);
+    // Resuming and finishing must not re-award the migrated unit.
+    const done = keystroke(revived, 'cat');
+    expect(scoreFor(done, 'letter-c')).toBe(scoreFor(state, 'letter-c'));
   });
 
   it('round-trips a state with no prompt and with scores', () => {

@@ -78,8 +78,14 @@ export interface PromptProps {
    * force-shows the hint (see keystroke()).
    */
   unitMistakes: Map<number, number>;
-  /** Indexes of units whose skills have already scored this prompt. */
-  awardedUnits: Set<number>;
+  /**
+   * Award keys (print start + skill ids, see unitAwardKey in session.ts) of
+   * units whose skills have already scored this prompt. Keyed by identity,
+   * not positional index: attributed unit lists change shape when chords are
+   * backspaced and the same print is respelled differently, and the award
+   * must follow the sign, not the slot it happened to occupy.
+   */
+  awardedUnits: Set<string>;
   /**
    * Indexes of units whose hint has been revealed. Per unit, not per
    * prompt: a unit typed before *its own* hint appeared still scores
@@ -101,7 +107,7 @@ export const makePrompt = Record<PromptProps>(
     isFox: false,
     typed: '',
     unitMistakes: Map<number, number>(),
-    awardedUnits: Set<number>(),
+    awardedUnits: Set<string>(),
     hintedUnits: Set<number>(),
     diverged: false,
     completed: false,
