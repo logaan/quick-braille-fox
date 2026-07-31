@@ -305,12 +305,12 @@ afterEach(() => {
 
 describe('qbf accepts every grade-1/grade-2 spelling', () => {
   it('enumerates the expected variants per word', () => {
-    // The/the render three ways (⠮, ⠹e, the); quick/brown/jumped/over each
-    // have one optional contraction; fox, lazy and "dog." have none.
-    // 3 * 2 * 2 * 1 * 2 * 2 * 3 * 1 * 1 = 144 sentences.
-    expect(words).toEqual(['The', 'quick', 'brown', 'fox', 'jumped', 'over', 'the', 'lazy', 'dog.']);
-    expect(perWord.map((v) => v.length)).toEqual([3, 2, 2, 1, 2, 2, 3, 1, 1]);
-    expect(sentences).toHaveLength(144);
+    // The/the render three ways (⠮, ⠹e, the); quick/brown/over each have one
+    // optional contraction; fox, jumps, lazy and "dog." have none.
+    // 3 * 2 * 2 * 1 * 1 * 2 * 3 * 1 * 1 = 72 sentences.
+    expect(words).toEqual(['The', 'quick', 'brown', 'fox', 'jumps', 'over', 'the', 'lazy', 'dog.']);
+    expect(perWord.map((v) => v.length)).toEqual([3, 2, 2, 1, 1, 2, 3, 1, 1]);
+    expect(sentences).toHaveLength(72);
     // The fully-contracted rendering is among them, at the known minimum.
     expect(cases.some((c) => c.cellsTyped === QBF_MIN_CELLS)).toBe(true);
   });

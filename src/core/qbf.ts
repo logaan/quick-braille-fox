@@ -7,8 +7,12 @@ import { backTranslateBuffer } from './backtranslate';
 import type { Cell, TranslationUnit } from './braille';
 import { dotsToUnicode, translate } from './braille';
 
-/** The challenge sentence, verbatim (capitalisation and full stop matter). */
-export const QBF_SENTENCE = 'The quick brown fox jumped over the lazy dog.';
+/**
+ * The challenge sentence, verbatim (capitalisation and full stop matter).
+ * "jumps", not "jumped": the -ed form has no s, and a perfect pangram lets an
+ * uncontracted run exercise the whole alphabet.
+ */
+export const QBF_SENTENCE = 'The quick brown fox jumps over the lazy dog.';
 
 /**
  * Minimum possible grade-2 cell count for QBF_SENTENCE, derived from the
@@ -17,8 +21,8 @@ export const QBF_SENTENCE = 'The quick brown fox jumped over the lazy dog.';
  * Breakdown (36 cells): The=2 (capital indicator + "the" contraction),
  * quick=2 (the UEB shortform "qk" — the task brief estimated 5, but the
  * skills data defines shortform-quick ⠟⠅, so 2 is correct), brown=4 ("ow"),
- * fox=3, jumped=5 ("ed"), over=3 ("er"), the=1, lazy=4, dog=3, period=1,
- * spaces=8.
+ * fox=3, jumps=5 (no contraction), over=3 ("er"), the=1, lazy=4, dog=3,
+ * period=1, spaces=8.
  */
 export const QBF_MIN_CELLS = translate(QBF_SENTENCE).cells.length;
 

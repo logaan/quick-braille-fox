@@ -10,7 +10,7 @@ Mac actually produces. A real text field receives all typing, so VoiceOver
 braille screen input works throughout.
 
 Every 50th prompt — starting with your very first — is the qbf challenge:
-type "The quick brown fox jumped over the lazy dog." flawlessly, with no
+type "The quick brown fox jumps over the lazy dog." flawlessly, with no
 hints and instant failure on any wrong character. Its rules are shown on
 screen for the whole round. Every skill you type correctly there scores 10
 points, enough to learn it outright, since you have demonstrated it cold.

@@ -737,7 +737,7 @@ describe('chord input', () => {
     chordMode(store);
     chordText(store, 'The '); // caps + the + space
     for (const d of [[1, 2, 3, 4, 5], [1, 3, 6], [2, 4], [1, 4], [1, 3]]) chordCell(store, d); // q u i c k
-    chordText(store, ' brown fox jumped over the lazy dog.');
+    chordText(store, ' brown fox jumps over the lazy dog.');
     // "quick" is a 2-cell shortform; spelling it out adds 3 cells -> 39 total.
     const cells = QBF_MIN_CELLS + 3;
     const result = store.viewModel().qbfResult;
@@ -756,7 +756,7 @@ describe('chord input', () => {
     expect(store.viewModel().diverged).toBe(false);
     chordCell(store, [1, 2, 5]); // h
     chordCell(store, [1, 5]); // e
-    chordText(store, ' quick brown fox jumped over the lazy dog.');
+    chordText(store, ' quick brown fox jumps over the lazy dog.');
     // "The" is 2 cells contracted; t-h-e behind the capital adds 2 more.
     const cells = QBF_MIN_CELLS + 2;
     const result = store.viewModel().qbfResult;
@@ -786,14 +786,12 @@ describe('chord input', () => {
       tutor: { scores: Record<string, number> };
     };
     const scores = saved.tutor.scores;
-    // Spelling the sentence out exercises every letter it contains ("jumped"
-    // keeps this pangram one letter short of perfect: it has no s)...
+    // Spelling the pangram out exercises the whole alphabet...
     const letters = new Set(QBF_SENTENCE.toLowerCase().replace(/[^a-z]/g, ''));
-    expect(letters.size).toBe(25);
+    expect(letters.size).toBe(26);
     for (const c of letters) {
       expect(scores[`letter-${c}`] ?? 0).toBeGreaterThan(0);
     }
-    expect(scores['letter-s'] ?? 0).toBe(0);
     // ...and none of the contractions of the hypothetical shortest solution.
     for (const id of ['contraction-the', 'shortform-quick', 'groupsign-ow', 'groupsign-ed', 'groupsign-er']) {
       expect(scores[id] ?? 0).toBe(0);

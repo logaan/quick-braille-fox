@@ -19,7 +19,7 @@ describe('QBF_MIN_CELLS', () => {
     expect(translate('quick').skillIds).toEqual(['shortform-quick']);
     expect(translate('brown').cells.length).toBe(4); // "ow"
     expect(translate('fox').cells.length).toBe(3);
-    expect(translate('jumped').cells.length).toBe(5); // "ed"
+    expect(translate('jumps').cells.length).toBe(5); // no contraction
     expect(translate('over').cells.length).toBe(3); // "er"
     expect(translate('the').cells.length).toBe(1);
     expect(translate('lazy').cells.length).toBe(4);

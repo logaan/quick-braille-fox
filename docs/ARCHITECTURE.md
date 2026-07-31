@@ -356,11 +356,13 @@ U+2800 glyph, which never matches prompt text, so a mistake stays visible.
 
 ### qbf challenge (`qbf.ts`)
 
-- `QBF_SENTENCE` — `The quick brown fox jumped over the lazy dog.`
+- `QBF_SENTENCE` — `The quick brown fox jumps over the lazy dog.` ("jumps",
+  not "jumped": the perfect pangram lets an uncontracted run exercise the
+  whole alphabet)
 - `QBF_MIN_CELLS` — minimum grade-2 cell count, derived from the skills data
   at module load. It is **36**, not the 39 sketched in early planning:
   "quick" is itself a UEB shortform (⠟⠅, 2 cells rather than 5).
-  Breakdown: The 2, quick 2, brown 4, fox 3, jumped 5, over 3, the 1,
+  Breakdown: The 2, quick 2, brown 4, fox 3, jumps 5, over 3, the 1,
   lazy 4, dog 3, period 1, spaces 8.
 - `qbfResult(cellsTyped)` — for a flawless run, `{ kind: 'crown' }` at
   exactly the minimum, else `{ kind: 'badge', percentAbove }` (percentage
