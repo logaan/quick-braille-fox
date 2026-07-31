@@ -318,6 +318,35 @@ export function textToCells(text: string): ReadonlyArray<Cell> {
   return translate(text).cells;
 }
 
+/**
+ * The cells for `text` spelled out at the finest grain: every letter as its
+ * own letter cell (capital indicator per capitalised letter), digit runs and
+ * punctuation canonically — no contractions or groupsigns. This is the
+ * maximally-explicit grade-1 spelling, one valid way any prefix could have
+ * been chorded; the canonical grade-2 cells are another (textToCells).
+ * Throws on characters the curriculum does not cover.
+ */
+export function spellOutCells(text: string): ReadonlyArray<Cell> {
+  const out: MutableTranslation = { cells: [], skillIds: [], units: [] };
+  const tokens = text.match(/[0-9]+|./gs) ?? [];
+  let offset = 0;
+  for (const token of tokens) {
+    if (/^[0-9]/.test(token)) {
+      translateDigitRun(token, offset, out);
+    } else if (/^[a-zA-Z]$/.test(token)) {
+      translateLetterRun(token, offset, out);
+    } else if (token === ' ') {
+      emitUnit(out, offset, offset + 1, [[]], []);
+    } else {
+      const skill = charSkills.get(token);
+      if (!skill) throw new Error(`untranslatable character: ${JSON.stringify(token)}`);
+      emitUnit(out, offset, offset + token.length, [...skill.dots], [skill.id]);
+    }
+    offset += token.length;
+  }
+  return out.cells;
+}
+
 /** The braille form of a print string as a U+2800-block string. */
 export function textToUnicode(text: string): string {
   return dotsToUnicode(translate(text).cells);

@@ -764,6 +764,58 @@ describe('chord input', () => {
     expect(store.viewModel().typed).toBe('the ');
   });
 
+  /** Storage resuming a chord-mode session with `typed` of `text` in flight. */
+  function chordResumeStorage(text: string, typed: string): MemoryStorage {
+    const storage = memoryStorage();
+    const state = makeTutorState({
+      seed: 7,
+      promptCounter: 1,
+      prompt: makePrompt({ text, targetSkillId: 'letter-d', typed }),
+    });
+    storage.setItem(
+      STORAGE_KEY,
+      JSON.stringify({
+        version: 1,
+        tutor: serialize(state),
+        bestQbf: null,
+        voiceOverInput: false,
+      }),
+    );
+    return storage;
+  }
+
+  it('resumes a mid-word prefix and accepts the next letter chord', () => {
+    // Typed "st" of "still": the canonical cells for "st" are the st
+    // groupsign, which is also the "still" wordsign — a canonical buffer
+    // made the next correct letter chord decode as divergent print.
+    const store = createTutorStore({ storage: chordResumeStorage('still', 'st'), seed: 1 });
+    expect(store.viewModel().typed).toBe('st');
+    chordCell(store, [2, 4]); // i
+    const vm = store.viewModel();
+    expect(vm.typed).toBe('sti');
+    expect(vm.diverged).toBe(false);
+  });
+
+  it('falls back to the canonical buffer when only it round-trips', () => {
+    // Typed "can" of "can't": letter cells decode as "can"+"an" against the
+    // expected word, so only the canonical single wordsign cell round-trips.
+    const store = createTutorStore({ storage: chordResumeStorage("can't", 'can'), seed: 1 });
+    expect(store.viewModel().typed).toBe('can');
+    chordCell(store, [3]); // '
+    chordCell(store, [2, 3, 4, 5]); // t
+    expect(store.viewModel().promptsCompleted).toBe(2);
+  });
+
+  it('continues letter-by-letter after toggling modes mid-word', () => {
+    const store = createTutorStore({ storage: promptStorage('still top'), seed: 1 });
+    insert(store, 'st'); // typed via VoiceOver
+    chordMode(store);
+    chordCell(store, [2, 4]); // i
+    const vm = store.viewModel();
+    expect(vm.typed).toBe('sti');
+    expect(vm.diverged).toBe(false);
+  });
+
   it('reconstructs the buffer when toggling mid-prompt on a clean prefix', () => {
     const store = createTutorStore({ storage: midPromptStorage(), seed: 1 });
     insert(store, 'the'); // typed via VoiceOver

@@ -14,6 +14,7 @@ import {
   nextPrompt,
   foxResult,
   revealHint,
+  spellOutCells,
   startSession,
   textToCells,
   tryTranslate,
@@ -288,9 +289,15 @@ export class TutorStore {
 
   /**
    * Rebuild the cell buffer from the current prompt's typed text (on entering
-   * chord mode or resuming a persisted chord-mode session). A clean, still-
-   * translatable prefix is reconstructed so chording continues seamlessly;
-   * otherwise the in-progress typing is cleared and the prompt starts over.
+   * chord mode or resuming a persisted chord-mode session). Print alone does
+   * not say which spelling was chorded, and a wrong guess decodes the next
+   * correct chord as divergent print (the "st" groupsign is also the "still"
+   * wordsign, so a canonical buffer for typed "st" reads as the whole word).
+   * So a candidate buffer is accepted only if it decodes back to exactly the
+   * typed prefix — the letter-by-letter spelling first (chording continues
+   * from it cleanly whatever was actually entered), the canonical grade-2
+   * cells as fallback. If neither round-trips, the in-progress typing is
+   * cleared and the prompt starts over.
    */
   private reconstructBuffer(): void {
     const prompt = this.tutor.prompt;
@@ -299,11 +306,16 @@ export class TutorStore {
       return;
     }
     if (prompt.text.startsWith(prompt.typed)) {
-      try {
-        this.cellBuffer = textToCells(prompt.typed).map((c) => [...c]);
-        return;
-      } catch {
-        // fall through to a clean restart
+      for (const spelling of [spellOutCells, textToCells]) {
+        try {
+          const cells = spelling(prompt.typed).map((c): Cell => [...c]);
+          if (backTranslateBuffer(cells, prompt.text) === prompt.typed) {
+            this.cellBuffer = cells;
+            return;
+          }
+        } catch {
+          // untranslatable with this spelling: try the next, else restart
+        }
       }
     }
     this.tutor = keystroke(this.tutor, '');

@@ -5,6 +5,7 @@ export type { Cell, Translation, TranslationUnit } from './braille';
 export {
   cellCount,
   dotsToUnicode,
+  spellOutCells,
   textToCells,
   textToUnicode,
   translate,
