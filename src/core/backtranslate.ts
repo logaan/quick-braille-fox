@@ -369,7 +369,28 @@ function wordPieces(cells: readonly Cell[], opts: BackTranslateOptions = {}): Pi
   // Decode the diverged (or committed-but-incomplete) tail.
   const tailPieces =
     matched.length > 0 ? greedyPieces(tail, final, false) : decodeWordStartPieces(tail, final);
-  return [...matched, ...tailPieces];
+  const result = [...matched, ...tailPieces];
+  // A whole-word sign can share its cell with the first letter of the word it
+  // stands for (the "can" wordsign is the letter-c cell), so a spelled-out
+  // word can collide with its own canonical cells: chording c,a towards
+  // "can't" makes the matched pass above consume the ⠉ as the whole "can"
+  // unit and read the ⠁ as a diverged tail — "cana", a phantom mistake in the
+  // middle of a perfectly valid grade-1 spelling. When the matched reading
+  // has diverged from the expected print but the pure context-free reading of
+  // the whole group has not, the learner is mid-way through such an alternate
+  // spelling: prefer that reading (it also credits the signs actually
+  // chorded). When both readings diverge the chord was genuinely wrong, and
+  // the matched reading keeps the mistake visible exactly as before.
+  if (matched.length > 0 && !expected.startsWith(pieceText(result))) {
+    const contextFree = decodeWordStartPieces(cells, final);
+    if (expected.startsWith(pieceText(contextFree))) return contextFree;
+  }
+  return result;
+}
+
+/** The print a piece list decodes to. */
+function pieceText(pieces: readonly Piece[]): string {
+  return pieces.map((p) => p.text).join('');
 }
 
 // --- public API ------------------------------------------------------------
@@ -382,9 +403,7 @@ function wordPieces(cells: readonly Cell[], opts: BackTranslateOptions = {}): Pi
  * from the cells.
  */
 export function backTranslateWord(cells: readonly Cell[], opts: BackTranslateOptions = {}): string {
-  return wordPieces(cells, opts)
-    .map((p) => p.text)
-    .join('');
+  return pieceText(wordPieces(cells, opts));
 }
 
 /** A buffer decode that also reports which signs were actually chorded. */

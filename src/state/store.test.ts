@@ -806,13 +806,75 @@ describe('chord input', () => {
     expect(vm.diverged).toBe(false);
   });
 
-  it('falls back to the canonical buffer when only it round-trips', () => {
-    // Typed "can" of "can't": letter cells decode as "can"+"an" against the
-    // expected word, so only the canonical single wordsign cell round-trips.
+  it('resumes a wordsign-stem prefix and continues to completion', () => {
+    // Typed "can" of "can't": the ⠉ cell is both letter c and the "can"
+    // wordsign, so the two candidate buffers collide. Whichever spelling the
+    // resume settles on must round-trip and accept the next correct chords.
     const store = createTutorStore({ storage: chordResumeStorage("can't", 'can'), seed: 1 });
     expect(store.viewModel().typed).toBe('can');
     chordCell(store, [3]); // '
     chordCell(store, [2, 3, 4, 5]); // t
+    expect(store.viewModel().promptsCompleted).toBe(2);
+  });
+
+  it('accepts a wordsign word spelled letter by letter (can)', () => {
+    const store = createTutorStore({ storage: promptStorage('can top'), seed: 1 });
+    chordMode(store);
+    chordCell(store, [1, 4]); // c — also the "can" wordsign cell
+    expect(store.viewModel().diverged).toBe(false);
+    chordCell(store, [1]); // a — used to decode as "can"+"a", a phantom mistake
+    expect(store.viewModel().typed).toBe('ca');
+    expect(store.viewModel().diverged).toBe(false);
+    chordCell(store, [1, 3, 4, 5]); // n
+    expect(store.viewModel().typed).toBe('can');
+    expect(store.viewModel().diverged).toBe(false);
+    chordSpace(store);
+    chordText(store, 'top');
+    expect(store.viewModel().promptsCompleted).toBe(2);
+  });
+
+  it("accepts an apostrophe word with a wordsign stem letter by letter (can't)", () => {
+    const store = createTutorStore({ storage: promptStorage("can't top"), seed: 1 });
+    chordMode(store);
+    const spelled = [[1, 4], [1], [1, 3, 4, 5], [3], [2, 3, 4, 5]]; // c,a,n,',t
+    for (const cell of spelled) {
+      chordCell(store, cell);
+      expect(store.viewModel().diverged).toBe(false);
+    }
+    expect(store.viewModel().typed).toBe("can't");
+    chordSpace(store);
+    chordText(store, 'top');
+    expect(store.viewModel().promptsCompleted).toBe(2);
+  });
+
+  it("accepts a plain apostrophe word letter by letter (don't)", () => {
+    const store = createTutorStore({ storage: promptStorage("don't top"), seed: 1 });
+    chordMode(store);
+    const spelled = [[1, 4, 5], [1, 3, 5], [1, 3, 4, 5], [3], [2, 3, 4, 5]]; // d,o,n,',t
+    for (const cell of spelled) {
+      chordCell(store, cell);
+      expect(store.viewModel().diverged).toBe(false);
+    }
+    expect(store.viewModel().typed).toBe("don't");
+    chordSpace(store);
+    chordText(store, 'top');
+    expect(store.viewModel().promptsCompleted).toBe(2);
+  });
+
+  it('still completes on the chorded wordsign itself (⠉ for can)', () => {
+    const store = createTutorStore({ storage: promptStorage('can top'), seed: 1 });
+    chordMode(store);
+    chordCell(store, [1, 4]); // the "can" wordsign
+    expect(store.viewModel().diverged).toBe(false);
+    chordSpace(store);
+    chordText(store, 'top');
+    expect(store.viewModel().promptsCompleted).toBe(2);
+  });
+
+  it("still completes on the canonical can't cells (wordsign + ' + t)", () => {
+    const store = createTutorStore({ storage: promptStorage("can't top"), seed: 1 });
+    chordMode(store);
+    chordText(store, "can't top");
     expect(store.viewModel().promptsCompleted).toBe(2);
   });
 

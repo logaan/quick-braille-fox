@@ -90,6 +90,55 @@ describe('backTranslateWord — with expected context', () => {
     expect(backTranslateWord(uncontracted, { expected: 'band', final: false })).toBe('band');
   });
 
+  it('spells a wordsign word out letter by letter without a phantom tail', () => {
+    // The "can" wordsign is the letter-c cell, so canonical "can" is [⠉] and
+    // a spelled-out c,a used to decode as the whole "can" unit plus a
+    // diverged "a" — "cana", a phantom mistake mid-way through a valid
+    // grade-1 spelling.
+    const c: Cell = [1, 4];
+    const a: Cell = [1];
+    const n: Cell = [1, 3, 4, 5];
+    expect(backTranslateWord([c, a], { expected: 'can', final: false })).toBe('ca');
+    expect(backTranslateWord([c, a, n], { expected: 'can', final: false })).toBe('can');
+    expect(backTranslateWord([c, a, n], { expected: 'can', final: true })).toBe('can');
+  });
+
+  it("spells an apostrophe word whose stem is a wordsign (can't)", () => {
+    const spelled: Cell[] = [[1, 4], [1], [1, 3, 4, 5], [3], [2, 3, 4, 5]]; // c,a,n,',t
+    for (let len = 1; len <= spelled.length; len += 1) {
+      const out = backTranslateWord(spelled.slice(0, len), { expected: "can't", final: false });
+      expect("can't".startsWith(out), out).toBe(true);
+    }
+    expect(backTranslateWord(spelled, { expected: "can't", final: false })).toBe("can't");
+    expect(backTranslateWord(spelled, { expected: "can't", final: true })).toBe("can't");
+  });
+
+  it("spells that's out letter by letter (wordsign-that stem)", () => {
+    const spelled: Cell[] = [[2, 3, 4, 5], [1, 2, 5], [1], [2, 3, 4, 5], [3], [2, 3, 4]];
+    for (let len = 1; len <= spelled.length; len += 1) {
+      const out = backTranslateWord(spelled.slice(0, len), { expected: "that's", final: false });
+      expect("that's".startsWith(out), out).toBe(true);
+    }
+    expect(backTranslateWord(spelled, { expected: "that's", final: true })).toBe("that's");
+  });
+
+  it('still reads the wordsign itself when it was chorded', () => {
+    // Buffer [⠉] alone, committed final: the standalone reading must win.
+    expect(backTranslateWord([[1, 4]], { expected: 'can', final: true })).toBe('can');
+    expect(backTranslateWord([[1, 4]], { expected: "can't", final: false })).toBe('can');
+    expect(backTranslateWord([[1, 4], [3], [2, 3, 4, 5]], { expected: "can't", final: true })).toBe(
+      "can't",
+    );
+  });
+
+  it('keeps a genuinely wrong chord visible after a colliding start', () => {
+    // c then b towards "can't": no valid spelling reads this, so the decode
+    // must still surface diverged print, not hide the mistake.
+    const out = backTranslateWord([[1, 4], [1, 2]], { expected: "can't", final: false });
+    expect("can't".startsWith(out)).toBe(false);
+    expect(out.length).toBeGreaterThan(0);
+  });
+
   it('waives interior lower-sign lookahead while the word is open', () => {
     // ⠓⠂ (h + ea/comma cell). Open: "hea" (ea may still get a letter).
     const cells: Cell[] = [[1, 2, 5], [2]];
@@ -242,6 +291,28 @@ describe('backTranslateBufferAttributed — signs actually chorded', () => {
       ['capital-letter-indicator', 'contraction-the'],
       [],
     ]);
+  });
+
+  it('credits the letters of a spelled-out wordsign word, not the wordsign', () => {
+    // c,a,n,␣ towards "can it": the learner typed three letters, and the ⠉
+    // colliding with the "can" wordsign cell must not steal the credit.
+    const { text, units } = backTranslateBufferAttributed(
+      [[1, 4], [1], [1, 3, 4, 5], []],
+      'can it',
+    );
+    expect(text).toBe('can ');
+    expect(units.map((u) => u.skillIds)).toEqual([
+      ['letter-c'],
+      ['letter-a'],
+      ['letter-n'],
+      [],
+    ]);
+  });
+
+  it('credits the wordsign when the learner chorded it', () => {
+    const { text, units } = backTranslateBufferAttributed([[1, 4], []], 'can it');
+    expect(text).toBe('can ');
+    expect(units.map((u) => u.skillIds)).toEqual([['wordsign-can'], []]);
   });
 
   it('credits the th groupsign in the mixed spelling', () => {
