@@ -234,7 +234,7 @@ correct answer can still earn the +2.
 |---|---|
 | `startSession(seed?)` | fresh state with the first prompt generated; pass e.g. `Date.now()` for variety (defaults to 1, fully deterministic) |
 | `nextPrompt(state)` | replace the current prompt with a new one (call after completion, or to skip). Serves the qbf challenge when `promptCounter % QBF_INTERVAL === 0`. Consumes and refreshes `seed` |
-| `keystroke(state, typed)` | feed the full *resulting* typed text after an input event (not a single key). Handles progressive prefix matching, per-occurrence immediate scoring, mistake events, qbf instant-fail, completion, and `promptCounter`. Ignores input once completed |
+| `keystroke(state, typed, typedUnits?)` | feed the full *resulting* typed text after an input event (not a single key). Handles progressive prefix matching, per-occurrence immediate scoring, mistake events, qbf instant-fail, completion, and `promptCounter`. Ignores input once completed. On a qbf run, `typedUnits` (from `backTranslateBufferAttributed`) replaces the canonical translation as award attribution, so chord-mode runs credit the signs actually typed; without it (VoiceOver hands us print, not cells) canonical attribution applies |
 | `revealHint(state, unitIndex)` | uncover one sign's hint (state layer calls this when that sign's timer fires). No-op for qbf |
 | `isPromptComplete(state)` | whether to move on (then call `nextPrompt`) |
 | `serialize(state)` | plain `SerializedTutorState` object, JSON-safe (versioned, `version: 1`) |
@@ -338,6 +338,7 @@ contextual, so decoding is word-buffered and progressive.
 |---|---|
 | `backTranslateWord(cells, { expected?, final? })` | decode one word's cells (no blanks) to print; always returns a string |
 | `backTranslateBuffer(cells, expectedText)` | decode a whole prompt buffer (blank cells mark spaces) against the prompt text |
+| `backTranslateBufferAttributed(cells, expectedText)` | as `backTranslateBuffer`, but also returns the decoded signs as translation units over the derived text — the skills the learner *actually* chorded. The state layer passes these to `keystroke` on qbf runs so the challenge credits what was typed, not the canonical solution's contractions |
 
 Two strategies combine. Given the `expected` prompt word, the buffer is matched
 cell-by-cell against `translate(expected).cells`/`.units` and the matching print

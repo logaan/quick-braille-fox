@@ -18,8 +18,15 @@
 //     translate()'s rules well enough for error display. It never throws;
 //     cells it cannot read become their U+2800 glyph (which never matches
 //     prompt text, so the mistake stays visible).
+//
+// Decoding works in attributed pieces — (print, skill ids, cells) — so the
+// same pass that derives the text also reports which signs the learner
+// *actually* chorded. backTranslateBufferAttributed() exposes that as
+// translation units; the qbf challenge scores those instead of the canonical
+// translation, so spelling a word out letter by letter credits the letters,
+// not the contraction the learner never typed.
 
-import type { Cell } from './braille';
+import type { Cell, TranslationUnit } from './braille';
 import { dotsToUnicode, translate } from './braille';
 import type { Skill } from '../data/skills';
 import { skills } from '../data/skills';
@@ -29,6 +36,13 @@ export interface BackTranslateOptions {
   readonly expected?: string;
   /** True once the word is committed (a space was typed, or an earlier word). */
   readonly final?: boolean;
+}
+
+/** One decoded sign: its print, the skills it exercises, the cells it used. */
+interface Piece {
+  readonly text: string;
+  readonly skillIds: ReadonlyArray<string>;
+  readonly cells: ReadonlyArray<Cell>;
 }
 
 // --- cell helpers ----------------------------------------------------------
@@ -63,14 +77,17 @@ function capitalizeFirst(s: string): string {
 
 // --- reverse lookup tables, built once from the skills data ----------------
 
-const letterByKey = new Map<string, string>();
-const digitByKey = new Map<string, string>();
-const standaloneByKey = new Map<string, string>(); // whole-word signs
+const letterByKey = new Map<string, Skill>();
+const digitByKey = new Map<string, Skill>();
+const standaloneByKey = new Map<string, Skill>(); // whole-word signs
 /** Signs usable inside a word, longest cell-sequence first. */
 const inWordSigns: Skill[] = [];
 /** Punctuation/symbol signs, longest cell-sequence first (multi-cell exist). */
 const punctSigns: Skill[] = [];
 let numberSignCell: Cell = [3, 4, 5, 6];
+let numberSignId = 'number-sign';
+let capLetterId = 'capital-letter-indicator';
+let capWordId = 'capital-word-indicator';
 const CAP_LETTER: Cell = [6];
 const CAP_WORD: ReadonlyArray<Cell> = [[6], [6]];
 
@@ -82,24 +99,29 @@ for (const skill of skills) {
   const dots = skill.dots.map((c) => [...c]);
   switch (skill.kind) {
     case 'letter':
-      if (dots.length === 1) letterByKey.set(cellKey(dots[0] as Cell), skill.print);
+      if (dots.length === 1) letterByKey.set(cellKey(dots[0] as Cell), skill);
       break;
     case 'number':
-      if (dots.length === 1) digitByKey.set(cellKey(dots[0] as Cell), skill.print);
+      if (dots.length === 1) digitByKey.set(cellKey(dots[0] as Cell), skill);
       break;
     case 'number-sign':
       numberSignCell = dots[0] as Cell;
+      numberSignId = skill.id;
+      break;
+    case 'capital':
+      if (skill.id === 'capital-letter-indicator') capLetterId = skill.id;
+      if (skill.id === 'capital-word-indicator') capWordId = skill.id;
       break;
     case 'punctuation':
       punctSigns.push(skill);
       break;
     case 'wordsign':
     case 'shortform':
-      standaloneByKey.set(cellsKey(dots), skill.print);
+      standaloneByKey.set(cellsKey(dots), skill);
       break;
     case 'contraction':
     case 'initial-letter':
-      standaloneByKey.set(cellsKey(dots), skill.print);
+      standaloneByKey.set(cellsKey(dots), skill);
       inWordSigns.push(skill);
       break;
     case 'groupsign':
@@ -107,7 +129,7 @@ for (const skill of skills) {
       inWordSigns.push(skill);
       break;
     case 'lowersign':
-      if (STANDALONE_LOWER.has(skill.print)) standaloneByKey.set(cellsKey(dots), skill.print);
+      if (STANDALONE_LOWER.has(skill.print)) standaloneByKey.set(cellsKey(dots), skill);
       if (INTERIOR_LOWER.has(skill.print) || BEGWORD_LOWER.has(skill.print) ||
           skill.print === 'en' || skill.print === 'in') {
         inWordSigns.push(skill);
@@ -159,29 +181,29 @@ function allowedInWord(sign: Skill, atStart: boolean, cells: ReadonlyArray<Cell>
 }
 
 /** Longest punctuation sign matching at `pos`, or null. */
-function matchPunct(cells: ReadonlyArray<Cell>, pos: number): { print: string; len: number } | null {
+function matchPunct(cells: ReadonlyArray<Cell>, pos: number): Skill | null {
   for (const sign of punctSigns) {
-    if (matchAt(cells, pos, sign.dots as ReadonlyArray<Cell>)) {
-      return { print: sign.print, len: sign.dots.length };
-    }
+    if (matchAt(cells, pos, sign.dots as ReadonlyArray<Cell>)) return sign;
   }
   return null;
 }
 
 /** Greedy left-to-right decode of a cell run as letters/in-word signs/marks. */
-function greedyDecode(cells: ReadonlyArray<Cell>, final: boolean, startAtWordStart: boolean): string {
-  let result = '';
+function greedyPieces(cells: ReadonlyArray<Cell>, final: boolean, startAtWordStart: boolean): Piece[] {
+  const out: Piece[] = [];
   let i = 0;
-  let pendingCap = false;
+  let pendingCaps: Cell[] = [];
   let atStart = startAtWordStart;
   while (i < cells.length) {
     const cell = cells[i] as Cell;
     if (cellsEqual(cell, CAP_LETTER)) {
-      pendingCap = true;
+      pendingCaps.push(cell);
       i += 1;
       continue;
     }
-    let piece: string;
+    let text: string;
+    let skillIds: string[];
+    let used: Cell[];
     let sign: Skill | undefined;
     for (const s of inWordSigns) {
       if (matchAt(cells, i, s.dots as ReadonlyArray<Cell>) && allowedInWord(s, atStart, cells, i, final)) {
@@ -190,73 +212,161 @@ function greedyDecode(cells: ReadonlyArray<Cell>, final: boolean, startAtWordSta
       }
     }
     if (sign !== undefined) {
-      piece = sign.print;
+      text = sign.print;
+      skillIds = [sign.id];
+      used = cells.slice(i, i + sign.dots.length) as Cell[];
       i += sign.dots.length;
     } else {
       const punct = matchPunct(cells, i);
       if (punct !== null) {
-        piece = punct.print;
-        i += punct.len;
+        text = punct.print;
+        skillIds = [punct.id];
+        used = cells.slice(i, i + punct.dots.length) as Cell[];
+        i += punct.dots.length;
       } else {
         const letter = letterByKey.get(cellKey(cell));
-        piece = letter ?? dotsToUnicode([cell]);
+        text = letter?.print ?? dotsToUnicode([cell]);
+        skillIds = letter !== undefined ? [letter.id] : [];
+        used = [cell];
         i += 1;
       }
     }
-    if (pendingCap) {
-      piece = capitalizeFirst(piece);
-      pendingCap = false;
+    if (pendingCaps.length > 0) {
+      text = capitalizeFirst(text);
+      skillIds = [capLetterId, ...skillIds];
+      used = [...pendingCaps, ...used];
+      pendingCaps = [];
     }
-    result += piece;
+    out.push({ text, skillIds, cells: used });
     atStart = false;
   }
-  if (pendingCap) result += dotsToUnicode([CAP_LETTER]); // trailing indicator
-  return result;
+  // Trailing indicator with nothing to capitalise: keep it visible.
+  if (pendingCaps.length > 0) {
+    out.push({ text: dotsToUnicode([CAP_LETTER]), skillIds: [], cells: pendingCaps });
+  }
+  return out;
 }
 
 /** Decode a run known to start in digit mode (after the number sign). */
-function decodeDigits(cells: ReadonlyArray<Cell>, final: boolean): string {
-  let result = '';
+function digitPieces(cells: ReadonlyArray<Cell>, final: boolean): Piece[] {
+  const out: Piece[] = [];
   let i = 0;
   while (i < cells.length) {
     const digit = digitByKey.get(cellKey(cells[i] as Cell));
     if (digit === undefined) break;
-    result += digit;
+    // The number sign rides with the first digit, as translate() has it.
+    out.push(
+      i === 0
+        ? { text: digit.print, skillIds: [numberSignId, digit.id], cells: [numberSignCell, cells[i] as Cell] }
+        : { text: digit.print, skillIds: [digit.id], cells: [cells[i] as Cell] },
+    );
     i += 1;
   }
-  if (i < cells.length) result += greedyDecode(cells.slice(i), final, false);
-  return result;
+  if (i < cells.length) out.push(...greedyPieces(cells.slice(i), final, false));
+  return out;
 }
 
 /** Word-start decode: capitals, whole-word standalone sign, number sign. */
-function decodeWordStart(cells: ReadonlyArray<Cell>, final: boolean): string {
+function decodeWordStartPieces(cells: ReadonlyArray<Cell>, final: boolean): Piece[] {
   if (cells.length >= 3 && cellsEqual(cells[0] as Cell, CAP_WORD[0] as Cell) &&
       cellsEqual(cells[1] as Cell, CAP_WORD[1] as Cell)) {
-    return decodeAfterCaps(cells.slice(2), final).toUpperCase();
+    return decodeAfterCapsPieces(cells.slice(2), final).map((p, idx) =>
+      idx === 0
+        ? {
+            text: p.text.toUpperCase(),
+            skillIds: [capWordId, ...p.skillIds],
+            cells: [...CAP_WORD, ...p.cells],
+          }
+        : { ...p, text: p.text.toUpperCase() },
+    );
   }
   if (cells.length >= 2 && cellsEqual(cells[0] as Cell, CAP_LETTER) &&
       !cellsEqual(cells[1] as Cell, CAP_LETTER)) {
-    return capitalizeFirst(decodeAfterCaps(cells.slice(1), final));
+    return decodeAfterCapsPieces(cells.slice(1), final).map((p, idx) =>
+      idx === 0
+        ? {
+            text: capitalizeFirst(p.text),
+            skillIds: [capLetterId, ...p.skillIds],
+            cells: [CAP_LETTER, ...p.cells],
+          }
+        : p,
+    );
   }
-  return decodeAfterCaps(cells, final);
+  return decodeAfterCapsPieces(cells, final);
 }
 
-function decodeAfterCaps(cells: ReadonlyArray<Cell>, final: boolean): string {
+function decodeAfterCapsPieces(cells: ReadonlyArray<Cell>, final: boolean): Piece[] {
   // A standalone (whole-word) reading only exists once the word is closed by
   // a space: while the word is open, ⠞ may be "that" or the start of a word
   // spelled letter by letter ("the" as t-h-e). Judging it early fails runs
   // that were on their way to correct print.
   if (final) {
     const standalone = standaloneByKey.get(cellsKey(cells));
-    if (standalone !== undefined) return standalone;
+    if (standalone !== undefined) {
+      return [{ text: standalone.print, skillIds: [standalone.id], cells: [...cells] }];
+    }
   }
   if (cells.length >= 1 && cellsEqual(cells[0] as Cell, numberSignCell)) {
-    if (cells.length === 1) return dotsToUnicode([numberSignCell]); // lone number sign
-    const digits = decodeDigits(cells.slice(1), final);
-    if (digits !== '') return digits;
-    return dotsToUnicode([numberSignCell]) + greedyDecode(cells.slice(1), final, true);
+    if (cells.length === 1) {
+      // Lone number sign: nothing decodable yet, shown as its glyph.
+      return [{ text: dotsToUnicode([numberSignCell]), skillIds: [], cells: [numberSignCell] }];
+    }
+    const digits = digitPieces(cells.slice(1), final);
+    if (digits.map((p) => p.text).join('') !== '') return digits;
+    return [
+      { text: dotsToUnicode([numberSignCell]), skillIds: [], cells: [numberSignCell] },
+      ...greedyPieces(cells.slice(1), final, true),
+    ];
   }
-  return greedyDecode(cells, final, true);
+  return greedyPieces(cells, final, true);
+}
+
+/** Decode one word's cells to attributed pieces (see backTranslateWord). */
+function wordPieces(cells: ReadonlyArray<Cell>, opts: BackTranslateOptions = {}): Piece[] {
+  const final = opts.final ?? true;
+  const expected = opts.expected;
+  if (expected === undefined || expected === '') {
+    return decodeWordStartPieces(cells, final);
+  }
+
+  let exp;
+  try {
+    exp = translate(expected);
+  } catch {
+    return decodeWordStartPieces(cells, final);
+  }
+  const expCells = exp.cells;
+
+  // Longest common prefix of matched cells.
+  let m = 0;
+  while (m < cells.length && m < expCells.length && cellsEqual(cells[m] as Cell, expCells[m] as Cell)) {
+    m += 1;
+  }
+  // Map the matched cells onto whole expected units: the learner chorded
+  // exactly those sign cells, so the canonical attribution is the true one.
+  let consumed = 0;
+  const matched: Piece[] = [];
+  for (const unit of exp.units) {
+    if (consumed + unit.cells.length <= m) {
+      consumed += unit.cells.length;
+      matched.push({
+        text: expected.slice(unit.start, unit.end),
+        skillIds: unit.skillIds,
+        cells: unit.cells,
+      });
+    } else {
+      break;
+    }
+  }
+  const tail = cells.slice(consumed);
+  if (tail.length === 0) return matched;
+  // The buffer still matches the expected prefix but ends mid-sign: pending,
+  // emit nothing extra while the word is open (avoids a phantom mistake).
+  if (!final && m === cells.length) return matched;
+  // Decode the diverged (or committed-but-incomplete) tail.
+  const tailPieces =
+    matched.length > 0 ? greedyPieces(tail, final, false) : decodeWordStartPieces(tail, final);
+  return [...matched, ...tailPieces];
 }
 
 // --- public API ------------------------------------------------------------
@@ -269,46 +379,61 @@ function decodeAfterCaps(cells: ReadonlyArray<Cell>, final: boolean): string {
  * from the cells.
  */
 export function backTranslateWord(cells: ReadonlyArray<Cell>, opts: BackTranslateOptions = {}): string {
-  const final = opts.final ?? true;
-  const expected = opts.expected;
-  if (expected === undefined || expected === '') {
-    return decodeWordStart(cells, final);
-  }
+  return wordPieces(cells, opts)
+    .map((p) => p.text)
+    .join('');
+}
 
-  let exp;
-  try {
-    exp = translate(expected);
-  } catch {
-    return decodeWordStart(cells, final);
-  }
-  const expCells = exp.cells;
+/** A buffer decode that also reports which signs were actually chorded. */
+export interface AttributedBackTranslation {
+  /** The derived print text (identical to backTranslateBuffer's result). */
+  readonly text: string;
+  /**
+   * The decoded signs as translation units over `text` (spaces included as
+   * skill-less units, mirroring translate()). When the buffer follows the
+   * canonical translation these match translate(text).units; when the learner
+   * spells signs out, the units carry the letters actually chorded instead.
+   */
+  readonly units: ReadonlyArray<TranslationUnit>;
+}
 
-  // Longest common prefix of matched cells.
-  let m = 0;
-  while (m < cells.length && m < expCells.length && cellsEqual(cells[m] as Cell, expCells[m] as Cell)) {
-    m += 1;
+/**
+ * Decode a whole prompt buffer (blank cells mark spaces) against the prompt
+ * text, reporting the signs actually chorded alongside the derived print.
+ * Splits the buffer on blank cells and the text on spaces, pairs them up
+ * positionally, decodes committed words as final and the last (open) word as
+ * non-final, and joins with spaces.
+ */
+export function backTranslateBufferAttributed(
+  cells: ReadonlyArray<Cell>,
+  expectedText: string,
+): AttributedBackTranslation {
+  const groups: Cell[][] = [[]];
+  for (const cell of cells) {
+    if (cell.length === 0) groups.push([]);
+    else (groups[groups.length - 1] as Cell[]).push(cell);
   }
-  // Map the matched cells onto whole expected units to get the print prefix.
-  let consumed = 0;
-  let textEnd = 0;
-  for (const unit of exp.units) {
-    if (consumed + unit.cells.length <= m) {
-      consumed += unit.cells.length;
-      textEnd = unit.end;
-    } else {
-      break;
+  const words = expectedText.split(' ');
+  const units: TranslationUnit[] = [];
+  const texts: string[] = [];
+  let offset = 0;
+  groups.forEach((group, i) => {
+    if (i > 0) {
+      // The blank cell between groups, mirroring translate()'s space units.
+      units.push({ start: offset - 1, end: offset, cells: [[]], skillIds: [] });
     }
-  }
-  const textPrefix = expected.slice(0, textEnd);
-  const tail = cells.slice(consumed);
-  if (tail.length === 0) return textPrefix;
-  // The buffer still matches the expected prefix but ends mid-sign: pending,
-  // emit nothing extra while the word is open (avoids a phantom mistake).
-  if (!final && m === cells.length) return textPrefix;
-  // Decode the diverged (or committed-but-incomplete) tail.
-  const tailText =
-    textPrefix.length > 0 ? greedyDecode(tail, final, false) : decodeWordStart(tail, final);
-  return textPrefix + tailText;
+    const final = i < groups.length - 1;
+    const pieces = wordPieces(group, { expected: words[i], final });
+    let pos = offset;
+    for (const piece of pieces) {
+      units.push({ start: pos, end: pos + piece.text.length, cells: piece.cells, skillIds: piece.skillIds });
+      pos += piece.text.length;
+    }
+    const wordText = pieces.map((p) => p.text).join('');
+    texts.push(wordText);
+    offset += wordText.length + 1;
+  });
+  return { text: texts.join(' '), units };
 }
 
 /**
@@ -318,16 +443,5 @@ export function backTranslateWord(cells: ReadonlyArray<Cell>, opts: BackTranslat
  * non-final, and joins with spaces.
  */
 export function backTranslateBuffer(cells: ReadonlyArray<Cell>, expectedText: string): string {
-  const groups: Cell[][] = [[]];
-  for (const cell of cells) {
-    if (cell.length === 0) groups.push([]);
-    else (groups[groups.length - 1] as Cell[]).push(cell);
-  }
-  const words = expectedText.split(' ');
-  return groups
-    .map((group, i) => {
-      const final = i < groups.length - 1;
-      return backTranslateWord(group, { expected: words[i], final });
-    })
-    .join(' ');
+  return backTranslateBufferAttributed(cells, expectedText).text;
 }

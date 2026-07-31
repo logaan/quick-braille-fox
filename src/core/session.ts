@@ -140,10 +140,22 @@ function awardFinishedUnits(
  *   mistake fails the challenge immediately and completes the prompt, and
  *   every occurrence finished before that scores QBF_AWARD per skill.
  *
+ * `typedUnits`, when given, replaces the canonical translation as the award
+ * attribution for a qbf run: the state layer passes the signs the learner
+ * *actually chorded* (backTranslateBufferAttributed), so spelling a word out
+ * letter by letter credits the letters, not the contraction of the shortest
+ * solution. Without it (VoiceOver input hands us print, not cells) the
+ * canonical units remain the only attribution available. Non-qbf prompts
+ * ignore it: their mistake/hint bookkeeping is tied to canonical units.
+ *
  * Once the prompt is completed, further keystrokes are ignored; the state
  * layer should call nextPrompt().
  */
-export function keystroke(state: TutorState, typed: string): TutorState {
+export function keystroke(
+  state: TutorState,
+  typed: string,
+  typedUnits?: ReadonlyArray<TranslationUnit>,
+): TutorState {
   const p = state.prompt;
   if (!p || p.completed || typed === p.typed) return state;
 
@@ -153,7 +165,7 @@ export function keystroke(state: TutorState, typed: string): TutorState {
     const scored = awardFinishedUnits(
       state,
       p,
-      promptUnits(p),
+      typedUnits ?? promptUnits(p),
       commonPrefixLength(p.text, typed),
       QBF_AWARD,
     );

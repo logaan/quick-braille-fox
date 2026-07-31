@@ -7,6 +7,7 @@ import type { ChangeEvent, KeyboardEvent } from 'react';
 import type { Cell, QbfResult, TutorState } from '../core';
 import {
   backTranslateBuffer,
+  backTranslateBufferAttributed,
   keystroke,
   nextHintFor,
   nextPrompt,
@@ -264,7 +265,11 @@ export class TutorStore {
   private commitBuffer(): void {
     const prompt = this.tutor.prompt;
     if (prompt === null || prompt.completed) return;
-    this.tutor = keystroke(this.tutor, backTranslateBuffer(this.cellBuffer, prompt.text));
+    // On a qbf run the attributed units carry the signs actually chorded, so
+    // the challenge credits what the learner typed, not the canonical
+    // translation's contractions.
+    const derived = backTranslateBufferAttributed(this.cellBuffer, prompt.text);
+    this.tutor = keystroke(this.tutor, derived.text, prompt.isQbf ? derived.units : undefined);
     this.afterKeystroke();
     this.changed();
   }

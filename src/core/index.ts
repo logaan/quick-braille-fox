@@ -13,8 +13,12 @@ export {
 
 export { WORDS } from './corpus';
 
-export type { BackTranslateOptions } from './backtranslate';
-export { backTranslateBuffer, backTranslateWord } from './backtranslate';
+export type { AttributedBackTranslation, BackTranslateOptions } from './backtranslate';
+export {
+  backTranslateBuffer,
+  backTranslateBufferAttributed,
+  backTranslateWord,
+} from './backtranslate';
 
 export type { QbfResult, QbfSign } from './qbf';
 export {

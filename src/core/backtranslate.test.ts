@@ -3,7 +3,11 @@ import type { Cell } from './braille';
 import { textToCells, translate } from './braille';
 import { WORDS } from './corpus';
 import { QBF_SENTENCE } from './qbf';
-import { backTranslateBuffer, backTranslateWord } from './backtranslate';
+import {
+  backTranslateBuffer,
+  backTranslateBufferAttributed,
+  backTranslateWord,
+} from './backtranslate';
 
 /** Cells for a whole print string (blank cells included), for buffer tests. */
 function cellsOf(text: string): Cell[] {
@@ -206,5 +210,50 @@ describe('backTranslate fuzz', () => {
       expect(() => backTranslateWord(cells, { expected: 'cat', final: false })).not.toThrow();
       expect(() => backTranslateBuffer(cells, 'cat dog')).not.toThrow();
     }
+  });
+});
+
+describe('backTranslateBufferAttributed — signs actually chorded', () => {
+  it('matches translate() attribution when the buffer is canonical', () => {
+    const { text, units } = backTranslateBufferAttributed(cellsOf(QBF_SENTENCE), QBF_SENTENCE);
+    expect(text).toBe(QBF_SENTENCE);
+    expect(units).toEqual(translate(QBF_SENTENCE).units);
+  });
+
+  it('credits the letters actually chorded, not the canonical contraction', () => {
+    // ⠠⠞⠓⠑␣ — "The" spelled out. The canonical translation would say
+    // contraction-the; the learner typed the letters.
+    const { text, units } = backTranslateBufferAttributed(
+      [[6], [2, 3, 4, 5], [1, 2, 5], [1, 5], []],
+      QBF_SENTENCE,
+    );
+    expect(text).toBe('The ');
+    expect(units.map((u) => u.skillIds)).toEqual([
+      ['capital-letter-indicator', 'letter-t'],
+      ['letter-h'],
+      ['letter-e'],
+      [],
+    ]);
+  });
+
+  it('credits the contraction when the learner chorded it', () => {
+    const { units } = backTranslateBufferAttributed([[6], [2, 3, 4, 6], []], QBF_SENTENCE);
+    expect(units.map((u) => u.skillIds)).toEqual([
+      ['capital-letter-indicator', 'contraction-the'],
+      [],
+    ]);
+  });
+
+  it('credits the th groupsign in the mixed spelling', () => {
+    const { text, units } = backTranslateBufferAttributed(
+      [[6], [1, 4, 5, 6], [1, 5], []],
+      QBF_SENTENCE,
+    );
+    expect(text).toBe('The ');
+    expect(units.map((u) => u.skillIds)).toEqual([
+      ['capital-letter-indicator', 'groupsign-th'],
+      ['letter-e'],
+      [],
+    ]);
   });
 });

@@ -766,6 +766,40 @@ describe('chord input', () => {
     }
   });
 
+  it('credits the skills actually chorded, not the canonical solution', () => {
+    const storage = qbfReadyStorage();
+    const store = createTutorStore({ storage, seed: 1 });
+    chordMode(store);
+    // The whole pangram in grade 1: capital indicator plus plain letters.
+    for (const [i, word] of QBF_SENTENCE.split(' ').entries()) {
+      if (i > 0) chordSpace(store);
+      for (const ch of word) {
+        const lower = ch.toLowerCase();
+        if (ch !== lower) chordCell(store, [6]);
+        chordCell(store, [...(textToCells(lower)[0] as ReadonlyArray<number>)]);
+      }
+    }
+    expect(store.viewModel().qbfResult?.kind).toBe('badge');
+
+    store.flushSave();
+    const saved = JSON.parse(storage.data.get(STORAGE_KEY) as string) as {
+      tutor: { scores: Record<string, number> };
+    };
+    const scores = saved.tutor.scores;
+    // Spelling the sentence out exercises every letter it contains ("jumped"
+    // keeps this pangram one letter short of perfect: it has no s)...
+    const letters = new Set(QBF_SENTENCE.toLowerCase().replace(/[^a-z]/g, ''));
+    expect(letters.size).toBe(25);
+    for (const c of letters) {
+      expect(scores[`letter-${c}`] ?? 0).toBeGreaterThan(0);
+    }
+    expect(scores['letter-s'] ?? 0).toBe(0);
+    // ...and none of the contractions of the hypothetical shortest solution.
+    for (const id of ['contraction-the', 'shortform-quick', 'groupsign-ow', 'groupsign-ed', 'groupsign-er']) {
+      expect(scores[id] ?? 0).toBe(0);
+    }
+  });
+
   it('does not decrement the qbf cell count on backspace', () => {
     const store = createTutorStore({ storage: qbfReadyStorage(), seed: 1 });
     chordMode(store);
