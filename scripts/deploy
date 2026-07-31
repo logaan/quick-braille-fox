@@ -1,5 +1,11 @@
 #!/usr/bin/env bash
-# Publish dist/ to http://logpi.local/quick-braille-fox/.
+# Build and publish dist/ to http://logpi.local/quick-braille-fox/.
+#
+# Always builds first: Vite empties dist/ when a build starts, so deploying
+# whatever happens to be there would mirror an interrupted or failed build —
+# and with --delete, erase the live site's good assets. The build script
+# exits non-zero on failure (set -e stops us), and the index.html check
+# catches any way an empty-but-"successful" dist/ could still slip through.
 #
 # The trailing "/" on dist/ copies the *contents* of the directory, not the
 # directory itself — `scp -r dist host:www/quick-braille-fox` only did the
@@ -8,5 +14,12 @@
 # filenames are content-hashed and so never get overwritten.
 set -euo pipefail
 cd "$(dirname "$0")/.."
+
+./scripts/build.sh
+
+if [[ ! -s dist/index.html ]]; then
+  echo "deploy: dist/index.html missing or empty after build; refusing to sync" >&2
+  exit 1
+fi
 
 rsync -av --delete dist/ logan@logpi.local:www/quick-braille-fox/
