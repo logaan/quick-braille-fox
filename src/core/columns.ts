@@ -16,8 +16,10 @@
 // becomes extraPrint/extraUnicode, shown past the last matched column.
 
 import type { Set } from 'immutable';
-import type { Cell } from './braille';
+import type { Cell, TranslationUnit } from './braille';
 import { dotsToUnicode, translate } from './braille';
+import { cellEnds, coveredUnitCount } from './scoring';
+import { commonPrefixLength } from './text';
 
 /** One column of the drill grid: a single translation unit of the prompt. */
 export interface Column {
@@ -41,7 +43,7 @@ export interface Column {
 
 /** The whole grid: the columns, plus anything that fell outside them. */
 export interface RowModel {
-  readonly columns: ReadonlyArray<Column>;
+  readonly columns: readonly Column[];
   /** Diverged / overflowing print, past the last matched column. */
   readonly extraPrint: string;
   /** Diverged / overflowing cells, past the last matched column. */
@@ -52,49 +54,27 @@ export interface RowModelInput {
   readonly text: string;
   readonly typed: string;
   /** The chorded cell buffer; empty in VoiceOver mode. */
-  readonly cells: ReadonlyArray<Cell>;
+  readonly cells: readonly Cell[];
   readonly hintedUnits: Set<number>;
 }
 
-function commonPrefixLength(a: string, b: string): number {
-  const n = Math.min(a.length, b.length);
-  let i = 0;
-  while (i < n && a[i] === b[i]) i += 1;
-  return i;
-}
-
-function cellsEqual(a: Cell, b: Cell): boolean {
-  if (a.length !== b.length) return false;
-  for (let i = 0; i < a.length; i += 1) if (a[i] !== b[i]) return false;
-  return true;
-}
-
 /**
- * How many of `cells` the learner has typed that match the units' expected
- * cells, counting only *whole* units: the walk stops at the first cell that
- * differs, and a unit whose cells run out mid-way does not count either.
- * Returns the number of units matched and the number of cells they consumed.
+ * How much of the chorded buffer matches the units' expected cells, counting
+ * only *whole* units: the walk stops at the first cell that differs, and a
+ * unit whose cells run out mid-way does not count either. Returns the number
+ * of units matched and the number of cells they consumed.
+ *
+ * This is the same "unit finished" rule scoring.ts judges a cell-round by, so
+ * a column can never read as typed while earning nothing (or the reverse).
  */
 function matchCells(
-  units: ReadonlyArray<{ readonly cells: ReadonlyArray<Cell> }>,
-  cells: ReadonlyArray<Cell>,
+  units: readonly TranslationUnit[],
+  cells: readonly Cell[],
 ): { units: number; cells: number } {
-  let consumed = 0;
-  let matched = 0;
-  for (const unit of units) {
-    if (consumed + unit.cells.length > cells.length) break;
-    let ok = true;
-    for (let i = 0; i < unit.cells.length; i += 1) {
-      if (!cellsEqual(cells[consumed + i] as Cell, unit.cells[i] as Cell)) {
-        ok = false;
-        break;
-      }
-    }
-    if (!ok) break;
-    consumed += unit.cells.length;
-    matched += 1;
-  }
-  return { units: matched, cells: consumed };
+  const ends = cellEnds(units);
+  const expected = dotsToUnicode(units.flatMap((unit) => [...unit.cells]));
+  const matched = coveredUnitCount(ends, commonPrefixLength(expected, dotsToUnicode(cells)));
+  return { units: matched, cells: matched === 0 ? 0 : (ends[matched - 1]!) };
 }
 
 /**

@@ -841,6 +841,22 @@ describe('chord input', () => {
     return storage;
   }
 
+  it('restores the exact chorded buffer on resume, not a guessed spelling', () => {
+    const storage = midPromptStorage(); // "the dog"
+    const first = createTutorStore({ storage, seed: 1 });
+    chordMode(first);
+    chordCell(first, [2, 3, 4, 6]); // ⠮ — the "the" contraction, one cell
+    first.flushSave();
+
+    // The core persisted the cells themselves (prompt.typedUnicode), so the
+    // resume holds the single contraction cell — not a letter-by-letter
+    // spelling guessed back from the print — and one backspace clears it.
+    const second = createTutorStore({ storage, seed: 1 });
+    expect(second.viewModel().typed).toBe('the');
+    keyDown(second, 'Backspace');
+    expect(second.viewModel().typed).toBe('');
+  });
+
   it('resumes a mid-word prefix and accepts the next letter chord', () => {
     // Typed "st" of "still": the canonical cells for "st" are the st
     // groupsign, which is also the "still" wordsign — a canonical buffer

@@ -8,7 +8,7 @@ import { buildRowModel } from './columns';
 function model(
   text: string,
   typed = '',
-  cells: ReadonlyArray<Cell> = [],
+  cells: readonly Cell[] = [],
   hinted: number[] = [],
 ): RowModel {
   return buildRowModel({ text, typed, cells, hintedUnits: Set(hinted) });

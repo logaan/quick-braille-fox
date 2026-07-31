@@ -315,7 +315,7 @@ describe('full-session smoke test', () => {
           assertEveryWordTaught(state, p.text, p.targetSkillId);
         }
       }
-      state = keystroke(state, p.text); // type it perfectly
+      state = keystroke(state, { kind: 'print', typed: p.text }); // type it perfectly
       expect(state.promptCounter).toBe(i + 1);
       state = nextPrompt(state);
     }

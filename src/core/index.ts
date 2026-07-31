@@ -10,6 +10,7 @@ export {
   textToUnicode,
   translate,
   tryTranslate,
+  unicodeToDots,
 } from './braille';
 
 export { capitalizeFirst, commonPrefixLength } from './text';
@@ -54,7 +55,7 @@ export {
   unitTypedClean,
 } from './types';
 
-export { derivedScores, pendingScoreDeltas } from './scoring';
+export { coveredUnitCount, derivedScores, pendingScoreDeltas, unitEnds } from './scoring';
 
 export {
   activeSkills,
@@ -73,7 +74,7 @@ export { generatePrompt, pickTarget } from './prompts';
 export type { HintUnit, HintWord, PendingHint } from './hints';
 export { hintWordForPrompt, nextHintFor } from './hints';
 
-export type { SerializedTutorState } from './session';
+export type { KeystrokeInput, SerializedTutorState } from './session';
 export {
   deserialize,
   isPromptComplete,

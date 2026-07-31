@@ -79,6 +79,24 @@ export function dotsToUnicode(cells: readonly Cell[]): string {
     .join('');
 }
 
+/**
+ * The inverse of dotsToUnicode: read a U+2800-block string back as cells.
+ * Characters outside the block decode as a blank cell, so a stray glyph can
+ * never throw here.
+ */
+export function unicodeToDots(unicode: string): Cell[] {
+  const cells: Cell[] = [];
+  for (const ch of unicode) {
+    const bits = (ch.codePointAt(0) ?? 0x2800) - 0x2800;
+    const cell: number[] = [];
+    for (let dot = 1; dot <= 6; dot += 1) {
+      if (bits >= 0 && (bits & (1 << (dot - 1))) !== 0) cell.push(dot);
+    }
+    cells.push(cell);
+  }
+  return cells;
+}
+
 // --- Lookup structures, built once from the skills data -------------------
 
 const charSkills = new Map<string, Skill>(); // letters, digits, punctuation

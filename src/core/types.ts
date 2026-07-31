@@ -2,7 +2,6 @@
 
 import { Map, Record, Set } from 'immutable';
 import type { RecordOf } from 'immutable';
-import type { TranslationUnit } from './braille';
 
 // --- Game constants --------------------------------------------------------
 
@@ -74,20 +73,26 @@ export interface PromptProps {
   /** What the learner has typed so far (as reported by keystroke()). */
   typed: string;
   /**
+   * The cells the learner has chorded so far, as a U+2800 string (one
+   * character per cell; empty when they are not chording). On a cell-judged
+   * round this is what the round is actually measured against and `typed`
+   * is its back-translation, kept for display only.
+   */
+  typedUnicode: string;
+  /**
+   * Whether this round is judged on the cells the learner chorded rather
+   * than the print those cells produce (emulated mode, non-fox rounds).
+   * Everything positional — which units are finished, where a mistake
+   * lands — is then counted in cells; see scoring.ts unitEnds().
+   */
+  judgedByCells: boolean;
+  /**
    * Mistake events per translation-unit index of `text` (missing = 0).
    * This is *history*: a mistake that has since been backspaced away still
    * happened, and the second mistake on the same unit still costs its
    * skills a point and force-shows the hint (see keystroke()).
    */
   unitMistakes: Map<number, number>;
-  /**
-   * The signs the learner actually chorded, when the state layer knows them
-   * (fox runs in emulated mode; see keystroke()). Scoring attributes awards
-   * to these instead of the canonical translation, so a word spelled out
-   * letter by letter credits the letters. Never persisted — a resumed fox
-   * run restarts anyway — and null whenever input arrives as print.
-   */
-  typedUnits: readonly TranslationUnit[] | null;
   /**
    * Indexes of units whose hint has been revealed. Per unit, not per
    * prompt: a unit typed before *its own* hint appeared still scores
@@ -108,8 +113,9 @@ export const makePrompt = Record<PromptProps>(
     targetSkillId: null,
     isFox: false,
     typed: '',
+    typedUnicode: '',
+    judgedByCells: false,
     unitMistakes: Map<number, number>(),
-    typedUnits: null,
     hintedUnits: Set<number>(),
     diverged: false,
     completed: false,

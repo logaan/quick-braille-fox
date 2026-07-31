@@ -13,10 +13,10 @@ export type InputMode = 'emulated' | 'voiceover';
 export const DEFAULT_INPUT_MODE: InputMode = 'voiceover';
 
 /** Human-readable option labels, in the order the picker shows them. */
-export const INPUT_MODE_LABELS: ReadonlyArray<{
+export const INPUT_MODE_LABELS: readonly {
   readonly mode: InputMode;
   readonly label: string;
-}> = [
+}[] = [
   { mode: 'emulated', label: 'Emulated' },
   { mode: 'voiceover', label: 'VoiceOver' },
 ];

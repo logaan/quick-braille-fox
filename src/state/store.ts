@@ -4,10 +4,9 @@
 // it never calls core transitions itself.
 
 import type { ChangeEvent, KeyboardEvent } from 'react';
-import type { AttributedBackTranslation, Cell, FoxResult, TutorState } from '../core';
+import type { Cell, FoxResult, KeystrokeInput, Prompt, TutorState } from '../core';
 import {
   backTranslateBuffer,
-  backTranslateBufferAttributed,
   commonPrefixLength,
   keystroke,
   nextHintFor,
@@ -18,6 +17,7 @@ import {
   startSession,
   textToCells,
   tryTranslate,
+  unicodeToDots,
 } from '../core';
 import type { ChordState } from './chords';
 import { EMPTY_CHORD_STATE, chordKeyDown, chordKeyUp, isChordCode } from './chords';
@@ -217,7 +217,7 @@ export class TutorStore {
         : 1;
     }
 
-    this.tutor = keystroke(this.tutor, value);
+    this.tutor = keystroke(this.tutor, { kind: 'print', typed: value });
     this.afterKeystroke();
     this.changed();
   }
@@ -269,44 +269,65 @@ export class TutorStore {
     // Space: a blank cell, unless it is a leading or artifact trailing space.
     if (this.cellBuffer.length === 0) return; // ignore a leading space
     const candidate: Cell[] = [...this.cellBuffer, []];
-    const derived = backTranslateBufferAttributed(candidate, prompt.text);
-    if (stripUnexpectedTrailingSpaces(derived.text, prompt.text) !== derived.text) return; // artifact
+    const derived = backTranslateBuffer(candidate, prompt.text);
+    if (stripUnexpectedTrailingSpaces(derived, prompt.text) !== derived) return; // artifact
     this.cellBuffer = candidate;
     if (prompt.isFox) this.foxCellsTyped += 1;
-    this.commitBuffer(derived);
+    this.commitBuffer();
   }
 
   /**
-   * Feed the cell buffer's derived text to the core (`derived` when the
-   * caller already decoded the buffer, sparing a second decode).
+   * What the cell buffer tells the core. Every round is judged on the
+   * derived *print* — emulated mode accepts any valid grade-1/grade-2
+   * spelling of the prompt, exactly like the fox challenge does — but the
+   * cells ride along: the core keeps them on the prompt (typedUnicode), so
+   * a resumed session restores the learner's actual buffer instead of
+   * guessing a spelling from print, and a fox run's awards credit the signs
+   * actually chorded. (The core can also judge a round on the cells
+   * themselves — keystroke's 'cells' input — but no mode uses that yet:
+   * requiring the canonical contraction would reject the alternate
+   * spellings the decoder deliberately accepts.)
    */
-  private commitBuffer(derived?: AttributedBackTranslation): void {
+  private bufferInput(prompt: Prompt): KeystrokeInput {
+    const cells = this.cellBuffer;
+    return { kind: 'print', typed: backTranslateBuffer(cells, prompt.text), cells };
+  }
+
+  /** Feed the cell buffer to the core and react to what it did. */
+  private commitBuffer(): void {
     const prompt = this.tutor.prompt;
     if (prompt === null || prompt.completed) return;
-    // On a fox run the attributed units carry the signs actually chorded, so
-    // the challenge credits what the learner typed, not the canonical
-    // translation's contractions.
-    const d = derived ?? backTranslateBufferAttributed(this.cellBuffer, prompt.text);
-    this.tutor = keystroke(this.tutor, d.text, prompt.isFox ? d.units : undefined);
+    this.tutor = keystroke(this.tutor, this.bufferInput(prompt));
     this.afterKeystroke();
     this.changed();
   }
 
   /**
-   * Rebuild the cell buffer from the current prompt's typed text (on entering
-   * emulated mode or resuming a persisted emulated-mode session). Print alone does
-   * not say which spelling was chorded, and a wrong guess decodes the next
-   * correct chord as divergent print (the "st" groupsign is also the "still"
-   * wordsign, so a canonical buffer for typed "st" reads as the whole word).
-   * So a candidate buffer is accepted only if it decodes back to exactly the
-   * typed prefix — the letter-by-letter spelling first (chording continues
-   * from it cleanly whatever was actually entered), the canonical grade-2
-   * cells as fallback. If neither round-trips, the in-progress typing is
-   * cleared and the prompt starts over.
+   * Rebuild the cell buffer for the current prompt (on entering emulated
+   * mode or resuming a persisted emulated-mode session). A buffer the core
+   * already holds (prompt.typedUnicode) is restored exactly — the learner's
+   * own cells, whatever spelling they chose. Failing that only print is
+   * known, and print alone does not say which spelling was chorded, while a
+   * wrong guess decodes the next correct chord as divergent print (the "st"
+   * groupsign is also the "still" wordsign, so a canonical buffer for typed
+   * "st" reads as the whole word). So a candidate buffer is accepted only
+   * if it decodes back to exactly the typed prefix — the letter-by-letter
+   * spelling first (chording continues from it cleanly whatever was
+   * actually entered), the canonical grade-2 cells as fallback. If neither
+   * round-trips, the in-progress typing is cleared and the prompt starts
+   * over.
    */
   private reconstructBuffer(): void {
     const prompt = this.tutor.prompt;
-    if (prompt === null || prompt.completed || prompt.typed === '') {
+    if (prompt === null || prompt.completed) {
+      this.cellBuffer = [];
+      return;
+    }
+    if (prompt.typedUnicode !== '') {
+      this.cellBuffer = unicodeToDots(prompt.typedUnicode);
+      return;
+    }
+    if (prompt.typed === '') {
       this.cellBuffer = [];
       return;
     }
@@ -323,7 +344,7 @@ export class TutorStore {
         }
       }
     }
-    this.tutor = keystroke(this.tutor, '');
+    this.tutor = keystroke(this.tutor, { kind: 'print', typed: '' });
     this.cellBuffer = [];
     // The typed text just changed under the uncontrolled drill input; bump
     // the epoch so the field remounts to match, or its stale value would be
@@ -337,10 +358,22 @@ export class TutorStore {
     this.chordState = EMPTY_CHORD_STATE;
     if (mode === 'voiceover') {
       this.cellBuffer = [];
+      this.dropChordedCells();
     } else {
       this.reconstructBuffer();
     }
     this.changed();
+  }
+
+  /**
+   * Leaving emulated mode: the chorded cells stop meaning anything (the
+   * next input events are print), so strip them from the prompt while
+   * keeping the print they produced.
+   */
+  private dropChordedCells(): void {
+    const prompt = this.tutor.prompt;
+    if (prompt === null || prompt.completed || prompt.typedUnicode === '') return;
+    this.tutor = keystroke(this.tutor, { kind: 'print', typed: prompt.typed });
   }
 
   /** Shared post-keystroke handling: fox scoring/result, or advance. */
