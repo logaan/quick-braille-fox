@@ -122,6 +122,49 @@ describe('App rendering', () => {
     expect(html).toContain(firstHintCell);
   });
 
+  it('announces the prompt in a polite status region', () => {
+    const store = drillStore();
+    const html = render(store);
+    expect(html).toContain('role="status"');
+    expect(html).toContain(`Prompt 2: ${store.viewModel().promptText}`);
+  });
+
+  it('announces a mistake via an alert region', () => {
+    const store = drillStore();
+    const text = store.viewModel().promptText;
+    type(store, text.startsWith('z') ? 'q' : 'z');
+    const html = render(store);
+    expect(html).toContain('role="alert"');
+    expect(html).toContain('Mistake at character 1');
+  });
+
+  it('announces the fox challenge and its stakes', () => {
+    const store = foxReadyStore();
+    expect(render(store)).toContain('fox challenge — type the sentence exactly');
+  });
+
+  it('gives the hint a spoken dots alternative', () => {
+    const store = drillStore();
+    vi.advanceTimersByTime(400);
+    expect(render(store)).toContain('Hint: dots ');
+  });
+
+  it('describes the chording keys while chord mode is on', () => {
+    const store = createTutorStore({ seed: 1 });
+    store.handlers.onInputModeToggle();
+    const html = render(store);
+    expect(html).toContain('Chording: F D S');
+    expect(html).toContain('aria-describedby="chord-help"');
+  });
+
+  it('wires the fox result text to the Continue button', () => {
+    const store = foxReadyStore();
+    type(store, 'X'); // a wrong first character fails the run instantly
+    const html = render(store);
+    expect(html).toContain('aria-describedby="fox-result-text"');
+    expect(html).toContain('Run failed');
+  });
+
   it('shows the actually-typed character where typing diverged', () => {
     const store = drillStore();
     const text = store.viewModel().promptText;

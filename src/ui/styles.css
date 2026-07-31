@@ -271,7 +271,8 @@ input:focus-visible {
 }
 
 .reset-confirm-input:focus {
-  outline: none;
+  /* Keep the global focus outline: this field autofocuses in a flow that
+     ends in unrecoverable erasure, so where focus is must stay visible. */
   border-color: var(--accent-line);
 }
 
@@ -490,7 +491,6 @@ input:focus-visible {
   background: var(--surface);
   border: 1px solid var(--line);
   border-radius: var(--radius);
-  outline: none;
   /* The prompt above renders its own caret; hiding the native one leaves a
      single cursor on screen. The field's text stays visible so the learner can
      still see exactly what VoiceOver typed. */
@@ -499,6 +499,14 @@ input:focus-visible {
 
 .drill-input:focus {
   border-color: var(--accent);
+}
+
+/* Chord-mode key map: on screen whenever chording is active, because the
+   mode is undiscoverable otherwise (the field swallows printable keys). */
+.chord-help {
+  margin: 0.4rem 0 0;
+  font-size: 0.8rem;
+  color: var(--dim);
 }
 
 /* Hint area: space is reserved so the answer appearing never shifts layout. */

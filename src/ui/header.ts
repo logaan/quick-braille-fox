@@ -67,7 +67,25 @@ function InputModeToggle(props: {
     },
     e('span', { className: 'mode-toggle-indicator', 'aria-hidden': 'true' }),
     'VoiceOver input',
+    // The off state is otherwise a mystery: the drill starts swallowing
+    // every printable key except the (undocumented) home-row chord keys.
+    e(
+      'span',
+      { className: 'visually-hidden' },
+      ' — when off, type braille chords on the home row: F D S for dots 1 2 3, J K L for dots 4 5 6',
+    ),
   );
+}
+
+/**
+ * Leaving the confirm step unmounts whichever of its elements holds focus,
+ * which would drop keyboard focus to <body> and throw a screen reader to
+ * the top of the page. Return it to the control that opened the flow (after
+ * the re-render has put that button back).
+ */
+function refocusResetButton(): void {
+  if (typeof document === 'undefined') return;
+  setTimeout(() => document.getElementById('reset-request-button')?.focus(), 0);
 }
 
 /**
@@ -80,6 +98,14 @@ function ResetConfirm(props: {
   readonly on: AppHandlers;
 }): ReactElement {
   const { text, canConfirm, on } = props;
+  const confirm = (): void => {
+    on.onResetConfirm();
+    refocusResetButton();
+  };
+  const cancel = (): void => {
+    on.onResetCancel();
+    refocusResetButton();
+  };
   return e(
     'span',
     { className: 'reset-confirm' },
@@ -98,16 +124,12 @@ function ResetConfirm(props: {
       onChange: (event: ChangeEvent<HTMLInputElement>) =>
         on.onResetTextChange(event.currentTarget.value),
       onKeyDown: (event: KeyboardEvent<HTMLInputElement>) => {
-        if (event.key === 'Enter' && canConfirm) on.onResetConfirm();
-        if (event.key === 'Escape') on.onResetCancel();
+        if (event.key === 'Enter' && canConfirm) confirm();
+        if (event.key === 'Escape') cancel();
       },
     }),
-    e(
-      'button',
-      { className: 'btn btn-danger', disabled: !canConfirm, onClick: on.onResetConfirm },
-      'Erase',
-    ),
-    e('button', { className: 'btn', onClick: on.onResetCancel }, 'Cancel'),
+    e('button', { className: 'btn btn-danger', disabled: !canConfirm, onClick: confirm }, 'Erase'),
+    e('button', { className: 'btn', onClick: cancel }, 'Cancel'),
   );
 }
 
@@ -136,7 +158,7 @@ export function Header(props: HeaderProps): ReactElement {
         ? e(ResetConfirm, { text: resetConfirmText, canConfirm: canConfirmReset, on })
         : e(
             'button',
-            { className: 'btn btn-quiet', onClick: on.onResetRequest },
+            { className: 'btn btn-quiet', id: 'reset-request-button', onClick: on.onResetRequest },
             'Reset progress',
           ),
     ),

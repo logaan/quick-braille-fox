@@ -10,8 +10,41 @@ import { createElement as e, type ReactElement } from 'react';
 import type { FoxResult } from '../core';
 import { commonPrefixLength } from '../core';
 import type { AppHandlers, AppViewModel, FoxFailureView } from '../state';
-import { BrailleCells } from './braille';
+import { BrailleCells, describeCells } from './braille';
 import { formatPercent, signLabel } from './labels';
+
+/**
+ * What the polite status region says about the prompt on screen. Sighted
+ * users see the prompt swap and the gold fox banner appear; a screen reader
+ * hears nothing on either unless this text changes and gets announced — so
+ * it names a fox round (with the rules that change the stakes) and numbers
+ * ordinary prompts so a completed one audibly gives way to the next.
+ */
+function promptAnnouncement(vm: AppViewModel): string {
+  if (vm.foxResult !== null) return ''; // the result panel takes over
+  if (vm.isFox) {
+    return (
+      'fox challenge — type the sentence exactly. No hints; one wrong ' +
+      `character ends the run. ${vm.promptText}`
+    );
+  }
+  return `Prompt ${vm.promptsCompleted + 1}: ${vm.promptText}`;
+}
+
+/**
+ * What the mistake alert says while typing has diverged, '' otherwise. The
+ * coloured prompt spans that show sighted users a mistake are aria-hidden,
+ * so this is the only way a screen reader user learns they have diverged.
+ */
+function mistakeAnnouncement(vm: AppViewModel): string {
+  if (!vm.diverged) return '';
+  const caret = commonPrefixLength(vm.promptText, vm.typed);
+  const wrong = vm.typed[caret];
+  const at = `at character ${caret + 1}`;
+  return wrong === undefined
+    ? `Mistake ${at} — backspace to fix.`
+    : `Mistake ${at}: typed ${signLabel(wrong)} — backspace to fix.`;
+}
 
 /**
  * Monkeytype-style prompt colouring: correct prefix / wrong / untyped.
@@ -55,6 +88,8 @@ function FoxFailureDetail(props: { readonly failure: FoxFailureView }): ReactEle
       e('span', { className: 'fox-failure-label' }, 'Expected'),
       e(BrailleCells, { unicode: failure.expected, size: 'md' }),
       e('span', { className: 'fox-failure-print' }, signLabel(failure.expectedPrint)),
+      // Speech alternative: the raw glyphs above serve braille displays.
+      e('span', { className: 'visually-hidden' }, `, ${describeCells(failure.expected)}`),
     ),
   ];
   if (failure.typed !== null) {
@@ -64,6 +99,7 @@ function FoxFailureDetail(props: { readonly failure: FoxFailureView }): ReactEle
         { className: 'fox-failure-row', key: 'typed' },
         e('span', { className: 'fox-failure-label' }, 'You typed'),
         e(BrailleCells, { unicode: failure.typed, size: 'md', className: 'cells-wrong' }),
+        e('span', { className: 'visually-hidden' }, `, ${describeCells(failure.typed)}`),
       ),
     );
   }
@@ -103,12 +139,25 @@ function FoxResultPanel(props: {
   return e(
     'div',
     { className: 'fox-result' },
-    outcome,
-    e('p', { className: 'fox-detail' }, detail),
-    failure === null ? null : e(FoxFailureDetail, { failure }),
+    // The Continue button below autofocuses the moment this panel appears,
+    // and that focus announcement is what the screen reader user hears — so
+    // the whole result is wired to it via aria-describedby rather than a
+    // live region the focus change would preempt.
+    e(
+      'div',
+      { id: 'fox-result-text' },
+      outcome,
+      e('p', { className: 'fox-detail' }, detail),
+      failure === null ? null : e(FoxFailureDetail, { failure }),
+    ),
     e(
       'button',
-      { className: 'btn btn-primary', autoFocus: true, onClick: onContinue },
+      {
+        className: 'btn btn-primary',
+        autoFocus: true,
+        'aria-describedby': 'fox-result-text',
+        onClick: onContinue,
+      },
       'Continue',
     ),
   );
@@ -179,6 +228,7 @@ export function Drill(props: DrillProps): ReactElement {
     id: 'drill-input',
     type: 'text',
     defaultValue: vm.typed,
+    'aria-describedby': vm.voiceOverInput ? undefined : 'chord-help',
     onChange: on.onInput,
     // In chord mode these drive typing (dot keys, space, backspace); they
     // no-op while VoiceOver input is on.
@@ -198,6 +248,14 @@ export function Drill(props: DrillProps): ReactElement {
       className: vm.isFox ? 'drill drill-fox' : 'drill',
       'aria-label': vm.isFox ? 'fox challenge' : 'Typing drill',
     },
+    // Spoken feedback the visual layer conveys silently: which prompt is on
+    // screen (and that a fox round started), and that typing has diverged.
+    e(
+      'div',
+      { className: 'visually-hidden', role: 'status', 'aria-live': 'polite' },
+      promptAnnouncement(vm),
+    ),
+    e('div', { className: 'visually-hidden', role: 'alert' }, mistakeAnnouncement(vm)),
     vm.isFox
       ? e(FoxRules, {
           interval: vm.foxInterval,
@@ -211,10 +269,18 @@ export function Drill(props: DrillProps): ReactElement {
       e(PromptText, { text: vm.promptText, typed: vm.typed }),
     ),
     showResult ? null : input,
+    vm.voiceOverInput
+      ? null
+      : e(
+          'p',
+          { className: 'chord-help', id: 'chord-help' },
+          'Chording: F D S = dots 1 2 3 · J K L = dots 4 5 6 · ' +
+            'Space = space · Backspace deletes a cell',
+        ),
     vm.isFox
       ? e(
           'div',
-          { className: 'fox-result-area', 'aria-live': 'assertive' },
+          { className: 'fox-result-area' },
           vm.foxResult === null
             ? null
             : e(FoxResultPanel, {
@@ -233,7 +299,11 @@ export function Drill(props: DrillProps): ReactElement {
             : e(
                 'div',
                 { className: 'hint' },
-                e('span', { className: 'visually-hidden' }, 'Hint: '),
+                e(
+                  'span',
+                  { className: 'visually-hidden' },
+                  `Hint: ${describeCells(vm.hint)}. `,
+                ),
                 e(BrailleCells, { unicode: vm.hint, size: 'lg' }),
               ),
         ),

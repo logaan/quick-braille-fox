@@ -59,9 +59,11 @@ export function OverallPanel(props: SkillPanelProps): ReactElement {
     'section',
     { className: 'panel', 'aria-label': 'Overall progress' },
     e('h2', { className: 'panel-heading' }, 'Overall'),
+    // A polite live region: crossing the learnt threshold changes this text,
+    // so the milestone is announced without the user leaving the drill.
     e(
       'p',
-      { className: 'overall' },
+      { className: 'overall', role: 'status', 'aria-live': 'polite' },
       e('strong', null, String(vm.learntCount)),
       ` of ${vm.totalSkills} skills learnt`,
     ),
