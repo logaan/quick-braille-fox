@@ -4,7 +4,7 @@
 // it never calls core transitions itself.
 
 import type { ChangeEvent, KeyboardEvent } from 'react';
-import type { Cell, FoxResult, TutorState } from '../core';
+import type { AttributedBackTranslation, Cell, FoxResult, TutorState } from '../core';
 import {
   backTranslateBuffer,
   backTranslateBufferAttributed,
@@ -267,22 +267,25 @@ export class TutorStore {
     // Space: a blank cell, unless it is a leading or artifact trailing space.
     if (this.cellBuffer.length === 0) return; // ignore a leading space
     const candidate: Cell[] = [...this.cellBuffer, []];
-    const derived = backTranslateBuffer(candidate, prompt.text);
-    if (stripUnexpectedTrailingSpaces(derived, prompt.text) !== derived) return; // artifact
+    const derived = backTranslateBufferAttributed(candidate, prompt.text);
+    if (stripUnexpectedTrailingSpaces(derived.text, prompt.text) !== derived.text) return; // artifact
     this.cellBuffer = candidate;
     if (prompt.isFox) this.foxCellsTyped += 1;
-    this.commitBuffer();
+    this.commitBuffer(derived);
   }
 
-  /** Re-derive typed text from the cell buffer and feed it to the core. */
-  private commitBuffer(): void {
+  /**
+   * Feed the cell buffer's derived text to the core (`derived` when the
+   * caller already decoded the buffer, sparing a second decode).
+   */
+  private commitBuffer(derived?: AttributedBackTranslation): void {
     const prompt = this.tutor.prompt;
     if (prompt === null || prompt.completed) return;
     // On a fox run the attributed units carry the signs actually chorded, so
     // the challenge credits what the learner typed, not the canonical
     // translation's contractions.
-    const derived = backTranslateBufferAttributed(this.cellBuffer, prompt.text);
-    this.tutor = keystroke(this.tutor, derived.text, prompt.isFox ? derived.units : undefined);
+    const d = derived ?? backTranslateBufferAttributed(this.cellBuffer, prompt.text);
+    this.tutor = keystroke(this.tutor, d.text, prompt.isFox ? d.units : undefined);
     this.afterKeystroke();
     this.changed();
   }

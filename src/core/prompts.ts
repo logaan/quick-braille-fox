@@ -341,6 +341,49 @@ function capitalPrompt(target: Skill, ctx: PromptContext, rng: Rng): string {
   return fillerSequence(candidates, rng, ctx.max) as string;
 }
 
+/**
+ * How a punctuation mark is shown in context. Word shapes draw from the
+ * filler pool; number shapes need a known digit. Marks absent from every
+ * table take the default shape (a word, mark attached).
+ */
+type PunctShape =
+  | 'terminator' //  words…P    (sentence-final)
+  | 'separator' //   wP w       (between two words)
+  | 'possessive' //  w'P… ('s)
+  | 'tight-join' //  wPw
+  | 'spaced-join' // w P w
+  | 'op' //          dPd        (number context)
+  | 'prefix' //      Pd
+  | 'suffix'; //     dP
+
+const PUNCT_SHAPES: ReadonlyMap<string, PunctShape> = new Map([
+  ...(['.', '!', '?', '…'] as const).map((p) => [p, 'terminator'] as const),
+  ...([',', ';', ':'] as const).map((p) => [p, 'separator'] as const),
+  ["'", 'possessive'] as const,
+  ...(['-', '–', '/', '\\', '_', '|', '@'] as const).map((p) => [p, 'tight-join'] as const),
+  ...(['—', '&'] as const).map((p) => [p, 'spaced-join'] as const),
+  ...(['+', '=', '<', '>', '^'] as const).map((p) => [p, 'op'] as const),
+  ...(['~', '#', '$'] as const).map((p) => [p, 'prefix'] as const),
+  ['%', 'suffix'] as const,
+]);
+
+/** Enclosure pairs, keyed by either half: the word is wrapped in the pair. */
+const ENCLOSURE_PAIRS: ReadonlyArray<readonly [string, string]> = [
+  ['"', '"'],
+  ['(', ')'],
+  ['[', ']'],
+  ['{', '}'],
+  ['‘', '’'],
+  ['“', '”'],
+  ['`', '`'],
+];
+const ENCLOSURES: ReadonlyMap<string, readonly [string, string]> = new Map(
+  ENCLOSURE_PAIRS.flatMap((pair) => [
+    [pair[0], pair] as const,
+    [pair[1], pair] as const,
+  ]),
+);
+
 function punctuationPrompt(target: Skill, ctx: PromptContext, rng: Rng): string {
   const { known, filler, max } = ctx;
   const digits = knownDigitPrints(known);
@@ -351,82 +394,38 @@ function punctuationPrompt(target: Skill, ctx: PromptContext, rng: Rng): string 
   const p = target.print;
 
   let text: string | null = null;
-  switch (p) {
-    // sentence-final marks: a word sequence, terminated
-    case '.':
-    case '!':
-    case '?':
-    case '…':
-      text = haveWords ? `${fillerSequence(filler, rng, max) as string}${p}` : null;
-      break;
-    // separators between two words
-    case ',':
-    case ';':
-    case ':':
-      text = haveWords ? `${w()}${p} ${w()}` : null;
-      break;
-    case "'":
-      text = haveWords ? `${w()}'s` : null;
-      break;
-    // paired enclosures around a word
-    case '"':
-      text = haveWords ? `"${w()}"` : null;
-      break;
-    case '(':
-    case ')':
-      text = haveWords ? `(${w()})` : null;
-      break;
-    case '[':
-    case ']':
-      text = haveWords ? `[${w()}]` : null;
-      break;
-    case '{':
-    case '}':
-      text = haveWords ? `{${w()}}` : null;
-      break;
-    case '‘':
-    case '’':
-      text = haveWords ? `‘${w()}’` : null;
-      break;
-    case '“':
-    case '”':
-      text = haveWords ? `“${w()}”` : null;
-      break;
-    case '`':
-      text = haveWords ? `\`${w()}\`` : null;
-      break;
-    // joiners between two words
-    case '-':
-    case '–':
-    case '/':
-    case '\\':
-    case '_':
-    case '|':
-    case '@':
-      text = haveWords ? `${w()}${p}${w()}` : null;
-      break;
-    case '—':
-    case '&':
-      text = haveWords ? `${w()} ${p} ${w()}` : null;
-      break;
-    // number context
-    case '+':
-    case '=':
-    case '<':
-    case '>':
-    case '^':
-      text = haveDigits ? `${d()}${p}${d()}` : null;
-      break;
-    case '~':
-    case '#':
-    case '$':
-      text = haveDigits ? `${p}${d()}` : null;
-      break;
-    case '%':
-      text = haveDigits ? `${d()}%` : null;
-      break;
-    default:
-      text = haveWords ? `${w()}${p}` : null;
+  const pair = ENCLOSURES.get(p);
+  if (pair !== undefined) {
+    text = haveWords ? `${pair[0]}${w()}${pair[1]}` : null;
+  } else {
+    switch (PUNCT_SHAPES.get(p)) {
+      case 'terminator':
+        text = haveWords ? `${fillerSequence(filler, rng, max) as string}${p}` : null;
+        break;
+      case 'separator':
+        text = haveWords ? `${w()}${p} ${w()}` : null;
+        break;
+      case 'possessive':
+        text = haveWords ? `${w()}${p}s` : null;
+        break;
+      case 'tight-join':
+        text = haveWords ? `${w()}${p}${w()}` : null;
+        break;
+      case 'spaced-join':
+        text = haveWords ? `${w()} ${p} ${w()}` : null;
+        break;
+      case 'op':
+        text = haveDigits ? `${d()}${p}${d()}` : null;
+        break;
+      case 'prefix':
+        text = haveDigits ? `${p}${d()}` : null;
+        break;
+      case 'suffix':
+        text = haveDigits ? `${d()}${p}` : null;
+        break;
+      default:
+        text = haveWords ? `${w()}${p}` : null;
+    }
   }
   if (text !== null && usable(text, known, target.id)) return text;
   // The mark alone is still real, typeable print.

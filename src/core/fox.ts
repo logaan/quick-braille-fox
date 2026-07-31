@@ -105,10 +105,21 @@ export function divergentCells(
   buffer: ReadonlyArray<Cell>,
   text: string,
 ): ReadonlyArray<Cell> {
+  // Memoized on the arguments: the prefix scan re-decodes the buffer once
+  // per cell (quadratic), and the failure screen re-derives this on every
+  // render of an unchanging buffer.
+  if (buffer === memoBuffer && text === memoText) return memoResult;
   let good = 0;
   for (let k = 1; k <= buffer.length; k += 1) {
     if (!text.startsWith(backTranslateBuffer(buffer.slice(0, k), text))) break;
     good = k;
   }
-  return buffer.slice(good);
+  memoBuffer = buffer;
+  memoText = text;
+  memoResult = buffer.slice(good);
+  return memoResult;
 }
+
+let memoBuffer: ReadonlyArray<Cell> | null = null;
+let memoText = '';
+let memoResult: ReadonlyArray<Cell> = [];
