@@ -577,6 +577,22 @@ describe('VoiceOver trailing spaces', () => {
     expect(store.viewModel().foxResult).toEqual({ kind: 'badge', percentAbove: expectedPercent });
   });
 
+  it('does not fail a flawless run when predictive text commits a whole word', () => {
+    const store = createTutorStore({ storage: foxReadyStorage(), seed: 1 });
+    const upTo = FOX_SENTENCE.indexOf('jumps');
+    for (let i = 1; i <= upTo; i += 1) insert(store, FOX_SENTENCE.slice(0, i));
+    // One insertReplacementText event commits all of "jumps" — it counts as
+    // its five characters, not as a single cell.
+    store.handlers.onInput(
+      fakeEvent(FOX_SENTENCE.slice(0, upTo + 'jumps'.length), 'insertReplacementText'),
+    );
+    for (let i = upTo + 'jumps'.length + 1; i <= FOX_SENTENCE.length; i += 1) {
+      insert(store, FOX_SENTENCE.slice(0, i));
+    }
+    const expectedPercent = ((FOX_SENTENCE.length - FOX_MIN_CELLS) / FOX_MIN_CELLS) * 100;
+    expect(store.viewModel().foxResult).toEqual({ kind: 'badge', percentAbove: expectedPercent });
+  });
+
   it('does not count a stripped stray space as a fox cell', () => {
     const store = createTutorStore({ storage: foxReadyStorage(), seed: 1 });
     insert(store, 'T');

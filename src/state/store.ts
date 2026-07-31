@@ -8,6 +8,7 @@ import type { Cell, FoxResult, TutorState } from '../core';
 import {
   backTranslateBuffer,
   backTranslateBufferAttributed,
+  commonPrefixLength,
   keystroke,
   nextHintFor,
   nextPrompt,
@@ -200,10 +201,18 @@ export class TutorStore {
 
     // fox cell counting: one cell per insertion event — VoiceOver braille
     // screen input commits a whole contraction as a single insertion, a
-    // regular keypress inserts one char. Deletions never decrement. An
-    // event whose value was normalised back to what was already typed (a
-    // stripped VoiceOver space) is not a cell.
-    if (prompt.isFox && inserted && value !== prompt.typed) this.foxCellsTyped += 1;
+    // regular keypress inserts one char. Bulk insertions (paste, predictive
+    // text) never came from braille gestures, so they count one cell per
+    // character added instead: still one per event would fail a flawless
+    // run for coming in under the cell minimum, and counting them as their
+    // contracted form would award braille the learner never entered.
+    // Deletions never decrement. An event whose value was normalised back
+    // to what was already typed (a stripped VoiceOver space) is not a cell.
+    if (prompt.isFox && inserted && value !== prompt.typed) {
+      this.foxCellsTyped += bulkInsert(native.inputType)
+        ? Math.max(1, value.length - commonPrefixLength(value, prompt.typed))
+        : 1;
+    }
 
     this.tutor = keystroke(this.tutor, value);
     this.afterKeystroke();
@@ -441,6 +450,22 @@ export class TutorStore {
 function normalizeTypedValue(value: string, text: string): string {
   const collapsed = value.replace(/^ +/u, '').replace(/ {2,}/gu, ' ');
   return stripUnexpectedTrailingSpaces(collapsed, text);
+}
+
+/**
+ * Insertion inputTypes whose text was not brailled in gesture by gesture:
+ * paste, predictive-text/autocorrect commits, drag-and-drop, kill-ring yank.
+ */
+const BULK_INSERT_TYPES = new Set([
+  'insertFromPaste',
+  'insertFromPasteAsQuotation',
+  'insertReplacementText',
+  'insertFromDrop',
+  'insertFromYank',
+]);
+
+function bulkInsert(inputType: unknown): boolean {
+  return typeof inputType === 'string' && BULK_INSERT_TYPES.has(inputType);
 }
 
 /**
