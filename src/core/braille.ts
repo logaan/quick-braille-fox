@@ -37,7 +37,7 @@ import {
 } from './lower-signs';
 
 /** One braille cell: ascending dot numbers 1-6. Empty array = blank cell. */
-export type Cell = ReadonlyArray<number>;
+export type Cell = readonly number[];
 
 /**
  * One indivisible chunk of a translation: the cells for one print span (a
@@ -50,26 +50,26 @@ export interface TranslationUnit {
   /** Print span [start, end) this unit covers, as indexes into the text. */
   readonly start: number;
   readonly end: number;
-  readonly cells: ReadonlyArray<Cell>;
+  readonly cells: readonly Cell[];
   /** Ids of the skills this unit exercises (indicators included; a space
    * unit has none). */
-  readonly skillIds: ReadonlyArray<string>;
+  readonly skillIds: readonly string[];
 }
 
 /** Result of translating a print string to braille cells. */
 export interface Translation {
   /** The cells, in order (includes capital/number indicators and blanks). */
-  readonly cells: ReadonlyArray<Cell>;
+  readonly cells: readonly Cell[];
   /** Ids of every skill used, in order of use (repeats possible). Only the
    * blank space cell has no skill; capital indicators and the number sign
    * are skills and do appear. */
-  readonly skillIds: ReadonlyArray<string>;
+  readonly skillIds: readonly string[];
   /** The same cells grouped by print span, tiling the text left to right. */
-  readonly units: ReadonlyArray<TranslationUnit>;
+  readonly units: readonly TranslationUnit[];
 }
 
 /** Convert cells (arrays of dot numbers) to a U+2800-block string. */
-export function dotsToUnicode(cells: ReadonlyArray<Cell>): string {
+export function dotsToUnicode(cells: readonly Cell[]): string {
   return cells
     .map((cell) => {
       let bits = 0;
@@ -222,7 +222,7 @@ function translateLetterRun(word: string, base: number, out: MutableTranslation)
       }
     }
     if (!matched) {
-      const ch = lower[i] as string;
+      const ch = lower[i]!;
       matched = charSkills.get(ch);
       if (!matched) throw new Error(`untranslatable character: ${JSON.stringify(ch)}`);
     }
@@ -297,7 +297,7 @@ export function translate(text: string): Translation {
   if (hit !== undefined) return hit;
   const out = computeTranslation(text);
   if (translationCache.size >= TRANSLATION_CACHE_MAX) {
-    const oldest = translationCache.keys().next().value as string;
+    const oldest = translationCache.keys().next().value!;
     translationCache.delete(oldest);
   }
   translationCache.set(text, out);
@@ -314,7 +314,7 @@ export function tryTranslate(text: string): Translation | null {
 }
 
 /** The braille cells for a print string (hint display). */
-export function textToCells(text: string): ReadonlyArray<Cell> {
+export function textToCells(text: string): readonly Cell[] {
   return translate(text).cells;
 }
 
@@ -326,7 +326,7 @@ export function textToCells(text: string): ReadonlyArray<Cell> {
  * been chorded; the canonical grade-2 cells are another (textToCells).
  * Throws on characters the curriculum does not cover.
  */
-export function spellOutCells(text: string): ReadonlyArray<Cell> {
+export function spellOutCells(text: string): readonly Cell[] {
   const out: MutableTranslation = { cells: [], skillIds: [], units: [] };
   const tokens = text.match(/[0-9]+|./gs) ?? [];
   let offset = 0;

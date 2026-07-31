@@ -10,7 +10,7 @@
 // known). All entries must translate cleanly with src/core/braille.ts.
 
 /** Real English words (lowercase, letters only). */
-export const WORDS: ReadonlyArray<string> = [
+export const WORDS: readonly string[] = [
   // usable from the very first active window {a,b,c,d,e}
   'a', 'ace', 'add', 'baa', 'babe', 'bad', 'bee', 'cab', 'cad', 'dab', 'dad',
   'ebb',

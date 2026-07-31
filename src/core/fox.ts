@@ -77,7 +77,7 @@ export interface FoxSign {
  * Null when the text does not translate or is empty.
  */
 export function expectedSignAt(text: string, typed: string): FoxSign | null {
-  let units: ReadonlyArray<TranslationUnit>;
+  let units: readonly TranslationUnit[];
   try {
     units = translate(text).units;
   } catch {
@@ -102,9 +102,9 @@ export function expectedSignAt(text: string, typed: string): FoxSign | null {
  * make the print itself diverge are the mistake.
  */
 export function divergentCells(
-  buffer: ReadonlyArray<Cell>,
+  buffer: readonly Cell[],
   text: string,
-): ReadonlyArray<Cell> {
+): readonly Cell[] {
   // Memoized on the arguments: the prefix scan re-decodes the buffer once
   // per cell (quadratic), and the failure screen re-derives this on every
   // render of an unchanging buffer.
@@ -120,6 +120,6 @@ export function divergentCells(
   return memoResult;
 }
 
-let memoBuffer: ReadonlyArray<Cell> | null = null;
+let memoBuffer: readonly Cell[] | null = null;
 let memoText = '';
-let memoResult: ReadonlyArray<Cell> = [];
+let memoResult: readonly Cell[] = [];

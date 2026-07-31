@@ -3,7 +3,7 @@ import type { ChordAction, ChordState } from './chords';
 import { EMPTY_CHORD_STATE, chordKeyDown, chordKeyUp, isChordCode } from './chords';
 
 /** Press and release the given codes in order; return the resolved actions. */
-function play(codes: Array<['down' | 'up', string]>): { state: ChordState; actions: ChordAction[] } {
+function play(codes: ['down' | 'up', string][]): { state: ChordState; actions: ChordAction[] } {
   let state = EMPTY_CHORD_STATE;
   const actions: ChordAction[] = [];
   for (const [kind, code] of codes) {
@@ -30,7 +30,7 @@ describe('isChordCode', () => {
 
 describe('chord resolution', () => {
   it('resolves f+j+k to dots 1,4,5 regardless of press/release order', () => {
-    const orders: Array<Array<['down' | 'up', string]>> = [
+    const orders: ['down' | 'up', string][][] = [
       [['down', 'KeyF'], ['down', 'KeyJ'], ['down', 'KeyK'], ['up', 'KeyF'], ['up', 'KeyJ'], ['up', 'KeyK']],
       [['down', 'KeyK'], ['down', 'KeyF'], ['down', 'KeyJ'], ['up', 'KeyJ'], ['up', 'KeyK'], ['up', 'KeyF']],
     ];

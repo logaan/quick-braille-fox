@@ -79,7 +79,7 @@ function anyWordTeaches(state: TutorState, taught: ReadonlySet<string>): boolean
   const known = new Set(knownSkillIds(state));
   for (const id of taught) known.add(id);
   return WORDS.some((w) => {
-    let ids: ReadonlyArray<string>;
+    let ids: readonly string[];
     try {
       ids = translate(w).skillIds;
     } catch {

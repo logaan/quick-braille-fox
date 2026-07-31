@@ -91,19 +91,19 @@ export function pickTarget(state: TutorState, rng: Rng): Skill {
   if (learnt.length > 0 && rng() < REVISION_PROBABILITY) {
     return pickRevision(state, learnt, rng);
   }
-  return choice(active, rng) as Skill;
+  return choice(active, rng)!;
 }
 
-function pickRevision(state: TutorState, learnt: ReadonlyArray<Skill>, rng: Rng): Skill {
+function pickRevision(state: TutorState, learnt: readonly Skill[], rng: Rng): Skill {
   if (learnt.length === 0) {
     // Degenerate (can't happen with a full curriculum); keep total anyway.
-    return skills[0] as Skill;
+    return skills[0]!;
   }
-  if (rng() < 0.5) return choice(learnt, rng) as Skill;
+  if (rng() < 0.5) return choice(learnt, rng)!;
   const lowest = [...learnt]
     .sort((a, b) => scoreFor(state, a.id) - scoreFor(state, b.id))
     .slice(0, LOWEST_SCORE_POOL);
-  return choice(lowest, rng) as Skill;
+  return choice(lowest, rng)!;
 }
 
 // --- Word pools --------------------------------------------------------------
@@ -142,7 +142,7 @@ function usableWords(known: ReadonlySet<string>): UsableWord[] {
  * forever), fall back to the words built from the most recently learnt
  * skills, so the filler is at least fresh revision.
  */
-function fillerWords(pool: ReadonlyArray<UsableWord>, focus: ReadonlySet<string>): string[] {
+function fillerWords(pool: readonly UsableWord[], focus: ReadonlySet<string>): string[] {
   const focused = pool.filter((w) => intersects(w.skillIds, focus));
   if (focused.length > 0) return focused.map((w) => w.word);
   return recentWords(pool);
@@ -155,7 +155,7 @@ const SKILL_ORDER = new Map(skills.map((s) => [s.id, s.order] as const));
 const RECENT_FILLER_WORDS = 24;
 
 /** The usable words drawing on the latest curriculum material. */
-function recentWords(pool: ReadonlyArray<UsableWord>): string[] {
+function recentWords(pool: readonly UsableWord[]): string[] {
   const latest = (w: UsableWord) => {
     let max = -1;
     for (const id of w.skillIds) max = Math.max(max, SKILL_ORDER.get(id) ?? -1);
@@ -168,7 +168,7 @@ function recentWords(pool: ReadonlyArray<UsableWord>): string[] {
 }
 
 /** Usable words whose translation exercises the required skill. */
-function targetWords(pool: ReadonlyArray<UsableWord>, requiredId: string): string[] {
+function targetWords(pool: readonly UsableWord[], requiredId: string): string[] {
   return pool.filter((w) => w.skillIds.has(requiredId)).map((w) => w.word);
 }
 
@@ -189,22 +189,22 @@ function sequenceLength(rng: Rng, max: number): number {
 /** A min..max word sequence containing `targetWord` at a random position. */
 function wordSequence(
   targetWord: string,
-  filler: ReadonlyArray<string>,
+  filler: readonly string[],
   rng: Rng,
   max: number,
 ): string {
   const n = sequenceLength(rng, max);
   if (n <= 1 || filler.length === 0) return targetWord;
-  const words = Array.from({ length: n }, () => choice(filler, rng) as string);
+  const words = Array.from({ length: n }, () => choice(filler, rng)!);
   words[Math.floor(rng() * n)] = targetWord;
   return words.join(' ');
 }
 
 /** A min..max word sequence of filler words only. */
-function fillerSequence(filler: ReadonlyArray<string>, rng: Rng, max: number): string | null {
+function fillerSequence(filler: readonly string[], rng: Rng, max: number): string | null {
   if (filler.length === 0) return null;
   const n = sequenceLength(rng, max);
-  return Array.from({ length: n }, () => choice(filler, rng) as string).join(' ');
+  return Array.from({ length: n }, () => choice(filler, rng)!).join(' ');
 }
 
 // --- Text generation --------------------------------------------------------
@@ -229,9 +229,9 @@ interface PromptContext {
   /** Skills the prompt may use at all (learnt ∪ active ∪ the target). */
   readonly known: ReadonlySet<string>;
   /** Usable corpus words with the skills each exercises. */
-  readonly pool: ReadonlyArray<UsableWord>;
+  readonly pool: readonly UsableWord[];
   /** Words every prompt word is drawn from — each exercises a taught skill. */
-  readonly filler: ReadonlyArray<string>;
+  readonly filler: readonly string[];
   /** Longest word sequence to emit. */
   readonly max: number;
 }
@@ -286,7 +286,7 @@ function printIsRealWord(target: Skill): boolean {
 function wordPrompt(target: Skill, ctx: PromptContext, rng: Rng): string {
   const targets = targetWords(ctx.pool, target.id);
   if (targets.length > 0) {
-    return wordSequence(choice(targets, rng) as string, ctx.filler, rng, ctx.max);
+    return wordSequence(choice(targets, rng)!, ctx.filler, rng, ctx.max);
   }
   // No corpus word exercises the target. If the print form is itself a real
   // word ("and", "about", "a") use it; otherwise emit *some* real-word
@@ -304,7 +304,7 @@ function digitPrompt(target: Skill, known: ReadonlySet<string>, rng: Rng): strin
   const digits = knownDigitPrints(known);
   const len = 1 + Math.floor(rng() * Math.min(3, Math.max(1, digits.length - 1)));
   if (len > 1) {
-    const chars = Array.from({ length: len }, () => choice(digits, rng) as string);
+    const chars = Array.from({ length: len }, () => choice(digits, rng)!);
     chars[Math.floor(rng() * len)] = target.print;
     const text = chars.join('');
     if (usable(text, known, target.id)) return text;
@@ -338,7 +338,7 @@ function capitalPrompt(target: Skill, ctx: PromptContext, rng: Rng): string {
   // Every word is capitalised, not just one: no plain word exercises a
   // capital indicator, so mixing lowercase filler in would spend most of
   // the prompt on skills that are not being taught.
-  return fillerSequence(candidates, rng, ctx.max) as string;
+  return fillerSequence(candidates, rng, ctx.max)!;
 }
 
 /**
@@ -368,7 +368,7 @@ const PUNCT_SHAPES: ReadonlyMap<string, PunctShape> = new Map([
 ]);
 
 /** Enclosure pairs, keyed by either half: the word is wrapped in the pair. */
-const ENCLOSURE_PAIRS: ReadonlyArray<readonly [string, string]> = [
+const ENCLOSURE_PAIRS: readonly (readonly [string, string])[] = [
   ['"', '"'],
   ['(', ')'],
   ['[', ']'],
@@ -387,8 +387,8 @@ const ENCLOSURES: ReadonlyMap<string, readonly [string, string]> = new Map(
 function punctuationPrompt(target: Skill, ctx: PromptContext, rng: Rng): string {
   const { known, filler, max } = ctx;
   const digits = knownDigitPrints(known);
-  const w = () => choice(filler, rng) as string;
-  const d = () => choice(digits, rng) as string;
+  const w = () => choice(filler, rng)!;
+  const d = () => choice(digits, rng)!;
   const haveWords = filler.length > 0;
   const haveDigits = digits.length > 0;
   const p = target.print;
@@ -400,7 +400,7 @@ function punctuationPrompt(target: Skill, ctx: PromptContext, rng: Rng): string 
   } else {
     switch (PUNCT_SHAPES.get(p)) {
       case 'terminator':
-        text = haveWords ? `${fillerSequence(filler, rng, max) as string}${p}` : null;
+        text = haveWords ? `${fillerSequence(filler, rng, max)!}${p}` : null;
         break;
       case 'separator':
         text = haveWords ? `${w()}${p} ${w()}` : null;

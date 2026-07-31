@@ -343,7 +343,7 @@ export class TutorStore {
   /** Shared post-keystroke handling: fox scoring/result, or advance. */
   private afterKeystroke(): void {
     const after = this.tutor.prompt;
-    if (after === null || !after.completed) return;
+    if (!after?.completed) return;
     if (after.isFox) {
       const result: FoxResult = after.failed ? { kind: 'failed' } : foxResult(this.foxCellsTyped);
       this.lastFox = result;

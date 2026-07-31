@@ -108,12 +108,12 @@ describe('backTranslateWord — with expected context', () => {
   it('never throws and glyphs cells it cannot read at a word start', () => {
     const result = backTranslateWord([[4, 6], [1, 5]]); // ance cells, word-initial
     expect(result).toContain('⠨'); // dots 4-6 has no word-initial reading
-    expect(() => backTranslateWord([[7 as number]])).not.toThrow();
+    expect(() => backTranslateWord([[7]])).not.toThrow();
   });
 });
 
 describe('backTranslateBuffer — punctuation in context', () => {
-  const cases: Array<[string]> = [
+  const cases: [string][] = [
     ['cab.'], ['hat, top'], ["cat's"], ['"cat"'], ['(dog)'], ['[dog]'],
     ['‘cat’'], ['“cat”'], ['day/if'], ['cat — dog'], ['3+4'], ['$7'],
     ['5%'], ['cab…'], ['cab?'],

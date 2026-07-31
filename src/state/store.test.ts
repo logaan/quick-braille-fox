@@ -75,8 +75,8 @@ function keyUp(store: TutorStore, code: string): void {
 }
 
 /** Chord one braille cell: press each dot key, then release them all. */
-function chordCell(store: TutorStore, dots: ReadonlyArray<number>): void {
-  const codes = dots.map((d) => DOT_CODE[d] as string);
+function chordCell(store: TutorStore, dots: readonly number[]): void {
+  const codes = dots.map((d) => DOT_CODE[d]!);
   for (const c of codes) keyDown(store, c);
   for (const c of codes) keyUp(store, c);
 }
@@ -882,7 +882,7 @@ describe('chord input', () => {
     // The shortform occupies the print span the letters q/u were awarded at;
     // a positional dedup would swallow its award entirely.
     store.flushSave();
-    const raw = JSON.parse(storage.data.get(STORAGE_KEY) as string) as {
+    const raw = JSON.parse(storage.data.get(STORAGE_KEY)!) as {
       tutor: { scores: Record<string, number> };
     };
     expect(raw.tutor.scores['shortform-quick']).toBe(10);
@@ -918,13 +918,13 @@ describe('chord input', () => {
       for (const ch of word) {
         const lower = ch.toLowerCase();
         if (ch !== lower) chordCell(store, [6]);
-        chordCell(store, [...(textToCells(lower)[0] as ReadonlyArray<number>)]);
+        chordCell(store, [...(textToCells(lower)[0] as readonly number[])]);
       }
     }
     expect(store.viewModel().foxResult?.kind).toBe('badge');
 
     store.flushSave();
-    const saved = JSON.parse(storage.data.get(STORAGE_KEY) as string) as {
+    const saved = JSON.parse(storage.data.get(STORAGE_KEY)!) as {
       tutor: { scores: Record<string, number> };
     };
     const scores = saved.tutor.scores;

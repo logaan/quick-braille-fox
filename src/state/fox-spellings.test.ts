@@ -78,7 +78,7 @@ function keyEvent(code: string): KeyboardEvent<HTMLInputElement> {
 }
 
 function chordCell(store: TutorStore, dots: Cell): void {
-  const codes = dots.map((d) => DOT_CODE[d] as string);
+  const codes = dots.map((d) => DOT_CODE[d]!);
   for (const c of codes) store.handlers.onDrillKeyDown(keyEvent(c));
   for (const c of codes) store.handlers.onDrillKeyUp(keyEvent(c));
 }
@@ -164,8 +164,8 @@ function allowedInWord(skill: Skill, start: number, end: number, len: number): b
 
 /** One legal rendering of a word: its cells and the skill ids they exercise. */
 interface Variant {
-  readonly cells: ReadonlyArray<Cell>;
-  readonly ids: ReadonlyArray<string>;
+  readonly cells: readonly Cell[];
+  readonly ids: readonly string[];
 }
 
 function joinVariants(head: Variant, tail: Variant): Variant {
@@ -205,7 +205,7 @@ function tilings(original: string): Variant[] {
         for (const tail of from(end)) results.push(joinVariants(head, tail));
       }
     }
-    const letter = charSkills.get(lower[i] as string);
+    const letter = charSkills.get(lower[i]!);
     if (letter !== undefined) {
       const head = joinVariants(capsFor(original, i, i + 1), {
         cells: letter.dots,
@@ -221,7 +221,7 @@ function tilings(original: string): Variant[] {
 
 /** Every legal rendering of one space-delimited word (may carry punctuation). */
 function wordRenderings(word: string): Variant[] {
-  const alpha = (word.match(/^[a-zA-Z]+/) ?? [''])[0];
+  const alpha = ((/^[a-zA-Z]+/.exec(word)) ?? [''])[0];
   const punct = word.slice(alpha.length);
   const punctVariant: Variant = [...punct].reduce<Variant>(
     (acc, ch) => {
@@ -240,7 +240,7 @@ function wordRenderings(word: string): Variant[] {
   if (whole !== undefined && punct === '') {
     const lower = alpha.toLowerCase();
     if (alpha === lower) variants.push({ cells: whole.dots, ids: [whole.id] });
-    else if (alpha === (alpha[0] as string).toUpperCase() + lower.slice(1)) {
+    else if (alpha === (alpha[0]!).toUpperCase() + lower.slice(1)) {
       variants.push({ cells: [CAP, ...whole.dots], ids: [CAP_ID, whole.id] });
     }
   }
@@ -259,7 +259,7 @@ const words = FOX_SENTENCE.split(' ');
 const perWord = words.map(wordRenderings);
 
 /** Cross product of per-word variants -> every full-sentence rendering. */
-function crossProduct(lists: ReadonlyArray<Variant[]>): Variant[][] {
+function crossProduct(lists: readonly Variant[][]): Variant[][] {
   let combos: Variant[][] = [[]];
   for (const list of lists) {
     combos = combos.flatMap((combo) => list.map((variant) => [...combo, variant]));
@@ -276,7 +276,7 @@ const idUniverse = new Set<string>(
 
 interface Case {
   readonly label: string;
-  readonly rendering: ReadonlyArray<Variant>;
+  readonly rendering: readonly Variant[];
   readonly cellsTyped: number;
   /** skill id -> times chorded across the sentence. */
   readonly expectedCounts: ReadonlyMap<string, number>;
@@ -327,7 +327,7 @@ describe('fox accepts every grade-1/grade-2 spelling', () => {
         chordSpace(store);
         chords += 1;
       }
-      for (const cell of (rendering[w] as Variant).cells) {
+      for (const cell of (rendering[w]!).cells) {
         chordCell(store, cell);
         chords += 1;
         if (chords < cellsTyped) {
@@ -357,7 +357,7 @@ describe('fox accepts every grade-1/grade-2 spelling', () => {
     // The run must credit exactly the signs chorded: FOX_AWARD per occurrence
     // for each skill used, nothing for any skill of any unused rendering.
     store.flushSave();
-    const saved = JSON.parse(storage.data.get(STORAGE_KEY) as string) as {
+    const saved = JSON.parse(storage.data.get(STORAGE_KEY)!) as {
       tutor: { scores: Record<string, number> };
     };
     const scores = saved.tutor.scores;

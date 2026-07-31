@@ -29,7 +29,7 @@ export interface HintWord {
   /** Print index where the word starts (keys the reveal progress). */
   readonly wordStart: number;
   /** The word's translation units, in order. */
-  readonly units: ReadonlyArray<HintUnit>;
+  readonly units: readonly HintUnit[];
 }
 
 /**
@@ -110,7 +110,7 @@ export function nextHintFor(state: TutorState): PendingHint | null {
   if (units === undefined) return null; // untranslatable: nothing to hint
   const unitIndex = units.findIndex((u) => u.start <= caret && caret < u.end);
   if (unitIndex === -1) return null; // typed past the end of the text
-  const unit = units[unitIndex] as (typeof units)[number];
+  const unit = units[unitIndex]!;
   if (unit.skillIds.length === 0) return null; // a space: no sign to hint
   if (p.hintedUnits.has(unitIndex)) return null; // already revealed
   if (!p.hintedUnits.isEmpty()) return { unitIndex, delayMs: HINT_REVEAL_COOLDOWN_MS };

@@ -16,7 +16,7 @@ export function isSkillLearnt(state: TutorState, skillId: string): boolean {
 }
 
 /** All learnt skills, in curriculum order. */
-export function learntSkills(state: TutorState): ReadonlyArray<Skill> {
+export function learntSkills(state: TutorState): readonly Skill[] {
   return skills.filter((s) => isSkillLearnt(state, s.id));
 }
 
@@ -25,7 +25,7 @@ export function learntSkills(state: TutorState): ReadonlyArray<Skill> {
  * currently being taught. A learnt skill that drops back below the
  * threshold rejoins this pool automatically.
  */
-export function activeSkills(state: TutorState): ReadonlyArray<Skill> {
+export function activeSkills(state: TutorState): readonly Skill[] {
   const active: Skill[] = [];
   for (const s of skills) {
     if (!isSkillLearnt(state, s.id)) {

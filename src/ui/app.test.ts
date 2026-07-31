@@ -79,7 +79,7 @@ function chordUp(store: TutorStore, code: string): void {
 }
 
 function type(store: TutorStore, value: string): void {
-  (store.handlers as AppHandlers).onInput({
+  (store.handlers).onInput({
     currentTarget: { value },
     nativeEvent: { inputType: 'insertText' },
   } as unknown as Parameters<AppHandlers['onInput']>[0]);

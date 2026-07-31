@@ -25,7 +25,7 @@ export function drawSeed(rng: Rng): number {
 }
 
 /** Uniform random pick. Returns undefined only for an empty list. */
-export function choice<T>(items: ReadonlyArray<T>, rng: Rng): T | undefined {
+export function choice<T>(items: readonly T[], rng: Rng): T | undefined {
   if (items.length === 0) return undefined;
   return items[Math.floor(rng() * items.length)];
 }

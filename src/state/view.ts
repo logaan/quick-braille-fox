@@ -82,11 +82,11 @@ export interface AppViewModel {
    * each sign's countdown only starts once the caret reaches it).
    */
   readonly hint: string | null;
-  readonly activeSkills: ReadonlyArray<ActiveSkillView>;
+  readonly activeSkills: readonly ActiveSkillView[];
   readonly learntCount: number;
   readonly totalSkills: number;
   readonly promptsCompleted: number;
-  readonly groups: ReadonlyArray<GroupProgressView>;
+  readonly groups: readonly GroupProgressView[];
   readonly confirmingReset: boolean;
   /** What the user has typed into the reset confirmation field so far. */
   readonly resetConfirmText: string;
@@ -102,23 +102,27 @@ export interface AppViewModel {
   readonly promptKey: number;
 }
 
-/** Event handlers the store exposes for the UI to attach to DOM events. */
+/**
+ * Event handlers the store exposes for the UI to attach to DOM events.
+ * Function properties, not methods: the store implements them as arrows,
+ * and the UI passes them around detached (`this` never matters).
+ */
 export interface AppHandlers {
   /** Wire to the drill input's change/input event. */
-  onInput(event: ChangeEvent<HTMLInputElement>): void;
+  readonly onInput: (event: ChangeEvent<HTMLInputElement>) => void;
   /** Wire to the drill input's keydown (chord press / backspace / swallow). */
-  onDrillKeyDown(event: KeyboardEvent<HTMLInputElement>): void;
+  readonly onDrillKeyDown: (event: KeyboardEvent<HTMLInputElement>) => void;
   /** Wire to the drill input's keyup (chord commit). */
-  onDrillKeyUp(event: KeyboardEvent<HTMLInputElement>): void;
+  readonly onDrillKeyUp: (event: KeyboardEvent<HTMLInputElement>) => void;
   /** Toggle between VoiceOver braille screen input and QWERTY chording. */
-  onInputModeToggle(): void;
+  readonly onInputModeToggle: () => void;
   /** Dismiss the fox result screen and move to the next prompt. */
-  onFoxContinue(): void;
-  onResetRequest(): void;
-  onResetConfirm(): void;
-  onResetCancel(): void;
+  readonly onFoxContinue: () => void;
+  readonly onResetRequest: () => void;
+  readonly onResetConfirm: () => void;
+  readonly onResetCancel: () => void;
   /** Wire to the reset confirmation field's change event. */
-  onResetTextChange(value: string): void;
+  readonly onResetTextChange: (value: string) => void;
 }
 
 /** Typing this word (case/space insensitive) unlocks the erase button. */
@@ -164,7 +168,7 @@ export interface ViewSources {
   /** Identity of the current prompt instance (store-owned epoch). */
   readonly promptKey: number;
   /** Cells committed by chording this prompt (empty in VoiceOver mode). */
-  readonly cellBuffer: ReadonlyArray<Cell>;
+  readonly cellBuffer: readonly Cell[];
 }
 
 /**

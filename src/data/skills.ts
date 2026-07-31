@@ -44,7 +44,7 @@ export interface Skill {
   /** The print form: "a", "7", ",", "and", "ing", "about". */
   readonly print: string;
   /** Braille cells; each cell is an array of dot numbers (1-6), ascending. */
-  readonly dots: ReadonlyArray<ReadonlyArray<number>>;
+  readonly dots: readonly (readonly number[])[];
   /** Same cells as a Unicode braille string (U+2800 block). */
   readonly unicode: string;
   readonly group: SkillGroup;
@@ -53,4 +53,4 @@ export interface Skill {
 }
 
 /** All skills in curriculum order (sorted by `order`). */
-export const skills: ReadonlyArray<Skill> = skillsJson as ReadonlyArray<Skill>;
+export const skills: readonly Skill[] = skillsJson as readonly Skill[];

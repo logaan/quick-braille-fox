@@ -3,7 +3,7 @@
 
 import { Map, Set } from 'immutable';
 import type { TranslationUnit } from './braille';
-import { translate, tryTranslate } from './braille';
+import { tryTranslate } from './braille';
 import { generatePromptText, pickTarget } from './prompts';
 import { scoreFor } from './progress';
 import { FOX_SENTENCE } from './fox';
@@ -23,7 +23,7 @@ import {
 } from './types';
 
 /** Start a fresh session. Pass a seed (e.g. Date.now()) for variety. */
-export function startSession(seed: number = 1): TutorState {
+export function startSession(seed = 1): TutorState {
   return nextPrompt(makeTutorState({ seed: seed >>> 0 || 1 }));
 }
 
@@ -55,7 +55,7 @@ function addScore(state: TutorState, skillId: string, delta: number): TutorState
 }
 
 /** The prompt text's translation units ([] if it is not translatable). */
-function promptUnits(p: Prompt): ReadonlyArray<TranslationUnit> {
+function promptUnits(p: Prompt): readonly TranslationUnit[] {
   return tryTranslate(p.text)?.units ?? [];
 }
 
@@ -65,10 +65,10 @@ function promptUnits(p: Prompt): ReadonlyArray<TranslationUnit> {
  * charges the word ahead, matching what the hint shows), else the last one
  * (typed past the end of the text). Null when no unit carries skills.
  */
-function mistakeUnitIndex(units: ReadonlyArray<TranslationUnit>, caret: number): number | null {
+function mistakeUnitIndex(units: readonly TranslationUnit[], caret: number): number | null {
   let last: number | null = null;
   for (let i = 0; i < units.length; i++) {
-    const u = units[i] as TranslationUnit;
+    const u = units[i]!;
     if (u.skillIds.length === 0) continue;
     if (caret < u.end) return i;
     last = i;
@@ -102,14 +102,14 @@ function unitAwardKey(u: TranslationUnit): string {
 function awardFinishedUnits(
   state: TutorState,
   p: Prompt,
-  units: ReadonlyArray<TranslationUnit>,
+  units: readonly TranslationUnit[],
   caret: number,
   fixedAward?: number,
 ): { state: TutorState; prompt: Prompt } {
   let next = state;
   let awarded = p.awardedUnits;
   for (let i = 0; i < units.length; i++) {
-    const u = units[i] as TranslationUnit;
+    const u = units[i]!;
     if (u.end > caret) break;
     if (u.skillIds.length === 0) continue;
     const key = unitAwardKey(u);
@@ -157,7 +157,7 @@ function awardFinishedUnits(
 export function keystroke(
   state: TutorState,
   typed: string,
-  typedUnits?: ReadonlyArray<TranslationUnit>,
+  typedUnits?: readonly TranslationUnit[],
 ): TutorState {
   const p = state.prompt;
   if (!p || p.completed || typed === p.typed) return state;
@@ -214,7 +214,7 @@ export function keystroke(
     prompt = prompt.set('unitMistakes', prompt.unitMistakes.set(idx, mistakes));
     if (mistakes >= MISTAKES_BEFORE_PENALTY) {
       prompt = prompt.set('hintedUnits', prompt.hintedUnits.add(idx));
-      for (const id of (units[idx] as TranslationUnit).skillIds) {
+      for (const id of (units[idx]!).skillIds) {
         next = addScore(next, id, -MISTAKE_PENALTY);
       }
     }
@@ -247,14 +247,14 @@ export interface SerializedTutorState {
   version: 1;
   seed: number;
   promptCounter: number;
-  scores: { [skillId: string]: number };
+  scores: Record<string, number>;
   prompt: {
     text: string;
     targetSkillId: string | null;
     /** Wire name predates the "fox challenge" naming; kept for stored data. */
     isQbf: boolean;
     typed: string;
-    unitMistakes: { [unitIndex: string]: number };
+    unitMistakes: Record<string, number>;
     /** Award keys; entries from older saves are positional unit indexes,
      * migrated onto the canonical translation on read. */
     awardedUnits: (string | number)[];
@@ -336,7 +336,7 @@ function unitIndexesFrom(value: unknown): Set<number> {
 function awardKeysFrom(value: unknown, text: string): Set<string> {
   let keys = Set<string>();
   if (!Array.isArray(value)) return keys;
-  let units: ReadonlyArray<TranslationUnit> | undefined;
+  let units: readonly TranslationUnit[] | undefined;
   for (const entry of value) {
     if (typeof entry === 'string') {
       keys = keys.add(entry);

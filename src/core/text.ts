@@ -10,5 +10,5 @@ export function commonPrefixLength(a: string, b: string): number {
 
 /** Uppercase the first character, leaving the rest untouched. */
 export function capitalizeFirst(s: string): string {
-  return s.length === 0 ? s : (s[0] as string).toUpperCase() + s.slice(1);
+  return s.length === 0 ? s : (s[0]!).toUpperCase() + s.slice(1);
 }
