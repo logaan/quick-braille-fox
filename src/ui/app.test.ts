@@ -57,6 +57,26 @@ function storeAt(promptCounter: number): TutorStore {
   return createTutorStore({ storage, seed: 1 });
 }
 
+function chordKey(code: string): Parameters<AppHandlers['onDrillKeyDown']>[0] {
+  return {
+    code,
+    key: '',
+    repeat: false,
+    ctrlKey: false,
+    metaKey: false,
+    altKey: false,
+    preventDefault: () => {},
+  } as unknown as Parameters<AppHandlers['onDrillKeyDown']>[0];
+}
+
+function chordDown(store: TutorStore, code: string): void {
+  store.handlers.onDrillKeyDown(chordKey(code));
+}
+
+function chordUp(store: TutorStore, code: string): void {
+  store.handlers.onDrillKeyUp(chordKey(code));
+}
+
 function type(store: TutorStore, value: string): void {
   (store.handlers as AppHandlers).onInput({
     currentTarget: { value },
@@ -123,5 +143,28 @@ describe('App rendering', () => {
     expect(html).toContain('Run failed');
     expect(html).toContain('Continue');
     expect(html).not.toContain('id="drill-input"');
+  });
+
+  it('shows the sign that was due on the qbf failure screen', () => {
+    const store = qbfReadyStore();
+    type(store, 'X'); // expected the capital "T" of "The"
+    const html = render(store);
+    expect(html).toContain('Expected');
+    expect(html).toContain('⠠'); // capital indicator
+    expect(html).toContain('⠮'); // "the"
+    expect(html).toContain('>The</span>'); // what the sign stands for
+    // VoiceOver input commits print, not cells: nothing to echo back.
+    expect(html).not.toContain('You typed');
+  });
+
+  it('also shows the chorded cells that broke a run in chord mode', () => {
+    const store = qbfReadyStore();
+    store.handlers.onInputModeToggle(); // chord mode
+    for (const code of ['KeyF', 'KeyS', 'KeyK']) chordDown(store, code); // ⠕ = "o"
+    for (const code of ['KeyF', 'KeyS', 'KeyK']) chordUp(store, code);
+    const html = render(store);
+    expect(html).toContain('Run failed');
+    expect(html).toContain('You typed');
+    expect(html).toContain('⠕');
   });
 });

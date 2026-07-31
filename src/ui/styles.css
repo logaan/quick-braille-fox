@@ -576,6 +576,39 @@ input:focus-visible {
   color: var(--dim);
 }
 
+/* Why the run broke, in cells: the sign that was owed, and — in chord mode,
+   where the learner's own cells are known — the ones actually entered. */
+.qbf-failure {
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+  margin: 0.2rem 0 0.1rem;
+}
+
+.qbf-failure-row {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  flex-wrap: wrap;
+}
+
+.qbf-failure-label {
+  flex: 0 0 auto;
+  min-width: 5.5rem;
+  color: var(--dim);
+  font-size: 0.9rem;
+}
+
+.qbf-failure-print {
+  color: var(--dim);
+  font-size: 0.95rem;
+}
+
+.cells-wrong .cell {
+  border-color: var(--wrong);
+  color: var(--wrong);
+}
+
 /* --- Skill panel ---------------------------------------------------------- */
 
 /* "Learning now" and "Overall" are separate cards, stacked under the drill. */

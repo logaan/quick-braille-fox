@@ -6,6 +6,7 @@ export type {
   AppHandlers,
   AppViewModel,
   GroupProgressView,
+  QbfFailureView,
 } from './view';
 export { RESET_CONFIRM_WORD, matchesResetWord } from './view';
 export type { BestQbf, StorageLike } from './persistence';

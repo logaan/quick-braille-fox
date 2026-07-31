@@ -8,9 +8,9 @@
 
 import { createElement as e, type ReactElement } from 'react';
 import type { QbfResult } from '../core';
-import type { AppHandlers, AppViewModel } from '../state';
+import type { AppHandlers, AppViewModel, QbfFailureView } from '../state';
 import { BrailleCells } from './braille';
-import { formatPercent } from './labels';
+import { formatPercent, signLabel } from './labels';
 
 function commonPrefixLength(a: string, b: string): number {
   const n = Math.min(a.length, b.length);
@@ -47,13 +47,43 @@ function PromptText(props: { readonly text: string; readonly typed: string }): R
   );
 }
 
+/**
+ * The braille a failed run came down to: the sign that was owed, and — when
+ * the learner chorded it themselves — the cells they actually entered. Print
+ * alone does not settle "but I typed that right"; two rows of cells do.
+ */
+function QbfFailureDetail(props: { readonly failure: QbfFailureView }): ReactElement {
+  const { failure } = props;
+  const rows: ReactElement[] = [
+    e(
+      'div',
+      { className: 'qbf-failure-row', key: 'expected' },
+      e('span', { className: 'qbf-failure-label' }, 'Expected'),
+      e(BrailleCells, { unicode: failure.expected, size: 'md' }),
+      e('span', { className: 'qbf-failure-print' }, signLabel(failure.expectedPrint)),
+    ),
+  ];
+  if (failure.typed !== null) {
+    rows.push(
+      e(
+        'div',
+        { className: 'qbf-failure-row', key: 'typed' },
+        e('span', { className: 'qbf-failure-label' }, 'You typed'),
+        e(BrailleCells, { unicode: failure.typed, size: 'md', className: 'cells-wrong' }),
+      ),
+    );
+  }
+  return e('div', { className: 'qbf-failure' }, rows);
+}
+
 function QbfResultPanel(props: {
   readonly result: QbfResult;
+  readonly failure: QbfFailureView | null;
   readonly minCells: number;
   readonly interval: number;
   readonly onContinue: () => void;
 }): ReactElement {
-  const { result, minCells, interval, onContinue } = props;
+  const { result, failure, minCells, interval, onContinue } = props;
   let outcome: ReactElement;
   let detail: string;
   if (result.kind === 'failed') {
@@ -81,6 +111,7 @@ function QbfResultPanel(props: {
     { className: 'qbf-result' },
     outcome,
     e('p', { className: 'qbf-detail' }, detail),
+    failure === null ? null : e(QbfFailureDetail, { failure }),
     e(
       'button',
       { className: 'btn btn-primary', autoFocus: true, onClick: onContinue },
@@ -191,6 +222,7 @@ export function Drill(props: DrillProps): ReactElement {
             ? null
             : e(QbfResultPanel, {
                 result: vm.qbfResult,
+                failure: vm.qbfFailure,
                 minCells: vm.qbfMinCells,
                 interval: vm.qbfInterval,
                 onContinue: on.onQbfContinue,

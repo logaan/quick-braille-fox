@@ -367,6 +367,21 @@ U+2800 glyph, which never matches prompt text, so a mistake stays visible.
   `{ kind: 'failed' }`. The state layer counts cells typed (input insertion
   events) and reports the number; a run that hit a wrong character is
   already failed by `keystroke` without consulting this.
+- `expectedSignAt(text, typed)` — the whole translation unit due where
+  `typed` stopped agreeing with `text`, as `{ unicode, print }`. Whole units,
+  so a contraction is named as itself (⠪ "ow", not ⠕ then ⠺); a caret on a
+  space yields the blank cell rather than the word after it.
+- `divergentCells(buffer, text)` — the tail of a chord-mode cell buffer that
+  `text` no longer accepts. Found by re-deriving print from growing prefixes
+  of the buffer, *not* by diffing against the canonical translation: chording
+  a word out letter by letter is correct print at a higher cell cost, which
+  the challenge grades separately rather than failing.
+
+Together these drive the failure screen (`AppViewModel.qbfFailure`), which
+shows the sign that was owed and — in chord mode only — the cells actually
+entered. VoiceOver braille screen input hands the app print rather than the
+cells behind it, so there "what you typed" would only echo the app's own
+translation back as if it were the learner's input; that row is omitted.
 
 ### Determinism & persistence
 
@@ -386,8 +401,10 @@ straight to core transition functions and call `notify()`):
 
 - `viewModel(): AppViewModel` — a plain-data snapshot of everything the UI
   renders (prompt/typed/diverged, hint unicode, active skills with scores,
-  per-group progress, best qbf, reset-confirm flag, …). Built
-  by `view.ts` from the core's read-only views.
+  per-group progress, best qbf, qbf failure detail, reset-confirm flag, …).
+  Built by `view.ts` from the core's read-only views. The failure detail also
+  draws on the store's chord-mode `cellBuffer`, which is the only record of
+  the cells a learner actually pressed.
 - `handlers: AppHandlers` — a stable object of DOM event handlers the UI
   wires up: `onInput`, `onQbfContinue`, `onResetRequest/Confirm/Cancel`.
 - `subscribe(listener)` — `main.ts` subscribes and re-renders the React

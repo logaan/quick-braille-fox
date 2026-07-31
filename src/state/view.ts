@@ -3,13 +3,16 @@
 // render functions of these props; the dependency direction is ui -> state.
 
 import type { ChangeEvent, KeyboardEvent } from 'react';
-import type { QbfResult, TutorState } from '../core';
+import type { Cell, QbfResult, TutorState } from '../core';
 import {
   LEARNT_THRESHOLD,
   QBF_AWARD,
   QBF_INTERVAL,
   QBF_MIN_CELLS,
   activeSkills,
+  divergentCells,
+  dotsToUnicode,
+  expectedSignAt,
   hintWordForPrompt,
   isSkillLearnt,
   learntSkills,
@@ -35,6 +38,25 @@ export interface GroupProgressView {
   readonly total: number;
 }
 
+/**
+ * Why a qbf run ended, in braille. Shown on the failure screen: "I was sure I
+ * typed that right" is the usual reaction, and the print prompt alone does not
+ * settle it.
+ */
+export interface QbfFailureView {
+  /** Cells the learner owed where the run broke (U+2800). */
+  readonly expected: string;
+  /** The print those cells stand for: "ow", "The", " " for a space. */
+  readonly expectedPrint: string;
+  /**
+   * Cells the learner actually entered there (U+2800), or null when there is
+   * nothing honest to show. VoiceOver braille screen input hands us print, not
+   * the cells behind it, so in that mode showing "what you typed" as braille
+   * would only be echoing our own translation back as if it were their input.
+   */
+  readonly typed: string | null;
+}
+
 /** Everything the UI needs to render, as plain data. */
 export interface AppViewModel {
   readonly promptText: string;
@@ -43,6 +65,8 @@ export interface AppViewModel {
   readonly isQbf: boolean;
   /** Non-null while the qbf result screen should be shown. */
   readonly qbfResult: QbfResult | null;
+  /** Non-null when that result screen is a failure it can explain. */
+  readonly qbfFailure: QbfFailureView | null;
   readonly bestQbf: BestQbf | null;
   readonly qbfMinCells: number;
   /** Prompts between qbf challenges, for the on-screen rules. */
@@ -138,6 +162,8 @@ export interface ViewSources {
   readonly voiceOverInput: boolean;
   /** Identity of the current prompt instance (store-owned epoch). */
   readonly promptKey: number;
+  /** Cells committed by chording this prompt (empty in VoiceOver mode). */
+  readonly cellBuffer: ReadonlyArray<Cell>;
 }
 
 /**
@@ -160,6 +186,27 @@ function hintText(src: ViewSources): string | null {
   return text === '' ? null : text;
 }
 
+/**
+ * The braille behind a failed run, or null when there is none to give: any
+ * prompt but a qbf one, a run still in progress, or a "failure" recorded for
+ * an impossible cell count rather than a mistake (nothing diverged, so there
+ * is no sign to point at).
+ */
+function qbfFailureView(src: ViewSources): QbfFailureView | null {
+  const p = src.tutor.prompt;
+  if (p === null || !p.isQbf || !p.completed || !p.failed) return null;
+  const expected = expectedSignAt(p.text, p.typed);
+  if (expected === null) return null;
+  const typed = src.voiceOverInput
+    ? ''
+    : dotsToUnicode(divergentCells(src.cellBuffer, p.text));
+  return {
+    expected: expected.unicode,
+    expectedPrint: expected.print,
+    typed: typed === '' ? null : typed,
+  };
+}
+
 export function buildViewModel(src: ViewSources): AppViewModel {
   const { tutor } = src;
   const p = tutor.prompt;
@@ -169,6 +216,7 @@ export function buildViewModel(src: ViewSources): AppViewModel {
     diverged: p?.diverged ?? false,
     isQbf: p?.isQbf ?? false,
     qbfResult: p !== null && p.isQbf && p.completed ? src.lastQbf : null,
+    qbfFailure: qbfFailureView(src),
     bestQbf: src.bestQbf,
     qbfMinCells: QBF_MIN_CELLS,
     qbfInterval: QBF_INTERVAL,

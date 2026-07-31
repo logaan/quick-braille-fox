@@ -16,8 +16,14 @@ export { WORDS } from './corpus';
 export type { BackTranslateOptions } from './backtranslate';
 export { backTranslateBuffer, backTranslateWord } from './backtranslate';
 
-export type { QbfResult } from './qbf';
-export { QBF_MIN_CELLS, QBF_SENTENCE, qbfResult } from './qbf';
+export type { QbfResult, QbfSign } from './qbf';
+export {
+  QBF_MIN_CELLS,
+  QBF_SENTENCE,
+  divergentCells,
+  expectedSignAt,
+  qbfResult,
+} from './qbf';
 
 export type { Prompt, PromptProps, TutorState, TutorStateProps } from './types';
 export {

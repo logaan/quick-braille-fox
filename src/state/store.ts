@@ -153,6 +153,7 @@ export class TutorStore {
       resetConfirmText: this.resetConfirmText,
       voiceOverInput: this.voiceOverInput,
       promptKey: this.promptEpoch,
+      cellBuffer: this.cellBuffer,
     });
   }
 

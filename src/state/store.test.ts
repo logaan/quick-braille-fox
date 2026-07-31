@@ -439,6 +439,37 @@ describe('qbf challenge', () => {
     expect(store.viewModel().isQbf).toBe(false);
   });
 
+  it('explains a failure with the sign that was due', () => {
+    const store = createTutorStore({ storage: qbfReadyStorage(), seed: 1 });
+    typeText(store, 'The quick brot'); // "ow" was due
+    expect(store.viewModel().qbfFailure).toEqual({
+      expected: '⠪',
+      expectedPrint: 'ow',
+      typed: null, // VoiceOver input hands us print, not the cells behind it
+    });
+  });
+
+  it('offers no failure detail while a run is still going', () => {
+    const store = createTutorStore({ storage: qbfReadyStorage(), seed: 1 });
+    typeText(store, 'The qu');
+    expect(store.viewModel().qbfFailure).toBeNull();
+  });
+
+  it('offers no failure detail after a clean run', () => {
+    const store = createTutorStore({ storage: qbfReadyStorage(), seed: 1 });
+    typeInChunks(store, QBF_SENTENCE, QBF_MIN_CELLS);
+    expect(store.viewModel().qbfResult).toEqual({ kind: 'crown' });
+    expect(store.viewModel().qbfFailure).toBeNull();
+  });
+
+  it('clears the failure detail on continuing to the next prompt', () => {
+    const store = createTutorStore({ storage: qbfReadyStorage(), seed: 1 });
+    insert(store, 'X');
+    expect(store.viewModel().qbfFailure).not.toBeNull();
+    store.handlers.onQbfContinue();
+    expect(store.viewModel().qbfFailure).toBeNull();
+  });
+
   it('never replaces a better best result with a worse one', () => {
     const storage = qbfReadyStorage();
     const store = createTutorStore({ storage, seed: 1 });
@@ -735,5 +766,31 @@ describe('chord input', () => {
     chordMode(store);
     chordCell(store, [1, 3, 5]); // ⠕ = "o", expected the capital "T"
     expect(store.viewModel().qbfResult).toEqual({ kind: 'failed' });
+  });
+
+  it('shows both the sign that was due and the cell actually chorded', () => {
+    const store = createTutorStore({ storage: qbfReadyStorage(), seed: 1 });
+    chordMode(store);
+    chordCell(store, [1, 3, 5]); // ⠕ = "o", expected ⠠⠮ for "The"
+    expect(store.viewModel().qbfFailure).toEqual({
+      expected: '⠠⠮',
+      expectedPrint: 'The',
+      typed: '⠕',
+    });
+  });
+
+  it('blames only the chord that broke a run, not the cells before it', () => {
+    const store = createTutorStore({ storage: qbfReadyStorage(), seed: 1 });
+    chordMode(store);
+    chordText(store, 'The quick ');
+    // Spell "brown" out: correct print, more cells, no failure yet.
+    for (const d of [[1, 2], [1, 2, 3, 5], [1, 3, 5]]) chordCell(store, d); // b r o
+    expect(store.viewModel().qbfFailure).toBeNull();
+    chordCell(store, [2, 3, 4, 5]); // ⠞ — "brot", diverged at last
+    expect(store.viewModel().qbfFailure).toEqual({
+      expected: '⠪',
+      expectedPrint: 'ow',
+      typed: '⠞',
+    });
   });
 });
