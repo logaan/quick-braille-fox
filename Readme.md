@@ -37,6 +37,22 @@ Your insertion count is compared with the 36-cell grade 2 minimum —
 committing contractions means fewer insertions — and a perfect minimum-cell
 run earns a crown. Progress persists in the browser (localStorage).
 
+## Braille displays and screen readers
+
+Hints and cell displays are literal braille characters (the U+2800 block) —
+a connected braille display shows exactly the dots on screen, whatever
+output table you use. Your grade-2/contracted setting compresses the
+surrounding text but cannot alter the hint cells, because the liblouis
+tables VoiceOver and NVDA ship pass every braille-pattern character through
+dot for dot. (JAWS uses its own translator by default; passthrough there is
+expected but not yet verified — see `docs/braille-display-testing.md` for
+the manual test matrix.)
+
+The drill keeps a persistent status line directly under the input — current
+position, or where typing went wrong — because live-region messages tend to
+flash or vanish on braille displays. A "Terse" toggle in the settings
+shortens announcements for practiced users.
+
 ## Commands
 
 Every common task is a script:

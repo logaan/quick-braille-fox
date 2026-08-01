@@ -1,11 +1,11 @@
 // Persistence: a versioned localStorage envelope around the core's
 // serialize()/deserialize(), plus the state-layer extras (best fox result,
-// input mode).
+// input mode, announcement verbosity).
 
 import type { FoxResult, SerializedTutorState, TutorState } from '../core';
 import { deserialize, serialize } from '../core';
-import type { InputMode } from './modes';
-import { DEFAULT_INPUT_MODE, isInputMode } from './modes';
+import type { InputMode, Verbosity } from './modes';
+import { DEFAULT_INPUT_MODE, DEFAULT_VERBOSITY, isInputMode, isVerbosity } from './modes';
 
 // Predates the "fox challenge" naming ("qbf" era); kept so progress survives.
 export const STORAGE_KEY = 'qbf-progress-v1';
@@ -25,6 +25,8 @@ export interface PersistedData {
   readonly bestFox: BestFox | null;
   /** Which input mode the drill is in; see InputMode. */
   readonly inputMode: InputMode;
+  /** How much the announcements say; see Verbosity. */
+  readonly verbosity: Verbosity;
 }
 
 interface Envelope {
@@ -35,6 +37,8 @@ interface Envelope {
   /** Optional (added later); absent/garbage loads as DEFAULT_INPUT_MODE,
    * keeping the original VoiceOver behaviour for existing envelopes. */
   inputMode?: InputMode;
+  /** Optional (added later); absent/garbage loads as DEFAULT_VERBOSITY. */
+  verbosity?: Verbosity;
   /**
    * The pre-rename spelling of the same setting: true = 'voiceover',
    * false = 'emulated'. Only ever read, never written — envelopes are
@@ -86,6 +90,7 @@ export function loadProgress(storage: StorageLike): PersistedData | null {
       tutor,
       bestFox: coerceBestFox(env.bestQbf),
       inputMode: coerceInputMode(env),
+      verbosity: isVerbosity(env.verbosity) ? env.verbosity : DEFAULT_VERBOSITY,
     };
   } catch {
     return null;
@@ -98,6 +103,7 @@ export function saveProgress(storage: StorageLike, data: PersistedData): void {
     tutor: serialize(data.tutor),
     bestQbf: data.bestFox,
     inputMode: data.inputMode,
+    verbosity: data.verbosity,
   };
   try {
     storage.setItem(STORAGE_KEY, JSON.stringify(envelope));

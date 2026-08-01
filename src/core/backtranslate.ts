@@ -9,10 +9,11 @@
 // Two strategies combine:
 //   - Against the expected prompt word (the normal case), we match the buffer
 //     cell-by-cell to translate(expected).cells and emit the corresponding
-//     print span. This makes backTranslateBuffer(translate(text).cells, text)
-//     === text hold for every promptable text (the round-trip property), and
-//     a correctly-typed prefix shows the matching print prefix — no phantom
-//     mistakes.
+//     print span. This makes backTranslateBuffer(translate(text).cells, text,
+//     true) === text hold for every promptable text (the round-trip property,
+//     stated over closed buffers — a trailing whole-word sign only reads as
+//     the word once the word is closed), and a correctly-typed prefix shows
+//     the matching print prefix — no phantom mistakes.
 //   - The diverged tail (a wrong chord), text with no expected context, and
 //     extra words are decoded by a greedy context-free decoder that mirrors
 //     translate()'s rules well enough for error display. It never throws;
@@ -362,7 +363,23 @@ function wordPieces(cells: readonly Cell[], opts: BackTranslateOptions = {}): Pi
     }
   }
   const tail = cells.slice(consumed);
-  if (tail.length === 0) return matched;
+  if (tail.length === 0) {
+    // The whole expected word matched while the word is still open. When the
+    // buffer is a whole-word sign that doubles as ordinary spelling (the "can"
+    // wordsign is the letter-c cell), reading it as the word jumps ahead of a
+    // learner spelling it out: their next chords would land past the word — or,
+    // at the end of a prompt, on the next prompt. Standalone readings only
+    // exist once the word is closed (decodeAfterCapsPieces applies the same
+    // rule), so while a longer spelling could still reach the expected print,
+    // keep the context-free reading — a prefix. A sign with no such prefix
+    // reading (⠯ "and" is no letter) still reads as the word straight away.
+    if (!final && matched.length > 0 && pieceText(matched) === expected) {
+      const contextFree = decodeWordStartPieces(cells, final);
+      const text = pieceText(contextFree);
+      if (text !== expected && expected.startsWith(text)) return contextFree;
+    }
+    return matched;
+  }
   // The buffer still matches the expected prefix but ends mid-sign: pending,
   // emit nothing extra while the word is open (avoids a phantom mistake).
   if (!final && m === cells.length) return matched;
@@ -423,12 +440,17 @@ export interface AttributedBackTranslation {
  * Decode a whole prompt buffer (blank cells mark spaces) against the prompt
  * text, reporting the signs actually chorded alongside the derived print.
  * Splits the buffer on blank cells and the text on spaces, pairs them up
- * positionally, decodes committed words as final and the last (open) word as
- * non-final, and joins with spaces.
+ * positionally, decodes committed words as final and the last word as
+ * non-final (still open under the caret), and joins with spaces. Pass
+ * `closed` when the buffer is known to be committed input — the last word
+ * then decodes as final too, which is what gives a trailing whole-word sign
+ * its standalone reading (the round-trip property is stated over closed
+ * buffers: backTranslateBuffer(translate(text).cells, text, true) === text).
  */
 export function backTranslateBufferAttributed(
   cells: readonly Cell[],
   expectedText: string,
+  closed = false,
 ): AttributedBackTranslation {
   const groups: Cell[][] = [[]];
   for (const cell of cells) {
@@ -444,7 +466,7 @@ export function backTranslateBufferAttributed(
       // The blank cell between groups, mirroring translate()'s space units.
       units.push({ start: offset - 1, end: offset, cells: [[]], skillIds: [] });
     }
-    const final = i < groups.length - 1;
+    const final = closed || i < groups.length - 1;
     const pieces = wordPieces(group, { expected: words[i], final });
     let pos = offset;
     for (const piece of pieces) {
@@ -461,9 +483,13 @@ export function backTranslateBufferAttributed(
 /**
  * Decode a whole prompt buffer (blank cells mark spaces) against the prompt
  * text. Splits the buffer on blank cells and the text on spaces, pairs them up
- * positionally, decodes committed words as final and the last (open) word as
- * non-final, and joins with spaces.
+ * positionally, decodes committed words as final and the last word per
+ * `closed` (see backTranslateBufferAttributed), and joins with spaces.
  */
-export function backTranslateBuffer(cells: readonly Cell[], expectedText: string): string {
-  return backTranslateBufferAttributed(cells, expectedText).text;
+export function backTranslateBuffer(
+  cells: readonly Cell[],
+  expectedText: string,
+  closed = false,
+): string {
+  return backTranslateBufferAttributed(cells, expectedText, closed).text;
 }

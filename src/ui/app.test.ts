@@ -129,24 +129,56 @@ describe('App rendering', () => {
     expect(html).toContain(`Prompt 2: ${store.viewModel().promptText}`);
   });
 
-  it('announces a mistake via an alert region', () => {
+  it('announces a mistake via an alert region, wrong input first', () => {
     const store = drillStore();
     const text = store.viewModel().promptText;
-    type(store, text.startsWith('z') ? 'q' : 'z');
+    const wrong = text.startsWith('z') ? 'q' : 'z';
+    type(store, wrong);
     const html = render(store);
     expect(html).toContain('role="alert"');
-    expect(html).toContain('Mistake at character 1');
+    expect(html).toContain(`wrong at 1: ${wrong} — backspace to fix.`);
   });
 
-  it('announces the fox challenge and its stakes', () => {
-    const store = foxReadyStore();
-    expect(render(store)).toContain('fox challenge — type the sentence exactly');
+  it('announces the fox challenge, sentence first, stakes after', () => {
+    const html = render(foxReadyStore());
+    expect(html).toContain(`fox: ${FOX_SENTENCE}`);
+    expect(html).toContain('type it exactly');
   });
 
-  it('gives the hint a spoken dots alternative', () => {
+  it('always renders a status line straight after the drill input', () => {
+    const store = drillStore();
+    let html = render(store);
+    const len = store.viewModel().promptText.length;
+    expect(html).toContain(`ok 0/${len}`);
+    const inputAt = html.indexOf('id="drill-input"');
+    const statusAt = html.indexOf('drill-status');
+    expect(inputAt).toBeGreaterThan(-1);
+    expect(statusAt).toBeGreaterThan(inputAt);
+
+    const text = store.viewModel().promptText;
+    const wrong = text.startsWith('z') ? 'q' : 'z';
+    type(store, wrong);
+    html = render(store);
+    expect(html).toContain(`wrong at 1: ${wrong} — backspace`);
+  });
+
+  it('puts the drill before the settings controls in DOM order', () => {
+    const html = render(drillStore());
+    const drillAt = html.indexOf('id="drill-input"');
+    const controlsAt = html.indexOf('role="radiogroup"');
+    expect(drillAt).toBeGreaterThan(-1);
+    expect(controlsAt).toBeGreaterThan(drillAt);
+    expect(html.indexOf('aria-label="Quick Braille Fox"')).toBeLessThan(drillAt);
+  });
+
+  it('gives the hint a spoken dots alternative, after the cells', () => {
     const store = drillStore();
     vi.advanceTimersByTime(400);
-    expect(render(store)).toContain('Hint: dots ');
+    const html = render(store);
+    expect(html).toContain('hint: dots ');
+    const vm = store.viewModel();
+    const firstHintCell = [...(vm.hint ?? '')][0] ?? '';
+    expect(html.indexOf(firstHintCell)).toBeLessThan(html.indexOf('hint: dots '));
   });
 
   it('describes the chording keys while chord mode is on', () => {
@@ -157,12 +189,30 @@ describe('App rendering', () => {
     expect(html).toContain('aria-describedby="chord-help"');
   });
 
-  it('wires the fox result text to the Continue button', () => {
+  it('leads the fox result with a focusable outcome summary', () => {
     const store = foxReadyStore();
     type(store, 'X'); // a wrong first character fails the run instantly
     const html = render(store);
-    expect(html).toContain('aria-describedby="fox-result-text"');
-    expect(html).toContain('Run failed');
+    expect(html).toContain('fox-result-summary');
+    expect(html).toContain('tabindex="-1"');
+    expect(html).toContain('run failed at 1: expected The');
+    expect(html).not.toContain('aria-describedby="fox-result-text"');
+    expect(html).toContain('Run failed'); // the big visual outcome stays
+  });
+
+  it('shortens announcements and collapses fox rules in terse mode', () => {
+    const fox = foxReadyStore();
+    fox.handlers.onTerseToggle(true);
+    const foxHtml = render(fox);
+    expect(foxHtml).toContain(`fox: ${FOX_SENTENCE}`);
+    expect(foxHtml).not.toContain('type it exactly;');
+    expect(foxHtml).toContain('<details');
+
+    const drill = drillStore();
+    drill.handlers.onTerseToggle(true);
+    const html = render(drill);
+    expect(html).toContain(`2: ${drill.viewModel().promptText}`);
+    expect(html).not.toContain('Prompt 2:');
   });
 
   it('shows the actually-typed character where typing diverged', () => {

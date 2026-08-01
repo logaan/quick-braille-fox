@@ -23,8 +23,8 @@ import {
 } from '../core';
 import type { ChordState } from './chords';
 import { EMPTY_CHORD_STATE, chordKeyDown, chordKeyUp, isChordCode } from './chords';
-import type { InputMode } from './modes';
-import { DEFAULT_INPUT_MODE } from './modes';
+import type { InputMode, Verbosity } from './modes';
+import { DEFAULT_INPUT_MODE, DEFAULT_VERBOSITY } from './modes';
 import type { BestFox, StorageLike } from './persistence';
 import { clearProgress, loadProgress, saveProgress } from './persistence';
 import type { AppHandlers, AppViewModel } from './view';
@@ -58,6 +58,8 @@ export class TutorStore {
 
   /** Which input mode the drill is in; see InputMode. */
   private inputMode: InputMode = DEFAULT_INPUT_MODE;
+  /** How much the announcements say; see Verbosity. */
+  private verbosity: Verbosity = DEFAULT_VERBOSITY;
   /** Chord key state (chord mode only); not persisted. */
   private chordState: ChordState = EMPTY_CHORD_STATE;
   /** Committed braille cells for the current prompt (chord mode; blank = space). */
@@ -91,6 +93,7 @@ export class TutorStore {
     } else {
       this.bestFox = persisted.bestFox;
       this.inputMode = persisted.inputMode;
+      this.verbosity = persisted.verbosity;
       const p = persisted.tutor.prompt;
       // Resume an in-flight prompt as-is. Move on from a prompt saved after
       // completion (e.g. mid result screen). A half-typed fox restarts
@@ -110,6 +113,12 @@ export class TutorStore {
       onDrillKeyDown: (event) => this.handleKeyDown(event),
       onDrillKeyUp: (event) => this.handleKeyUp(event),
       onInputModeSelect: (mode) => this.selectInputMode(mode),
+      onTerseToggle: (terse) => {
+        const next: Verbosity = terse ? 'terse' : 'verbose';
+        if (next === this.verbosity) return;
+        this.verbosity = next;
+        this.changed();
+      },
       onFoxContinue: () => this.continueAfterFox(),
       onResetRequest: () => {
         this.confirmingReset = true;
@@ -162,6 +171,7 @@ export class TutorStore {
       confirmingReset: this.confirmingReset,
       resetConfirmText: this.resetConfirmText,
       inputMode: this.inputMode,
+      verbosity: this.verbosity,
       promptKey: this.promptEpoch,
       cellBuffer: this.cellBuffer,
     });
@@ -272,7 +282,19 @@ export class TutorStore {
     if (this.cellBuffer.length === 0) return; // ignore a leading space
     const candidate: Cell[] = [...this.cellBuffer, []];
     const derived = backTranslateBuffer(candidate, prompt.text);
-    if (stripUnexpectedTrailingSpaces(derived, prompt.text) !== derived) return; // artifact
+    const stripped = stripUnexpectedTrailingSpaces(derived, prompt.text);
+    if (stripped !== derived) {
+      // A trailing space the prompt has no room for. On a print-judged fox
+      // run it is also how a final whole-word sign gets its standalone
+      // reading (a wordsign only reads as the word once the word is closed),
+      // so a space that completes the sentence is accepted — it closes the
+      // word rather than adding braille, so it never counts as a cell.
+      // Anything else is an artifact and is dropped.
+      if (!(prompt.isFox && stripped === prompt.text)) return;
+      this.cellBuffer = candidate;
+      this.commitBuffer();
+      return;
+    }
     this.cellBuffer = candidate;
     if (prompt.isFox) this.foxCellsTyped += 1;
     this.commitBuffer();
@@ -297,7 +319,14 @@ export class TutorStore {
   private bufferInput(prompt: Prompt): KeystrokeInput {
     const cells = this.cellBuffer;
     if (!prompt.isFox) return { kind: 'cells', cells };
-    return { kind: 'print', typed: backTranslateBuffer(cells, prompt.text), cells };
+    // The stripping mirrors normalizeTypedValue's treatment of VoiceOver's
+    // trailing space: a word-closing space cell that completes the sentence
+    // must judge as the sentence, not as the sentence plus a space.
+    const typed = stripUnexpectedTrailingSpaces(
+      backTranslateBuffer(cells, prompt.text),
+      prompt.text,
+    );
+    return { kind: 'print', typed, cells };
   }
 
   /** Feed the cell buffer to the core and react to what it did. */
@@ -358,7 +387,17 @@ export class TutorStore {
       for (const spelling of [spellOutCells, textToCells]) {
         try {
           const cells = spelling(prompt.typed).map((c): Cell => [...c]);
-          if (backTranslateBuffer(cells, prompt.text) === prompt.typed && onCanon(cells)) {
+          // A candidate that is already the *whole* canon while the typed
+          // print is only a prefix (typed "st" of "still" guessed as the ⠌
+          // wordsign, whose open reading is "st") would resume into a dead
+          // end: the buffer says "done", so every continuation chord counts
+          // as a mistake. Restart instead.
+          const canonComplete = canonical !== '' && dotsToUnicode(cells) === canonical;
+          if (
+            !canonComplete &&
+            backTranslateBuffer(cells, prompt.text) === prompt.typed &&
+            onCanon(cells)
+          ) {
             this.cellBuffer = cells;
             return;
           }
@@ -501,6 +540,7 @@ export class TutorStore {
       tutor: this.tutor,
       bestFox: this.bestFox,
       inputMode: this.inputMode,
+      verbosity: this.verbosity,
     });
   }
 }
