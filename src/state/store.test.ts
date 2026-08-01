@@ -730,6 +730,17 @@ describe('input mode selection', () => {
     expect(second.viewModel().inputMode).toBe('emulated');
   });
 
+  it('persists terse announcements across store recreation', () => {
+    const storage = memoryStorage();
+    const first = createTutorStore({ storage, seed: 1 });
+    expect(first.viewModel().terse).toBe(false); // verbose by default
+    first.handlers.onTerseToggle(true);
+    expect(first.viewModel().terse).toBe(true);
+    first.flushSave();
+    const second = createTutorStore({ storage, seed: 1 });
+    expect(second.viewModel().terse).toBe(true);
+  });
+
   it('loads an old envelope (no field) as VoiceOver', () => {
     const storage = midPromptStorage(); // envelope written without a mode field
     const store = createTutorStore({ storage, seed: 1 });

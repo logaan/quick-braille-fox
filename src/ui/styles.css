@@ -90,10 +90,17 @@ body {
   -webkit-font-smoothing: antialiased;
 }
 
+/* DOM order puts the drill before the settings controls (braille users read
+   top to bottom, one line at a time); this grid puts the controls back in
+   the visual header row beside the brand. */
 .app {
   min-height: 100dvh;
-  display: flex;
-  flex-direction: column;
+  display: grid;
+  grid-template-columns: auto 1fr;
+  grid-template-rows: auto 1fr;
+  grid-template-areas:
+    'brand controls'
+    'main  main';
 }
 
 .visually-hidden {
@@ -184,11 +191,21 @@ input:focus-visible {
 /* --- Header --------------------------------------------------------------- */
 
 .app-header {
+  grid-area: brand;
   display: flex;
   align-items: center;
-  gap: 1rem;
-  flex-wrap: wrap;
   padding: 0.85rem clamp(0.75rem, 3vw, 1.5rem);
+}
+
+/* Last in DOM order (after the drill and panels), top-right on screen. */
+.header-controls {
+  grid-area: controls;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+  padding: 0.85rem clamp(0.75rem, 3vw, 1.5rem) 0.85rem 0;
 }
 
 .brand {
@@ -221,12 +238,19 @@ input:focus-visible {
   box-shadow: var(--shadow-sm);
 }
 
-.header-right {
-  margin-left: auto;
-  display: flex;
+/* Terse announcements: a small visible checkbox in the settings cluster. */
+.terse-toggle {
+  display: inline-flex;
   align-items: center;
-  gap: 0.75rem;
-  flex-wrap: wrap;
+  gap: 0.35rem;
+  color: var(--dim);
+  font-size: 0.85rem;
+  cursor: pointer;
+}
+
+.terse-toggle-input {
+  accent-color: var(--accent);
+  margin: 0;
 }
 
 .best-fox {
@@ -416,7 +440,7 @@ input:focus-visible {
    the full column and pushes the progress panels below the fold, where they
    belong while you are typing. */
 .layout {
-  flex: 1;
+  grid-area: main;
   display: flex;
   flex-direction: column;
   gap: 1.25rem;
@@ -515,6 +539,23 @@ input:focus-visible {
   border-color: var(--accent);
 }
 
+/* The persistent status line, straight after the input: always rendered,
+   updated in place, re-readable on a braille display at any time (live
+   regions flash or vanish there). Small but visible — it also helps sighted
+   users catch VoiceOver mangling a word. */
+.drill-status {
+  margin: 0.35rem 0 0;
+  font-size: 0.85rem;
+  color: var(--dim);
+  font-variant-numeric: tabular-nums;
+  min-height: 1.3em;
+}
+
+/* Wrong state: hue change plus the word "wrong" — never colour alone. */
+.drill-status-wrong {
+  color: var(--wrong);
+}
+
 /* Chord-mode key map: on screen whenever chording is active, because the
    mode is undiscoverable otherwise (the field swallows printable keys). */
 .chord-help {
@@ -556,6 +597,14 @@ input:focus-visible {
   gap: 0.4rem;
 }
 
+/* Terse mode: the rules collapse behind a disclosure, still one interaction
+   away but no longer re-read on every fox round. */
+.fox-rules-disclosure summary {
+  color: var(--gold-text);
+  font-size: 0.9rem;
+  cursor: pointer;
+}
+
 .fox-rule-list {
   margin: 0;
   padding-left: 1.15rem;
@@ -576,6 +625,18 @@ input:focus-visible {
   flex-direction: column;
   align-items: flex-start;
   gap: 0.5rem;
+}
+
+/* The focused first line of the result: outcome and key fact in one terse
+   sentence, so the braille line under focus is the result itself. */
+.fox-result-summary {
+  margin: 0;
+  font-weight: 650;
+}
+
+.fox-result-summary:focus {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
 }
 
 .fox-outcome {
@@ -756,4 +817,11 @@ input:focus-visible {
   height: 100%;
   background: var(--accent);
   border-radius: inherit;
+}
+
+/* The braille-passthrough note that closes the page. */
+.a11y-note {
+  margin: 0;
+  color: var(--dim);
+  font-size: 0.85rem;
 }

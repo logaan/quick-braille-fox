@@ -1,5 +1,11 @@
-// App header: the "fox" brand as three braille cells, the best fox result,
-// and the reset-progress control (with its confirm step).
+// The page top: the "fox" brand as three braille cells (Brand), and the
+// settings/controls cluster (HeaderControls) — input mode, terse
+// announcements, best fox result, fullscreen, and the reset-progress control
+// with its confirm step. Brand and controls are separate components because
+// they sit apart in DOM order: braille users read the page top-to-bottom one
+// line at a time, so everything between the title and the drill costs them a
+// pan — the controls render *after* the drill and panels, and CSS grid puts
+// them back in the visual header row.
 
 import {
   createElement as e,
@@ -13,12 +19,13 @@ import type { AppHandlers, BestFox, InputMode } from '../state';
 import { INPUT_MODE_LABELS, RESET_CONFIRM_WORD } from '../state';
 import { formatPercent } from './labels';
 
-export interface HeaderProps {
+export interface HeaderControlsProps {
   readonly bestFox: BestFox | null;
   readonly confirmingReset: boolean;
   readonly resetConfirmText: string;
   readonly canConfirmReset: boolean;
   readonly inputMode: InputMode;
+  readonly terse: boolean;
   readonly on: AppHandlers;
 }
 
@@ -224,8 +231,39 @@ function ResetConfirm(props: {
   );
 }
 
-export function Header(props: HeaderProps): ReactElement {
-  const { bestFox, confirmingReset, resetConfirmText, canConfirmReset, inputMode, on } = props;
+/**
+ * Terse announcements, as a visible checkbox: shorter status lines and
+ * screen reader messages for practiced users — on a braille display every
+ * boilerplate word is a pan of a short line, so the drill loop should cost
+ * one window per event once the wording is familiar.
+ */
+function TerseToggle(props: {
+  readonly terse: boolean;
+  readonly onToggle: (terse: boolean) => void;
+}): ReactElement {
+  const { terse, onToggle } = props;
+  return e(
+    'label',
+    { className: 'terse-toggle' },
+    e('input', {
+      type: 'checkbox',
+      className: 'terse-toggle-input',
+      checked: terse,
+      onChange: (event: ChangeEvent<HTMLInputElement>) => {
+        onToggle(event.currentTarget.checked);
+      },
+    }),
+    e('span', { className: 'terse-toggle-text' }, 'Terse'),
+    e(
+      'span',
+      { className: 'visually-hidden' },
+      ' announcements — shorter status lines and screen reader messages',
+    ),
+  );
+}
+
+/** The page title, first in DOM order — it alone identifies the page. */
+export function Brand(): ReactElement {
   return e(
     'header',
     { className: 'app-header' },
@@ -240,19 +278,31 @@ export function Header(props: HeaderProps): ReactElement {
         ),
       ),
     ),
-    e(
-      'div',
-      { className: 'header-right' },
-      e(InputModePicker, { inputMode, onSelect: on.onInputModeSelect }),
-      bestFox === null ? null : e(BestFoxBadge, { best: bestFox }),
-      e(FullscreenButton),
-      confirmingReset
-        ? e(ResetConfirm, { text: resetConfirmText, canConfirm: canConfirmReset, on })
-        : e(
-            'button',
-            { className: 'btn btn-quiet', id: 'reset-request-button', onClick: on.onResetRequest },
-            'Reset progress',
-          ),
-    ),
+  );
+}
+
+/**
+ * The settings cluster. Rendered after the drill and panels in DOM order
+ * (see app.ts) but shown in the visual header row via CSS grid, so a screen
+ * reader's "read from top" reaches the prompt without crossing four control
+ * stops — and the reset flow never sits between the page top and the drill.
+ */
+export function HeaderControls(props: HeaderControlsProps): ReactElement {
+  const { bestFox, confirmingReset, resetConfirmText, canConfirmReset, inputMode, terse, on } =
+    props;
+  return e(
+    'section',
+    { className: 'header-controls', 'aria-label': 'Settings' },
+    e(InputModePicker, { inputMode, onSelect: on.onInputModeSelect }),
+    e(TerseToggle, { terse, onToggle: on.onTerseToggle }),
+    bestFox === null ? null : e(BestFoxBadge, { best: bestFox }),
+    e(FullscreenButton),
+    confirmingReset
+      ? e(ResetConfirm, { text: resetConfirmText, canConfirm: canConfirmReset, on })
+      : e(
+          'button',
+          { className: 'btn btn-quiet', id: 'reset-request-button', onClick: on.onResetRequest },
+          'Reset progress',
+        ),
   );
 }
