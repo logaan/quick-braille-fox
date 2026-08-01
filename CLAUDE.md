@@ -44,6 +44,18 @@ When work on a worktree branch is complete:
 Before removing a worktree, check it is not holding lot updates that exist
 nowhere else — see "Lot vault" below.
 
+### Resurrecting an existing worktree
+
+`EnterWorktree` with the `path` parameter can refuse to run from the repo
+root ("the current working directory … is the repository root, not an
+isolated worktree"), even for a worktree listed in `git worktree list`.
+Creating a *new* worktree (the `name` parameter) works fine from the root;
+it is only entering an existing one that fails. The sanctioned fallback is
+to keep the session where it is and edit the worktree through absolute
+paths — the require-worktree guard exempts everything under
+`.claude/worktrees/`, so edits land in the worktree while the main checkout
+stays protected. Run git commands with `git -C <worktree path>`.
+
 ### Editing the main checkout anyway
 
 Set `CLAUDE_ALLOW_MAIN_EDITS=1` to lift the guard for one session. It is for
