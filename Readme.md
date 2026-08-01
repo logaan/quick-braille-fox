@@ -10,8 +10,10 @@ per row: the capital sign + the shortform "qk", the shortform "brl", and
 
 Quick Braille Fox is a web app that teaches you to type Unified English Braille — grade 1
 (uncontracted) first, then grade 2 (contractions and shortforms). It drills
-258 skills, five at a time, monkeytype-style: type the printed prompt, and
-if you hesitate or slip twice the answer appears as braille cells. Learnt
+258 skills, five at a time, monkeytype-style: type the printed prompt,
+where every sign carries blank placeholder cells showing how many braille
+cells it expects — and if you hesitate or slip twice they flip over to
+show the answer. Learnt
 skills come back for revision, and every dot pattern is taken from the
 liblouis tables that macOS VoiceOver ships, so what you learn matches what a
 Mac actually produces. A real text field receives all typing, so VoiceOver

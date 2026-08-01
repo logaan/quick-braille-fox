@@ -196,6 +196,73 @@ describe('App rendering', () => {
     expect(html).toContain('id="drill-input"');
   });
 
+  it('renders the prompt as an aligned grid, one tinted column per unit', () => {
+    const store = drillStore();
+    const vm = store.viewModel();
+    const html = render(store);
+    expect(html).toContain('prompt-columns');
+    const columns = vm.rows.columns.length;
+    expect((html.match(/prompt-col /g) ?? []).length).toBe(columns);
+    expect((html.match(/col-even/g) ?? []).length).toBe(Math.ceil(columns / 2));
+    expect((html.match(/col-odd/g) ?? []).length).toBe(Math.floor(columns / 2));
+  });
+
+  it('shows one blank placeholder cell per expected cell before any reveal', () => {
+    const store = drillStore();
+    const vm = store.viewModel();
+    const html = render(store);
+    const expectedCells = vm.rows.columns.reduce(
+      (n, c) => n + [...c.expectedUnicode].length,
+      0,
+    );
+    expect((html.match(/cell-blank/g) ?? []).length).toBe(expectedCells);
+    expect(html).not.toContain('cells-revealed');
+  });
+
+  it('flips only the revealed unit’s cells when its hint timer fires', () => {
+    const store = drillStore();
+    vi.advanceTimersByTime(400);
+    const vm = store.viewModel();
+    const revealed = vm.rows.columns.filter((c) => c.hintRevealed);
+    expect(revealed).toHaveLength(1);
+    const html = render(store);
+    expect((html.match(/cells-revealed/g) ?? []).length).toBe(1);
+    const stillBlank = vm.rows.columns.reduce(
+      (n, c) => n + (c.hintRevealed ? 0 : [...c.expectedUnicode].length),
+      0,
+    );
+    expect((html.match(/cell-blank/g) ?? []).length).toBe(stillBlank);
+  });
+
+  it('adds the produced-print and cell rows in emulated mode only', () => {
+    const voiceover = drillStore();
+    const voHtml = render(voiceover);
+    expect(voHtml).toContain('col-cells');
+    expect(voHtml).toContain('col-print');
+    expect(voHtml).not.toContain('col-result');
+    expect(voHtml).not.toContain('col-typed');
+
+    const emulated = drillStore();
+    emulated.handlers.onInputModeSelect('emulated');
+    const emHtml = render(emulated);
+    expect(emHtml).toContain('col-result');
+    expect(emHtml).toContain('col-typed');
+  });
+
+  it('announces how many cells the prompt expects', () => {
+    const store = drillStore();
+    const vm = store.viewModel();
+    const cells = vm.rows.columns.reduce((n, c) => n + [...c.expectedUnicode].length, 0);
+    expect(render(store)).toContain(`${cells} cells.`);
+  });
+
+  it('keeps the fox prompt flat: placeholder cells would leak the answer', () => {
+    const store = foxReadyStore();
+    const html = render(store);
+    expect(html).not.toContain('prompt-columns');
+    expect(html).toContain('prompt-chars');
+  });
+
   it('renders the fox challenge and its result screen', () => {
     const store = foxReadyStore();
     let html = render(store);

@@ -200,11 +200,14 @@ everything from `src/core` (`import { startSession, keystroke } from
   names the sign currently on the clock and its wait, and the state layer
   runs exactly one timer from it, calling `revealHint(state, unitIndex)`
   when it fires.
-- A showing hint never dumps the whole answer: it covers only the **word at
-  the caret** (VoiceOver braille screen input commits whole words), and
-  within that word only the signs already revealed (`hintWordForPrompt`
-  supplies the word's units with their prompt-wide indexes; the view shows
-  their leading revealed run).
+- A showing hint never dumps the whole answer: signs reveal one at a time,
+  only ever at the caret. A revealed sign stays flipped in the grid's cell
+  row for the rest of the prompt (covering it again would tell the learner
+  nothing), while the *spoken* hint covers only the **word at the caret**
+  (VoiceOver braille screen input commits whole words), and within that
+  word only the signs already revealed (`hintWordForPrompt` supplies the
+  word's units with their prompt-wide indexes; the live region reads their
+  leading revealed run).
 - Every `FOX_INTERVAL`-th prompt (50), counting from the learner's first, is
   the fox challenge — the fixed sentence `FOX_SENTENCE`, no hints ever, any
   first wrong character fails it instantly and moves on. Occurrences the
@@ -326,6 +329,21 @@ generatable prompt at the moment it becomes active** (all earlier skills
 learnt, 5-skill window) — both properties are enforced by tests, including
 per-letter words for the earliest windows ("bad"/"cab"/"dab" when only
 a–e are known).
+
+### Aligned column grid (`columns.ts`)
+
+`buildRowModel({ text, typed, cells, hintedUnits }) => RowModel` — the one
+grid every row of the drill is laid out against: one `Column` per
+translation unit of the prompt, so a contraction's three letters of print
+sit under its single cell and a capital's two cells sit over its one
+letter. Each column carries its print span, expected cells (U+2800),
+whether its hint is revealed, the print/cells the learner has produced for
+it (`null` until matched — cells count only *whole* units, the same rule
+scoring judges by), and whether the caret sits on it. Whatever neither walk
+can attribute to a column — a diverged tail, overflow past the prompt, a
+half-chorded multi-cell sign — comes back as `extraPrint`/`extraUnicode`.
+Untranslatable text degrades to a single whole-text column rather than
+throwing. Pure; VoiceOver mode simply passes empty `cells`.
 
 ### Braille rendering (`braille.ts`)
 
@@ -553,17 +571,33 @@ or effects — `main.ts` re-renders the root on every store notification.
   Fox"; the input-mode switch (`role="switch"`, "VoiceOver input", on by
   default), the persisted best fox result (👑 or `+N%`), and the two-step
   reset-progress control.
-- `drill.ts` — the prompt with monkeytype-style progressive colouring
-  (correct prefix / wrong / untyped, plus a caret); diverged positions show
-  the character actually typed rather than the target one, so the learner
-  can see what their mistake was (backspacing restores the target chars),
-  wrapped in a `<label>`
-  for the input; the autofocused monospace input (also carrying the chord-mode
-  `onKeyDown`/`onKeyUp` handlers, which no-op in VoiceOver mode); the hint area (an
-  `aria-live=polite` region that fills with the caret word's braille as
-  large segmented cells, one sign at a time); the fox challenge
-  styling (gold, no hint area) and result screen (crown / `+N%` badge /
-  failed, in an `aria-live=assertive` region, with a Continue button).
+- `drill.ts` — the prompt as the **aligned column grid** (`vm.rows`, core
+  `buildRowModel`): one tinted column per translation unit, words wrapping
+  as a unit and every space its own column (a space is a cell the learner
+  must enter). Each column stacks the expected cells over the target print
+  — the cells start as blank placeholder cells, so the learner always sees
+  how many cells each sign costs, and flip to the real dots when that
+  sign's hint reveals — and, in emulated mode only, two further rows: the
+  print the learner's cells produced and the cells themselves. The
+  alternating column tint (unit-index parity, `col-even`/`col-odd`) is what
+  visually ties one sign's cells to its print across rows: one cell over a
+  whole word for a wordsign, two cells over one letter for a capital. The
+  print row keeps the monkeytype colouring (correct prefix / wrong /
+  untyped, plus a caret); diverged positions show what was actually
+  produced — mistyped print, or on a cell-judged round the offending cells
+  as braille glyphs — so a mistake is visible as what it was (backspacing
+  restores the target chars). All of it wrapped in a `<label>` for the
+  autofocused monospace input (which also carries the chord-mode
+  `onKeyDown`/`onKeyUp` handlers; in VoiceOver mode the raw field doubles
+  as the produced-print row). The **fox challenge deliberately keeps the
+  flat coloured prompt**: its placeholder cells would reveal how far each
+  word contracts, which is exactly what the no-hints challenge grades you
+  on knowing. Spoken/braille-display parity: the prompt announcement names
+  the prompt's total cell count (what the placeholder row shows sighted
+  users), the grid itself is aria-hidden behind the visually-hidden prompt
+  text, and hint reveals reach a visually-hidden `aria-live=polite` region
+  as spoken dots plus the raw glyphs. The fox result screen is unchanged
+  (crown / `+N%` badge / failed, with a Continue button).
 - `skills.ts` — the 5 active skills (cells, print, score bar toward 10) and
   overall/per-group progress.
 - `braille.ts` — `BrailleCells`: renders a U+2800 string as large,

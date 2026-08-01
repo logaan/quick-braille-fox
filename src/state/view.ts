@@ -4,14 +4,16 @@
 
 // Immutable's Map, aliased so the native Map stays available below.
 import type { Map as ScoreMap } from 'immutable';
+import { Set } from 'immutable';
 import type { ChangeEvent, KeyboardEvent } from 'react';
-import type { Cell, FoxResult, TutorState } from '../core';
+import type { Cell, FoxResult, RowModel, TutorState } from '../core';
 import {
   LEARNT_THRESHOLD,
   FOX_AWARD,
   FOX_INTERVAL,
   FOX_MIN_CELLS,
   activeSkills,
+  buildRowModel,
   commonPrefixLength,
   derivedScores,
   divergedTail,
@@ -102,9 +104,18 @@ export interface AppViewModel {
   /**
    * The hint as U+2800 braille: the caret word's cells, limited to the
    * signs uncovered so far (one is uncovered per elapsed countdown, and
-   * each sign's countdown only starts once the caret reaches it).
+   * each sign's countdown only starts once the caret reaches it). The
+   * grid's hint row shows reveals in place; this feeds the spoken live
+   * region, which braille displays and speech users get instead of tints.
    */
   readonly hint: string | null;
+  /**
+   * The aligned column grid for the prompt: one column per translation
+   * unit, shared by the expected-cells row, the target print, and (in
+   * emulated mode) what the learner produced. Built from core
+   * buildRowModel so the UI never computes alignment itself.
+   */
+  readonly rows: RowModel;
   readonly activeSkills: readonly ActiveSkillView[];
   readonly learntCount: number;
   readonly totalSkills: number;
@@ -269,6 +280,13 @@ export function buildViewModel(src: ViewSources): AppViewModel {
     foxAward: FOX_AWARD,
     nextFoxIn: nextFoxIn(tutor.promptCounter),
     hint: hintText(src),
+    rows: buildRowModel({
+      text: p?.text ?? '',
+      typed: p?.typed ?? '',
+      // Cells only mean anything in emulated mode; VoiceOver hands us print.
+      cells: src.inputMode === 'emulated' ? src.cellBuffer : [],
+      hintedUnits: p?.hintedUnits ?? Set<number>(),
+    }),
     activeSkills: activeSkills(tutor).map((s) => {
       const score = shown.get(s.id, 0);
       return {

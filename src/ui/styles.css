@@ -28,6 +28,9 @@
   --wrong: #b0372c; /* warm red — always paired with underline */
   --wrong-bg: #f7ded7;
 
+  /* Alternating column tint in the prompt grid: low-alpha fill, no border. */
+  --col-tint: rgba(180, 85, 45, 0.07);
+
   --gold-text: #8a6a12; /* deep amber, AA as text */
   --gold: #d9ac4c; /* softened gold for borders/fills */
   --gold-tint: #fbf4e3;
@@ -62,6 +65,8 @@
 
     --wrong: #ef8a7c;
     --wrong-bg: rgba(239, 138, 124, 0.16);
+
+    --col-tint: rgba(224, 141, 95, 0.1);
 
     --gold-text: #e3bd6e;
     --gold: #b28c41;
@@ -523,11 +528,93 @@ input:focus-visible {
   color: var(--dim);
 }
 
-/* Hint area: space is reserved so the answer appearing never shifts layout. */
-.hint-area {
-  min-height: 4.6rem;
+/* --- Prompt grid --------------------------------------------------------
+ *
+ * One column per translation unit, each a vertical stack: expected cells
+ * (blank placeholders until that sign's hint is revealed), target print,
+ * and — emulated mode only — the print and cells the learner produced.
+ * Every row of a column shares the column's alternating tint, which is what
+ * ties one sign's cells to its print. Words wrap as a unit: a word is a
+ * nowrap flex group, so its columns never split across lines.
+ */
+
+.prompt-columns {
   display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  row-gap: 0.75rem;
+  column-gap: 0.1rem;
+}
+
+.prompt-word,
+.prompt-gap {
+  display: inline-flex;
+}
+
+.prompt-col {
+  display: inline-flex;
+  flex-direction: column;
   align-items: center;
+  gap: 0.3rem;
+  padding: 0.3rem 0.2rem;
+  border-radius: var(--radius-sm);
+}
+
+.col-odd {
+  background: var(--col-tint);
+}
+
+/* Fixed row heights keep every column's rows level with its neighbours'. */
+.col-cells {
+  display: inline-flex;
+  align-items: flex-end;
+  min-height: 2.4rem;
+}
+
+.col-cells .cells,
+.col-typed .cells {
+  flex-wrap: nowrap;
+}
+
+.col-print {
+  font-family: var(--mono);
+  font-size: clamp(1.3rem, 3.5vw, 1.8rem);
+  line-height: 1.2;
+  min-height: 1.2em;
+  white-space: pre; /* a space column's print is a space — keep its width */
+}
+
+.col-result {
+  color: var(--dim);
+  font-family: var(--mono);
+  font-size: 0.95rem;
+  line-height: 1.2;
+  min-height: 1.2em;
+  white-space: pre;
+}
+
+.col-typed {
+  display: inline-flex;
+  align-items: flex-start;
+  min-height: 1.8rem;
+}
+
+/* A revealed hint flips its cells from the blank placeholder side over to
+   the visible dots (disabled under prefers-reduced-motion, globally). */
+.cells-revealed .cell {
+  animation: cell-flip 300ms ease-out;
+}
+
+@keyframes cell-flip {
+  from {
+    transform: rotateY(90deg);
+    opacity: 0.2;
+  }
+
+  to {
+    transform: none;
+    opacity: 1;
+  }
 }
 
 /* --- fox challenge ------------------------------------------------------ */

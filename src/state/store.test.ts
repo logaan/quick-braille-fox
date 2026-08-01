@@ -337,6 +337,89 @@ describe('progressive hint reveal', () => {
   });
 });
 
+describe('view model rows', () => {
+  it('serves a fresh prompt as untouched columns with the caret on the first', () => {
+    const store = createTutorStore({ storage: midPromptStorage(), seed: 1 });
+    const rows = store.viewModel().rows;
+    expect(rows.columns.map((c) => c.printTarget)).toEqual(['the', ' ', 'd', 'o', 'g']);
+    expect(rows.columns.map((c) => c.expectedUnicode)).toEqual(['⠮', '⠀', '⠙', '⠕', '⠛']);
+    expect(rows.columns.every((c) => c.printTyped === null && c.typedUnicode === null)).toBe(true);
+    expect(rows.columns.map((c) => c.caret)).toEqual([true, false, false, false, false]);
+    expect(rows.extraPrint).toBe('');
+    expect(rows.extraUnicode).toBe('');
+  });
+
+  it('fills a partially typed prompt column by column', () => {
+    const store = createTutorStore({ storage: midPromptStorage(), seed: 1 });
+    typeText(store, 'the d');
+    const rows = store.viewModel().rows;
+    expect(rows.columns.map((c) => c.printTyped)).toEqual(['the', ' ', 'd', null, null]);
+    expect(rows.columns.map((c) => c.caret)).toEqual([false, false, false, true, false]);
+  });
+
+  it('spills a diverged tail into extraPrint', () => {
+    const store = createTutorStore({ storage: midPromptStorage(), seed: 1 });
+    typeText(store, 'the x');
+    const rows = store.viewModel().rows;
+    expect(rows.columns.map((c) => c.printTyped)).toEqual(['the', ' ', null, null, null]);
+    expect(rows.extraPrint).toBe('x');
+  });
+
+  it('marks revealed units so the grid can flip their placeholder cells', () => {
+    const store = createTutorStore({ storage: midPromptStorage(), seed: 1 });
+    expect(store.viewModel().rows.columns.every((c) => !c.hintRevealed)).toBe(true);
+    vi.advanceTimersByTime(400); // reveals "the", the sign at the caret
+    expect(store.viewModel().rows.columns.map((c) => c.hintRevealed)).toEqual([
+      true,
+      false,
+      false,
+      false,
+      false,
+    ]);
+  });
+
+  it('fills the cell row for whole chorded units in emulated mode', () => {
+    const store = createTutorStore({ storage: midPromptStorage(), seed: 1 });
+    chordMode(store);
+    chordCell(store, [2, 3, 4, 6]); // ⠮ "the"
+    chordSpace(store);
+    chordCell(store, [1, 4, 5]); // ⠙ "d"
+    const rows = store.viewModel().rows;
+    expect(rows.columns.map((c) => c.typedUnicode)).toEqual(['⠮', '⠀', '⠙', null, null]);
+    expect(rows.columns.map((c) => c.printTyped)).toEqual(['the', ' ', 'd', null, null]);
+    expect(rows.extraUnicode).toBe('');
+  });
+
+  it('holds back a half-chorded multi-cell sign as extra cells', () => {
+    const storage = memoryStorage();
+    const state = makeTutorState({
+      seed: 7,
+      promptCounter: 1,
+      prompt: makePrompt({ text: 'The dog', targetSkillId: 'letter-d' }),
+    });
+    storage.setItem(
+      STORAGE_KEY,
+      JSON.stringify({ version: 1, tutor: serialize(state), bestQbf: null }),
+    );
+    const store = createTutorStore({ storage, seed: 1 });
+    chordMode(store);
+    chordCell(store, [6]); // the capital indicator alone: half of "The"'s unit
+    const rows = store.viewModel().rows;
+    expect(rows.columns[0]?.typedUnicode).toBeNull();
+    expect(rows.extraUnicode).toBe('⠠');
+  });
+
+  it('never carries chorded cells into the VoiceOver-mode grid', () => {
+    const store = createTutorStore({ storage: midPromptStorage(), seed: 1 });
+    chordMode(store);
+    chordCell(store, [2, 3, 4, 6]); // ⠮ "the"
+    store.handlers.onInputModeSelect('voiceover');
+    const rows = store.viewModel().rows;
+    expect(rows.columns.every((c) => c.typedUnicode === null)).toBe(true);
+    expect(rows.extraUnicode).toBe('');
+  });
+});
+
 describe('persistence', () => {
   it('round-trips progress through storage', () => {
     const storage = memoryStorage();
