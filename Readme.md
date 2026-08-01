@@ -17,6 +17,15 @@ liblouis tables that macOS VoiceOver ships, so what you learn matches what a
 Mac actually produces. A real text field receives all typing, so VoiceOver
 braille screen input works throughout.
 
+Two input modes, two ways of judging. In VoiceOver mode the OS hands the app
+print, so prompts are judged on the text you produce. In emulated mode
+(braille chords on the QWERTY home row) regular prompts are judged on the
+*cells* you chord: each prompt drills a specific sign, so spelling a
+contraction out letter by letter counts as a mistake even though it reads the
+same in print — the hint then shows the cells being asked for. Only the fox
+challenge accepts any valid grade-1/grade-2 spelling; there, efficiency is
+what the cell count grades.
+
 Every 50th prompt — starting with your very first — is the fox challenge:
 type "The quick brown fox jumps over the lazy dog." flawlessly, with no
 hints and instant failure on any wrong character. Its rules are shown on

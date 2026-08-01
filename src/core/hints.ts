@@ -10,7 +10,7 @@
 
 import { dotsToUnicode, tryTranslate } from './braille';
 import { hintDelayFor } from './progress';
-import { commonPrefixLength } from './text';
+import { judgedPrintCaret } from './scoring';
 import type { TutorState } from './types';
 import { HINT_REVEAL_COOLDOWN_MS } from './types';
 
@@ -49,17 +49,18 @@ function wordSpanAt(text: string, index: number): { start: number; end: number }
 }
 
 /**
- * The hint for the current prompt: the braille of the word at the caret
- * (the first position where typed and expected text disagree), one string
- * per reveal unit. Null when there is nothing to hint — no prompt, the fox
- * challenge (never hinted), or nothing left after the caret. Which of the
- * units are actually *uncovered* is prompt.hintedUnits; callers gate each
- * unit on that.
+ * The hint for the current prompt: the braille of the word at the caret —
+ * the judged caret mapped into print, so on a cell-judged round the hint
+ * stays on the word whose *cells* are owed even when a derived print prefix
+ * has run ahead of them. One string per reveal unit. Null when there is
+ * nothing to hint — no prompt, the fox challenge (never hinted), or nothing
+ * left after the caret. Which of the units are actually *uncovered* is
+ * prompt.hintedUnits; callers gate each unit on that.
  */
 export function hintWordForPrompt(state: TutorState): HintWord | null {
   const p = state.prompt;
   if (!p || p.isFox) return null;
-  const caret = commonPrefixLength(p.text, p.typed);
+  const caret = judgedPrintCaret(p);
   const span = wordSpanAt(p.text, caret);
   if (span === null) return null;
   // A persisted prompt can stop translating when the curriculum changes
@@ -105,7 +106,7 @@ export interface PendingHint {
 export function nextHintFor(state: TutorState): PendingHint | null {
   const p = state.prompt;
   if (!p || p.completed || p.isFox) return null;
-  const caret = commonPrefixLength(p.text, p.typed);
+  const caret = judgedPrintCaret(p);
   const units = tryTranslate(p.text)?.units;
   if (units === undefined) return null; // untranslatable: nothing to hint
   const unitIndex = units.findIndex((u) => u.start <= caret && caret < u.end);

@@ -10,7 +10,7 @@ import {
   scoreFor,
 } from './progress';
 import { FOX_SENTENCE } from './fox';
-import { derivedScores } from './scoring';
+import { derivedScores, judgedPrintCaret } from './scoring';
 import {
   deserialize,
   isPromptComplete,
@@ -461,6 +461,33 @@ describe('cell-judged rounds', () => {
     state = pressCells(state, canonicalCells('the'));
     expect(state.prompt?.typed).toBe('the');
     expect(state.prompt?.judgedByCells).toBe(true);
+  });
+
+  it('never completes on a full valid-print spelling whose cells are off canon', () => {
+    // s,t,i,l,l derives the whole prompt text — the print-derivation
+    // guarantee still holds for display — but the round stays diverged and
+    // unfinished: the cells are what is being drilled.
+    let state = withPrompt(makeTutorState(), 'still', 'wordsign-still');
+    const spelled: Cell[] = [];
+    for (const cell of [[2, 3, 4], [2, 3, 4, 5], [2, 4], [1, 2, 3], [1, 2, 3]] as const) {
+      spelled.push([...cell]);
+      state = pressCells(state, spelled);
+    }
+    expect(state.prompt?.typed).toBe('still');
+    expect(state.prompt?.diverged).toBe(true);
+    expect(isPromptComplete(state)).toBe(false);
+    // Still one mistake event: the learner never returned to the canon.
+    expect(state.prompt?.unitMistakes.get(0)).toBe(1);
+  });
+
+  it('maps the judged caret to print at the last fully-chorded unit', () => {
+    let state = withPrompt(makeTutorState(), 'still', 'wordsign-still');
+    state = pressCells(state, [[2, 3, 4]]); // ⠎ derives "s", but no unit is chorded
+    expect(state.prompt?.typed).toBe('s');
+    expect(judgedPrintCaret(state.prompt!)).toBe(0);
+    state = pressCells(state, []);
+    state = pressCells(state, canonicalCells('still')); // ⠌ — the whole word
+    expect(judgedPrintCaret(state.prompt!)).toBe('still'.length);
   });
 
   it('round-trips a cell-judged prompt through JSON', () => {

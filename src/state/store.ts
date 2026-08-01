@@ -8,10 +8,12 @@ import type { Cell, FoxResult, KeystrokeInput, Prompt, TutorState } from '../cor
 import {
   backTranslateBuffer,
   commonPrefixLength,
+  dotsToUnicode,
   keystroke,
   nextHintFor,
   nextPrompt,
   foxResult,
+  promptUnicode,
   revealHint,
   spellOutCells,
   startSession,
@@ -277,19 +279,24 @@ export class TutorStore {
   }
 
   /**
-   * What the cell buffer tells the core. Every round is judged on the
-   * derived *print* — emulated mode accepts any valid grade-1/grade-2
-   * spelling of the prompt, exactly like the fox challenge does — but the
-   * cells ride along: the core keeps them on the prompt (typedUnicode), so
-   * a resumed session restores the learner's actual buffer instead of
-   * guessing a spelling from print, and a fox run's awards credit the signs
-   * actually chorded. (The core can also judge a round on the cells
-   * themselves — keystroke's 'cells' input — but no mode uses that yet:
-   * requiring the canonical contraction would reject the alternate
-   * spellings the decoder deliberately accepts.)
+   * What the cell buffer tells the core — the judging split lives here:
+   *
+   * - A fox run is judged on the derived *print*: any valid grade-1/grade-2
+   *   spelling that produces the sentence is acceptable, and efficiency is
+   *   what the cell-count grading is for. The cells ride along so the run's
+   *   awards credit the signs actually chorded and a resumed session
+   *   restores the learner's exact buffer.
+   * - Every other emulated round is judged on the *cells* themselves
+   *   (keystroke's 'cells' input): the prompt exists to drill a specific
+   *   piece of braille, so falling back to an uncontracted spelling —
+   *   correct print or not — is a mistake.
+   *
+   * VoiceOver mode never reaches this method and stays print-judged
+   * everywhere: the OS hands us print, there are no cells to judge.
    */
   private bufferInput(prompt: Prompt): KeystrokeInput {
     const cells = this.cellBuffer;
+    if (!prompt.isFox) return { kind: 'cells', cells };
     return { kind: 'print', typed: backTranslateBuffer(cells, prompt.text), cells };
   }
 
@@ -304,18 +311,28 @@ export class TutorStore {
 
   /**
    * Rebuild the cell buffer for the current prompt (on entering emulated
-   * mode or resuming a persisted emulated-mode session). A buffer the core
-   * already holds (prompt.typedUnicode) is restored exactly — the learner's
-   * own cells, whatever spelling they chose. Failing that only print is
-   * known, and print alone does not say which spelling was chorded, while a
-   * wrong guess decodes the next correct chord as divergent print (the "st"
-   * groupsign is also the "still" wordsign, so a canonical buffer for typed
-   * "st" reads as the whole word). So a candidate buffer is accepted only
-   * if it decodes back to exactly the typed prefix — the letter-by-letter
-   * spelling first (chording continues from it cleanly whatever was
-   * actually entered), the canonical grade-2 cells as fallback. If neither
-   * round-trips, the in-progress typing is cleared and the prompt starts
-   * over.
+   * mode or resuming a persisted emulated-mode session).
+   *
+   * A buffer the core already holds (prompt.typedUnicode) is the learner's
+   * own cells and is restored exactly — but a regular round is judged on
+   * those cells, so it only resumes when it is still a prefix of the
+   * prompt's canonical cells. A valid-print-but-noncanonical buffer (typed
+   * before rounds were cell-judged, or saved mid-mistake) would resume
+   * already diverged, charging a mistake the learner is not making now;
+   * the prompt restarts cleanly instead. Fox runs stay print-judged, so
+   * there any buffer that round-tripped is welcome back as-is.
+   *
+   * Failing that only print is known, and print alone does not say which
+   * spelling was chorded, while a wrong guess decodes the next correct
+   * chord as divergent print (the "st" groupsign is also the "still"
+   * wordsign, so a canonical buffer for typed "st" reads as the whole
+   * word). So a candidate buffer is accepted only if it decodes back to
+   * exactly the typed prefix — and, on a cell-judged round, also keeps to
+   * the canonical cells, or the very first chord after it would count as a
+   * mistake. The letter-by-letter spelling is tried first (on a fox run
+   * chording continues from it cleanly whatever was actually entered), the
+   * canonical grade-2 cells as fallback. If no candidate passes, the
+   * in-progress typing is cleared and the prompt starts over.
    */
   private reconstructBuffer(): void {
     const prompt = this.tutor.prompt;
@@ -323,19 +340,25 @@ export class TutorStore {
       this.cellBuffer = [];
       return;
     }
+    // '' when the text is untranslatable, in which case the core judges the
+    // round on derived print anyway and no cell canon exists to hold to.
+    const canonical = prompt.isFox ? '' : promptUnicode(prompt);
+    const onCanon = (cells: readonly Cell[]): boolean =>
+      canonical === '' || canonical.startsWith(dotsToUnicode(cells));
     if (prompt.typedUnicode !== '') {
-      this.cellBuffer = unicodeToDots(prompt.typedUnicode);
-      return;
-    }
-    if (prompt.typed === '') {
+      const cells = unicodeToDots(prompt.typedUnicode);
+      if (onCanon(cells)) {
+        this.cellBuffer = cells;
+        return;
+      }
+    } else if (prompt.typed === '') {
       this.cellBuffer = [];
       return;
-    }
-    if (prompt.text.startsWith(prompt.typed)) {
+    } else if (prompt.text.startsWith(prompt.typed)) {
       for (const spelling of [spellOutCells, textToCells]) {
         try {
           const cells = spelling(prompt.typed).map((c): Cell => [...c]);
-          if (backTranslateBuffer(cells, prompt.text) === prompt.typed) {
+          if (backTranslateBuffer(cells, prompt.text) === prompt.typed && onCanon(cells)) {
             this.cellBuffer = cells;
             return;
           }

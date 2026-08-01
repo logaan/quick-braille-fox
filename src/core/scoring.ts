@@ -102,6 +102,40 @@ export function coveredUnitCount(ends: readonly number[], caret: number): number
 }
 
 /**
+ * The judged caret mapped into *print*: how much of the prompt text the
+ * learner's accepted progress covers. On a print-judged round this is just
+ * the caret. On a cell-judged round it is the print end of the last unit
+ * whose cells have been fully chorded — print derived beyond that point
+ * (say, a valid alternate spelling of the sign being drilled) is display
+ * only, not accepted progress, so the view must not paint it as correct
+ * while the round is diverged, and the hint must stay on the sign whose
+ * cells are actually owed.
+ */
+export function judgedPrintCaret(p: Prompt): number {
+  if (!p.judgedByCells) return commonPrefixLength(p.text, p.typed);
+  const units = promptUnits(p);
+  const covered = coveredUnitCount(cellEnds(units), judgedCaret(p));
+  return covered === 0 ? 0 : units[covered - 1]!.end;
+}
+
+/**
+ * What the learner has produced beyond the accepted prefix, for the view to
+ * render at the caret while diverged: the diverged typed print on a
+ * print-judged round; on a cell-judged round the unaccepted chorded cells,
+ * as U+2800 glyphs — the derived print cannot say where the *cells* went
+ * wrong, and can even be shorter than the accepted print (⠉ then ⠁ towards
+ * "can't" accepts the whole "can" wordsign yet derives only "ca").
+ * '' while nothing has diverged.
+ */
+export function divergedTail(p: Prompt): string {
+  if (!p.diverged) return '';
+  if (!p.judgedByCells) return p.typed.slice(commonPrefixLength(p.text, p.typed));
+  const ends = cellEnds(promptUnits(p));
+  const covered = coveredUnitCount(ends, judgedCaret(p));
+  return p.typedUnicode.slice(covered === 0 ? 0 : ends[covered - 1]!);
+}
+
+/**
  * The score change the prompt on screen would contribute if it completed
  * as it stands, per skill id.
  *

@@ -8,7 +8,6 @@
 
 import { createElement as e, type ReactElement } from 'react';
 import type { FoxResult } from '../core';
-import { commonPrefixLength } from '../core';
 import type { AppHandlers, AppViewModel, FoxFailureView } from '../state';
 import { BrailleCells, describeCells } from './braille';
 import { formatPercent, signLabel } from './labels';
@@ -31,40 +30,59 @@ function promptAnnouncement(vm: AppViewModel): string {
   return `Prompt ${vm.promptsCompleted + 1}: ${vm.promptText}`;
 }
 
+/** Is `ch` a U+2800-block braille glyph (a chorded cell shown literally)? */
+function isBrailleGlyph(ch: string): boolean {
+  const code = ch.codePointAt(0) ?? 0;
+  return code >= 0x2800 && code <= 0x28ff;
+}
+
 /**
  * What the mistake alert says while typing has diverged, '' otherwise. The
  * coloured prompt spans that show sighted users a mistake are aria-hidden,
  * so this is the only way a screen reader user learns they have diverged.
+ * Positions come from vm.matchedPrint, so on a cell-judged round the
+ * mistake is placed where the *cells* went wrong — even when the derived
+ * print still spells a prefix of the prompt — and the offending input is
+ * spoken as the dots that were chorded.
  */
 function mistakeAnnouncement(vm: AppViewModel): string {
   if (!vm.diverged) return '';
-  const caret = commonPrefixLength(vm.promptText, vm.typed);
-  const wrong = vm.typed[caret];
-  const at = `at character ${caret + 1}`;
-  return wrong === undefined
-    ? `Mistake ${at} — backspace to fix.`
-    : `Mistake ${at}: typed ${signLabel(wrong)} — backspace to fix.`;
+  const wrong = vm.divergedText[0];
+  const at = `at character ${vm.matchedPrint + 1}`;
+  if (wrong === undefined) return `Mistake ${at} — backspace to fix.`;
+  const label = isBrailleGlyph(wrong) ? `chorded ${describeCells(wrong)}` : `typed ${signLabel(wrong)}`;
+  return `Mistake ${at}: ${label} — backspace to fix.`;
 }
 
 /**
  * Monkeytype-style prompt colouring: correct prefix / wrong / untyped.
- * Diverged positions show the character actually typed (not the target one),
- * so a mistake is visible as what it was; backspacing restores the target.
+ * Diverged positions show what was actually produced (not the target
+ * characters) — the mistyped print, or on a cell-judged round the chorded
+ * cells themselves as braille glyphs — so a mistake is visible as what it
+ * was; backspacing restores the target. `match` (vm.matchedPrint) says
+ * where the correct prefix ends: on a cell-judged round that is where the
+ * chorded cells left the canon, which the derived print alone cannot place.
  */
-function PromptText(props: { readonly text: string; readonly typed: string }): ReactElement {
-  const { text, typed } = props;
-  const match = commonPrefixLength(text, typed);
-  const caretAt = Math.min(typed.length, text.length);
+function PromptText(props: {
+  readonly text: string;
+  readonly match: number;
+  readonly wrong: string;
+}): ReactElement {
+  const { text, match, wrong } = props;
+  const typedEnd = match + wrong.length;
+  const caretAt = Math.min(typedEnd, text.length);
   const parts: ReactElement[] = [];
   for (let i = 0; i < text.length; i += 1) {
     if (i === caretAt) parts.push(e('span', { key: 'caret', className: 'caret' }));
-    const wrong = i >= match && i < typed.length;
-    const cls = wrong ? 'char-wrong' : i < match ? 'char-correct' : 'char-untyped';
-    parts.push(e('span', { key: i, className: cls }, (wrong ? typed[i] : text[i]) ?? ''));
+    const isWrong = i >= match && i < typedEnd;
+    const cls = isWrong ? 'char-wrong' : i < match ? 'char-correct' : 'char-untyped';
+    parts.push(e('span', { key: i, className: cls }, (isWrong ? wrong[i - match] : text[i]) ?? ''));
   }
   if (caretAt === text.length) parts.push(e('span', { key: 'caret', className: 'caret' }));
-  if (typed.length > text.length) {
-    parts.push(e('span', { key: 'extra', className: 'char-wrong char-extra' }, typed.slice(text.length)));
+  if (typedEnd > text.length) {
+    parts.push(
+      e('span', { key: 'extra', className: 'char-wrong char-extra' }, wrong.slice(text.length - match)),
+    );
   }
   return e(
     'span',
@@ -266,7 +284,7 @@ export function Drill(props: DrillProps): ReactElement {
     e(
       'label',
       { className: 'prompt-label', htmlFor: 'drill-input' },
-      e(PromptText, { text: vm.promptText, typed: vm.typed }),
+      e(PromptText, { text: vm.promptText, match: vm.matchedPrint, wrong: vm.divergedText }),
     ),
     showResult ? null : input,
     vm.inputMode !== 'emulated'

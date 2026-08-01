@@ -14,11 +14,13 @@ import {
   activeSkills,
   commonPrefixLength,
   derivedScores,
+  divergedTail,
   divergentCells,
   dotsToUnicode,
   expectedSignAt,
   hintWordForPrompt,
   isLearntIn,
+  judgedPrintCaret,
   learntSkillsIn,
 } from '../core';
 import type { SkillGroup } from '../data/skills';
@@ -65,6 +67,24 @@ export interface FoxFailureView {
 export interface AppViewModel {
   readonly promptText: string;
   readonly typed: string;
+  /**
+   * How many leading characters of the *prompt text* count as accepted
+   * progress; the UI paints them correct and renders `divergedText` red
+   * after them. On a print-judged round this is the common prefix of prompt
+   * and typed. On a cell-judged (emulated, non-fox) round it stops at the
+   * last unit whose *cells* were chorded: derived print past that (a valid
+   * alternate spelling of the sign being drilled) must read as wrong, not
+   * as progress, or the prompt would show all-correct text while the round
+   * is diverged.
+   */
+  readonly matchedPrint: number;
+  /**
+   * What the learner has produced beyond the accepted prefix, rendered red
+   * at the caret while diverged: the diverged typed print on a print-judged
+   * round, the unaccepted chorded cells (U+2800 glyphs) on a cell-judged
+   * one. '' while typing is in step.
+   */
+  readonly divergedText: string;
   readonly diverged: boolean;
   readonly isFox: boolean;
   /** Non-null while the fox result screen should be shown. */
@@ -189,7 +209,9 @@ function hintText(src: ViewSources): string | null {
   if (p === null || p.isFox) return null;
   const word = hintWordForPrompt(src.tutor);
   if (word === null) return null;
-  const caret = commonPrefixLength(p.text, p.typed);
+  // The judged caret in print, so a cell-judged round counts a unit as
+  // "typed" only once its cells are chorded — derived print is not enough.
+  const caret = judgedPrintCaret(p);
   let text = '';
   let anyRevealed = false;
   for (const unit of word.units) {
@@ -231,6 +253,12 @@ export function buildViewModel(src: ViewSources): AppViewModel {
   return {
     promptText: p?.text ?? '',
     typed: p?.typed ?? '',
+    // While in step, everything typed is accepted (on a cell-judged round a
+    // half-chorded multi-cell sign may already derive print — still correct,
+    // just unfinished). Once diverged, acceptance stops at the judged caret.
+    matchedPrint:
+      p === null ? 0 : p.diverged ? judgedPrintCaret(p) : commonPrefixLength(p.text, p.typed),
+    divergedText: p === null ? '' : divergedTail(p),
     diverged: p?.diverged ?? false,
     isFox: p?.isFox ?? false,
     foxResult: p !== null && p.isFox && p.completed ? src.lastFox : null,

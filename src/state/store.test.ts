@@ -822,12 +822,12 @@ describe('chord input', () => {
   });
 
   /** Storage resuming a chord-mode session with `typed` of `text` in flight. */
-  function chordResumeStorage(text: string, typed: string): MemoryStorage {
+  function chordResumeStorage(text: string, typed: string, typedUnicode = ''): MemoryStorage {
     const storage = memoryStorage();
     const state = makeTutorState({
       seed: 7,
       promptCounter: 1,
-      prompt: makePrompt({ text, targetSkillId: 'letter-d', typed }),
+      prompt: makePrompt({ text, targetSkillId: 'letter-d', typed, typedUnicode }),
     });
     storage.setItem(
       STORAGE_KEY,
@@ -857,22 +857,34 @@ describe('chord input', () => {
     expect(second.viewModel().typed).toBe('');
   });
 
-  it('resumes a mid-word prefix and accepts the next letter chord', () => {
-    // Typed "st" of "still": the canonical cells for "st" are the st
-    // groupsign, which is also the "still" wordsign — a canonical buffer
-    // made the next correct letter chord decode as divergent print.
+  it('restarts a resumed prefix whose cells cannot rejoin the canon (still)', () => {
+    // Typed "st" of "still", accepted when rounds were print-judged: the
+    // round is judged on cells now and the canon is the single ⠌ wordsign,
+    // so no buffer both derives that print and stays on the canon. Rather
+    // than resume pre-diverged (charging a mistake the learner is not
+    // making), the prompt restarts cleanly.
     const store = createTutorStore({ storage: chordResumeStorage('still', 'st'), seed: 1 });
-    expect(store.viewModel().typed).toBe('st');
-    chordCell(store, [2, 4]); // i
-    const vm = store.viewModel();
-    expect(vm.typed).toBe('sti');
-    expect(vm.diverged).toBe(false);
+    expect(store.viewModel().typed).toBe('');
+    expect(store.viewModel().diverged).toBe(false);
+    chordCell(store, [3, 4]); // ⠌ — the "still" wordsign, the whole prompt
+    expect(store.viewModel().promptsCompleted).toBe(2);
   });
 
-  it('resumes a wordsign-stem prefix and continues to completion', () => {
-    // Typed "can" of "can't": the ⠉ cell is both letter c and the "can"
-    // wordsign, so the two candidate buffers collide. Whichever spelling the
-    // resume settles on must round-trip and accept the next correct chords.
+  it('restarts a resumed chorded buffer that was accepted only in print', () => {
+    // A buffer saved before rounds were cell-judged: s,t towards "still" was
+    // a valid-print prefix then, but its cells are off the ⠌ canon, so the
+    // prompt restarts cleanly instead of resuming pre-diverged.
+    const store = createTutorStore({ storage: chordResumeStorage('still', 'st', '⠎⠞'), seed: 1 });
+    expect(store.viewModel().typed).toBe('');
+    expect(store.viewModel().diverged).toBe(false);
+    chordCell(store, [3, 4]); // ⠌
+    expect(store.viewModel().promptsCompleted).toBe(2);
+  });
+
+  it('resumes a wordsign-stem prefix on the canonical cells', () => {
+    // Typed "can" of "can't": the canonical ⠉ (the "can" wordsign cell)
+    // round-trips to that print and stays on the canon, so the prefix
+    // resumes seamlessly and the canonical chords complete the round.
     const store = createTutorStore({ storage: chordResumeStorage("can't", 'can'), seed: 1 });
     expect(store.viewModel().typed).toBe('can');
     chordCell(store, [3]); // '
@@ -880,37 +892,39 @@ describe('chord input', () => {
     expect(store.viewModel().promptsCompleted).toBe(2);
   });
 
-  it('accepts a wordsign word spelled letter by letter (can)', () => {
+  it('counts spelling a wordsign word out as a mistake in a regular round (can)', () => {
+    // Regular rounds drill the specific braille being taught, so they are
+    // judged on the cells: the letter-by-letter spelling the fox challenge
+    // accepts (see the fox tests below) diverges here.
     const store = createTutorStore({ storage: promptStorage('can top'), seed: 1 });
     chordMode(store);
-    chordCell(store, [1, 4]); // c — also the "can" wordsign cell
+    chordCell(store, [1, 4]); // ⠉ — the "can" wordsign cell itself: on canon
     expect(store.viewModel().diverged).toBe(false);
-    chordCell(store, [1]); // a — used to decode as "can"+"a", a phantom mistake
-    expect(store.viewModel().typed).toBe('ca');
+    chordCell(store, [1]); // a — valid grade-1 print, but off the canon
+    expect(store.viewModel().typed).toBe('ca'); // the print derivation still shows
+    expect(store.viewModel().diverged).toBe(true);
+    keyDown(store, 'Backspace'); // back on the canon...
     expect(store.viewModel().diverged).toBe(false);
-    chordCell(store, [1, 3, 4, 5]); // n
-    expect(store.viewModel().typed).toBe('can');
-    expect(store.viewModel().diverged).toBe(false);
-    chordSpace(store);
+    chordSpace(store); // ...which continues straight from the wordsign
     chordText(store, 'top');
     expect(store.viewModel().promptsCompleted).toBe(2);
   });
 
-  it("accepts an apostrophe word with a wordsign stem letter by letter (can't)", () => {
+  it("counts an uncontracted wordsign stem as a mistake too (can't)", () => {
     const store = createTutorStore({ storage: promptStorage("can't top"), seed: 1 });
     chordMode(store);
-    const spelled = [[1, 4], [1], [1, 3, 4, 5], [3], [2, 3, 4, 5]]; // c,a,n,',t
-    for (const cell of spelled) {
-      chordCell(store, cell);
-      expect(store.viewModel().diverged).toBe(false);
-    }
-    expect(store.viewModel().typed).toBe("can't");
-    chordSpace(store);
-    chordText(store, 'top');
+    chordCell(store, [1, 4]); // ⠉ — canonical: "can't" opens with the wordsign
+    expect(store.viewModel().diverged).toBe(false);
+    chordCell(store, [1]); // a — heading into c,a,n,',t: right print, wrong cells
+    expect(store.viewModel().diverged).toBe(true);
+    keyDown(store, 'Backspace');
+    chordText(store, "'t top"); // canonical rest of the prompt
     expect(store.viewModel().promptsCompleted).toBe(2);
   });
 
-  it("accepts a plain apostrophe word letter by letter (don't)", () => {
+  it("accepts letters where letters are the canon (don't)", () => {
+    // "don't" has no contraction — its canonical cells *are* d,o,n,',t —
+    // so the letter-by-letter chording completes a cell-judged round.
     const store = createTutorStore({ storage: promptStorage("don't top"), seed: 1 });
     chordMode(store);
     const spelled = [[1, 4, 5], [1, 3, 5], [1, 3, 4, 5], [3], [2, 3, 4, 5]]; // d,o,n,',t
@@ -921,6 +935,45 @@ describe('chord input', () => {
     expect(store.viewModel().typed).toBe("don't");
     chordSpace(store);
     chordText(store, 'top');
+    expect(store.viewModel().promptsCompleted).toBe(2);
+  });
+
+  it('shows derived print as unaccepted while the cells diverge', () => {
+    const store = createTutorStore({ storage: promptStorage('still top'), seed: 1 });
+    chordMode(store);
+    chordCell(store, [2, 3, 4]); // ⠎ — derives "s", the right print, wrong cell
+    const vm = store.viewModel();
+    expect(vm.typed).toBe('s');
+    expect(vm.diverged).toBe(true);
+    expect(vm.matchedPrint).toBe(0); // the "s" must not paint as correct...
+    expect(vm.divergedText).toBe('⠎'); // ...the offending cell renders instead
+  });
+
+  it('marks the divergence after an accepted wordsign the derived print undoes', () => {
+    // ⠉ accepts the whole "can" wordsign; the stray ⠁ re-derives the print
+    // as "ca" — shorter than what is accepted. The display must keep "can"
+    // correct and show the unaccepted cell at the caret.
+    const store = createTutorStore({ storage: promptStorage('can top'), seed: 1 });
+    chordMode(store);
+    chordCell(store, [1, 4]); // ⠉ — the "can" wordsign
+    chordCell(store, [1]); // ⠁ — off canon
+    const vm = store.viewModel();
+    expect(vm.diverged).toBe(true);
+    expect(vm.matchedPrint).toBe(3); // "can" stays accepted
+    expect(vm.divergedText).toBe('⠁');
+  });
+
+  it('reveals the canonical cells after two wrong-cell mistakes', () => {
+    // The right teaching response to print-matching-but-noncanonical cells:
+    // the hint shows the braille the round is actually asking for.
+    const store = createTutorStore({ storage: promptStorage('still top'), seed: 1 });
+    chordMode(store);
+    chordCell(store, [2, 3, 4]); // ⠎ — mistake 1 on the wordsign
+    keyDown(store, 'Backspace');
+    chordCell(store, [2, 3, 4]); // mistake 2 — reveals the sign's hint
+    expect(store.viewModel().hint).toBe('⠌'); // the "still" wordsign
+    keyDown(store, 'Backspace');
+    chordText(store, 'still top');
     expect(store.viewModel().promptsCompleted).toBe(2);
   });
 
@@ -941,14 +994,14 @@ describe('chord input', () => {
     expect(store.viewModel().promptsCompleted).toBe(2);
   });
 
-  it('continues letter-by-letter after toggling modes mid-word', () => {
+  it('restarts the prompt when toggling to chords mid-word off the canon', () => {
     const store = createTutorStore({ storage: promptStorage('still top'), seed: 1 });
-    insert(store, 'st'); // typed via VoiceOver
-    chordMode(store);
-    chordCell(store, [2, 4]); // i
-    const vm = store.viewModel();
-    expect(vm.typed).toBe('sti');
-    expect(vm.diverged).toBe(false);
+    insert(store, 'st'); // typed via VoiceOver — print-judged, fine there
+    chordMode(store); // cell-judged now: "st" has no on-canon cell buffer
+    expect(store.viewModel().typed).toBe('');
+    expect(store.viewModel().diverged).toBe(false);
+    chordText(store, 'still top'); // the canonical cells complete the round
+    expect(store.viewModel().promptsCompleted).toBe(2);
   });
 
   it('reconstructs the buffer when toggling mid-prompt on a clean prefix', () => {
@@ -1016,6 +1069,8 @@ describe('chord input', () => {
   });
 
   it('accepts "The" spelled letter by letter, not reading ⠠⠞ as "That"', () => {
+    // Fox runs are print-judged: unlike regular rounds, any valid
+    // grade-1/grade-2 spelling is acceptable — the cell count grades it.
     const store = createTutorStore({ storage: foxReadyStorage(), seed: 1 });
     chordMode(store);
     chordCell(store, [6]); // capital indicator

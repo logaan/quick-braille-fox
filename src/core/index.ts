@@ -55,7 +55,15 @@ export {
   unitTypedClean,
 } from './types';
 
-export { coveredUnitCount, derivedScores, pendingScoreDeltas, unitEnds } from './scoring';
+export {
+  coveredUnitCount,
+  derivedScores,
+  divergedTail,
+  judgedPrintCaret,
+  pendingScoreDeltas,
+  promptUnicode,
+  unitEnds,
+} from './scoring';
 
 export {
   activeSkills,

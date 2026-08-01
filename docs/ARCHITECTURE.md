@@ -224,7 +224,9 @@ Prompt = Record<{
   text: string;                 // print text to type, matched exactly
   targetSkillId: string | null; // null for fox
   isFox: boolean;
-  typed: string;                // latest typed text fed to keystroke()
+  typed: string;                // latest typed text (or back-translated print)
+  typedUnicode: string;         // chorded cells as U+2800 ('' when not chording)
+  judgedByCells: boolean;       // round judged on cells, not print (see below)
   unitMistakes: Map<number, number>; // mistakes per unit index (history)
   hintedUnits: Set<number>;     // unit indexes whose hint has been revealed
   diverged: boolean;            // typed currently diverges from the text
@@ -243,7 +245,7 @@ correct answer can still earn the +2.
 |---|---|
 | `startSession(seed?)` | fresh state with the first prompt generated; pass e.g. `Date.now()` for variety (defaults to 1, fully deterministic) |
 | `nextPrompt(state)` | replace the current prompt with a new one (call after completion, or to skip). Serves the fox challenge when `promptCounter % FOX_INTERVAL === 0`. Consumes and refreshes `seed` |
-| `keystroke(state, typed, typedUnits?)` | feed the full *resulting* typed text after an input event (not a single key). Handles progressive prefix matching, mistake events, fox instant-fail, completion, and `promptCounter`. Touches `scores` only on completion, committing `derivedScores`. Ignores input once completed. On a fox run, `typedUnits` (from `backTranslateBufferAttributed`) replaces the canonical translation as award attribution, so chord-mode runs credit the signs actually typed; without it (VoiceOver hands us print, not cells) canonical attribution applies |
+| `keystroke(state, input)` | feed the full *result* of one input event (not a single key), as a `KeystrokeInput`: `{ kind: 'print', typed, cells? }` judges the round on the typed text (VoiceOver, and every fox run — any valid spelling of the right print is accepted, with the optional cells attributing fox awards to the signs actually chorded); `{ kind: 'cells', cells }` judges it on the chorded cells against the prompt's canonical translation (emulated regular rounds — the round drills specific braille, so right print via the wrong cells diverges; the derived print is kept for display only). Handles progressive prefix matching in the judged coordinate, mistake events, fox instant-fail, completion, and `promptCounter`. Touches `scores` only on completion, committing `derivedScores`. Ignores input once completed |
 | `revealHint(state, unitIndex)` | uncover one sign's hint (state layer calls this when that sign's timer fires). No-op for fox |
 | `isPromptComplete(state)` | whether to move on (then call `nextPrompt`) |
 | `serialize(state)` | plain `SerializedTutorState` object, JSON-safe (versioned, `version: 1`) |
@@ -255,6 +257,7 @@ correct answer can still earn the +2.
 |---|---|
 | `pendingScoreDeltas(state)` | `Map` of skill id -> the score change the prompt on screen would contribute if it completed as it stands |
 | `derivedScores(state)` | `state.scores` plus those deltas, floored at 0 per skill — scores as the learner should see them *now* |
+| `judgedPrintCaret(prompt)` | the judged caret mapped into print: the plain common-prefix caret on a print-judged round; on a cell-judged round the print end of the last unit whose cells are fully chorded. Drives the hint word, the hint timer, and the view's `matchedPrint`, so derived print past the chorded cells never reads as progress |
 
 `session.ts` commits `derivedScores` when a prompt completes; `progress.ts`
 and the view layer display it while the round runs.
@@ -467,15 +470,38 @@ dot 7/8, or space mixed with dots, is discarded. The store's `onDrillKeyDown`/
 `onDrillKeyUp` (wired to the same real `<input>`, which stays focusable so the
 control is unchanged for assistive tech) preventDefault the chord keys, Enter,
 and stray printables, and append each committed cell to a per-prompt
-`cellBuffer` (blank cells mark spaces). After every commit the buffer is decoded
-with core `backTranslateBuffer(cellBuffer, prompt.text)` and fed to `keystroke`,
-so scoring, hints, and fox work unchanged; Backspace pops the last cell.
-`handleInput` short-circuits while chord mode is on, and the key handlers
-no-op while it is off. Toggling mid-prompt (or resuming a persisted chord-mode
-session) reconstructs the buffer from a clean typed prefix, or clears the typing
-if it had diverged. For fox cell counting each committed chord (cell **or**
-space) counts as one cell; Backspace never decrements — so chording the
-canonical 36 cells earns the crown and spelling a shortform out costs extra.
+`cellBuffer` (blank cells mark spaces). After every commit the buffer goes to
+`keystroke`, and **how the round is judged splits by prompt** (`bufferInput`):
+
+- **Regular prompts are judged on the cells** (`{ kind: 'cells' }`): the
+  prompt drills a specific sign, so falling back to an uncontracted spelling
+  is a mistake even though it derives the right print. The core still keeps
+  the derived print (via `backTranslateBuffer`) for display, but divergence,
+  mistake charging, and hints all follow the canonical cells; the view's
+  `matchedPrint` (core `judgedPrintCaret`) stops the prompt painting derived
+  print as correct while the cells are off canon, `divergedText` (core
+  `divergedTail`) renders the unaccepted cells themselves in red at the
+  caret (derived print cannot place a cell mistake, and can even be shorter
+  than the accepted print), and the two-mistake hint reveals the cells being
+  asked for.
+- **fox runs are judged on print** (`{ kind: 'print' }`, cells riding along):
+  any valid grade-1/grade-2 spelling of the sentence is acceptable — spelling
+  a shortform out is correct print at a higher cell cost, which the cell-count
+  grading handles — and the attached cells let scoring credit the signs
+  actually chorded.
+- **VoiceOver mode is print-judged everywhere**: the OS hands the app print;
+  there are no cells to judge.
+
+Backspace pops the last cell. `handleInput` short-circuits while chord mode is
+on, and the key handlers no-op while it is off. Toggling mid-prompt (or
+resuming a persisted chord-mode session) restores the exact chorded buffer
+when the core holds one, or reconstructs one from a clean typed prefix — but
+on a cell-judged round only a buffer that is a prefix of the canonical cells
+resumes (anything else would resume pre-diverged, charging a mistake the
+learner is not making now); otherwise the prompt restarts cleanly. For fox
+cell counting each committed chord (cell **or** space) counts as one cell;
+Backspace never decrements — so chording the canonical 36 cells earns the
+crown and spelling a shortform out costs extra.
 
 **Hint timer.** A single `setTimeout`, driven by core `nextHintFor(state)`,
 which names the sign on the clock (always the one at the caret) and its
