@@ -3,6 +3,8 @@
 
 import {
   createElement as e,
+  useEffect,
+  useState,
   type ChangeEvent,
   type KeyboardEvent,
   type ReactElement,
@@ -96,6 +98,76 @@ function InputModePicker(props: {
   );
 }
 
+/** The vendor-prefixed fullscreen API, which is still what older Safari ships. */
+interface WebkitDocument extends Document {
+  readonly webkitFullscreenEnabled?: boolean;
+  readonly webkitFullscreenElement?: Element | null;
+  webkitExitFullscreen?: () => void;
+}
+
+interface WebkitElement extends HTMLElement {
+  webkitRequestFullscreen?: () => void;
+}
+
+function fullscreenSupported(): boolean {
+  if (typeof document === 'undefined') return false;
+  const doc = document as WebkitDocument;
+  return doc.fullscreenEnabled || doc.webkitFullscreenEnabled === true;
+}
+
+function inFullscreen(): boolean {
+  if (typeof document === 'undefined') return false;
+  const doc = document as WebkitDocument;
+  return (doc.fullscreenElement ?? doc.webkitFullscreenElement ?? null) !== null;
+}
+
+/**
+ * Toggle the whole app in and out of fullscreen. Fullscreen is browser
+ * chrome, not tutor state, so this stays out of the store: local state,
+ * synced from the document on `fullscreenchange` — which also covers exits
+ * the button never sees, like pressing Escape. Renders nothing where the
+ * API is unavailable (iPhones, and the DOM-less test environment).
+ */
+function FullscreenButton(): ReactElement | null {
+  const [active, setActive] = useState(inFullscreen);
+  useEffect(() => {
+    const sync = (): void => {
+      setActive(inFullscreen());
+    };
+    document.addEventListener('fullscreenchange', sync);
+    document.addEventListener('webkitfullscreenchange', sync);
+    return () => {
+      document.removeEventListener('fullscreenchange', sync);
+      document.removeEventListener('webkitfullscreenchange', sync);
+    };
+  }, []);
+  if (!fullscreenSupported()) return null;
+  const toggle = (): void => {
+    if (inFullscreen()) {
+      const doc = document as WebkitDocument;
+      if (doc.exitFullscreen) {
+        void doc.exitFullscreen().catch(() => undefined);
+      } else {
+        doc.webkitExitFullscreen?.();
+      }
+    } else {
+      const el = document.documentElement as WebkitElement;
+      if (el.requestFullscreen) {
+        // The browser may refuse (no user gesture, iframe policy); the
+        // change event never fires and the label simply stays put.
+        void el.requestFullscreen().catch(() => undefined);
+      } else {
+        el.webkitRequestFullscreen?.();
+      }
+    }
+  };
+  return e(
+    'button',
+    { className: 'btn btn-quiet', onClick: toggle },
+    active ? 'Exit full screen' : 'Full screen',
+  );
+}
+
 /**
  * Leaving the confirm step unmounts whichever of its elements holds focus,
  * which would drop keyboard focus to <body> and throw a screen reader to
@@ -173,6 +245,7 @@ export function Header(props: HeaderProps): ReactElement {
       { className: 'header-right' },
       e(InputModePicker, { inputMode, onSelect: on.onInputModeSelect }),
       bestFox === null ? null : e(BestFoxBadge, { best: bestFox }),
+      e(FullscreenButton),
       confirmingReset
         ? e(ResetConfirm, { text: resetConfirmText, canConfirm: canConfirmReset, on })
         : e(
