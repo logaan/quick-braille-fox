@@ -994,13 +994,58 @@ describe('chord input', () => {
     expect(store.viewModel().promptsCompleted).toBe(2);
   });
 
-  it('restarts the prompt when toggling to chords mid-word off the canon', () => {
+  /** Storage resuming mid-session on a custom in-flight fox prompt. */
+  function foxPromptStorage(text: string): MemoryStorage {
+    const storage = memoryStorage();
+    const state = makeTutorState({
+      seed: 7,
+      promptCounter: FOX_INTERVAL,
+      prompt: makePrompt({ text, isFox: true }),
+    });
+    storage.setItem(
+      STORAGE_KEY,
+      JSON.stringify({ version: 1, tutor: serialize(state), bestQbf: null }),
+    );
+    return storage;
+  }
+
+  it('does not end a fox early while a final wordsign word may still be spelled', () => {
+    // A fox run is print-judged, and the bare ⠉ used to read as the whole
+    // word "can" — completing the run mid-spelling and landing the
+    // learner's remaining chords on the next prompt.
+    const store = createTutorStore({ storage: foxPromptStorage('the can'), seed: 1 });
+    chordMode(store);
+    chordCell(store, [2, 3, 4, 6]); // ⠮ "the"
+    chordSpace(store);
+    chordCell(store, [1, 4]); // ⠉ — maybe the wordsign, maybe c,a,n underway
+    expect(store.viewModel().typed).toBe('the c');
+    expect(store.viewModel().foxResult).toBeNull(); // run still going
+    chordCell(store, [1]); // a
+    chordCell(store, [1, 3, 4, 5]); // n — the spelled word completes the run
+    expect(store.viewModel().foxResult).not.toBeNull();
+    expect(store.viewModel().diverged).toBe(false); // flawless, never a mistake
+  });
+
+  it('completes a fox ending in a wordsign via the word-closing space', () => {
+    const store = createTutorStore({ storage: foxPromptStorage('the can'), seed: 1 });
+    chordMode(store);
+    chordCell(store, [2, 3, 4, 6]); // ⠮ "the"
+    chordSpace(store);
+    chordCell(store, [1, 4]); // ⠉ — the wordsign fast path
+    expect(store.viewModel().foxResult).toBeNull();
+    chordSpace(store); // closes the word: the standalone reading completes
+    expect(store.viewModel().foxResult).not.toBeNull();
+    expect(store.viewModel().diverged).toBe(false);
+  });
+
+  it('resumes mid-word typing on the canonical cells when toggling to chords', () => {
     const store = createTutorStore({ storage: promptStorage('still top'), seed: 1 });
     insert(store, 'st'); // typed via VoiceOver — print-judged, fine there
-    chordMode(store); // cell-judged now: "st" has no on-canon cell buffer
-    expect(store.viewModel().typed).toBe('');
+    chordMode(store); // cell-judged now: "st" is the ⠌ wordsign's open reading
+    expect(store.viewModel().typed).toBe('st');
     expect(store.viewModel().diverged).toBe(false);
-    chordText(store, 'still top'); // the canonical cells complete the round
+    chordSpace(store);
+    chordText(store, 'top'); // the canonical rest completes the round
     expect(store.viewModel().promptsCompleted).toBe(2);
   });
 

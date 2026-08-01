@@ -122,6 +122,30 @@ describe('backTranslateWord — with expected context', () => {
     expect(backTranslateWord(spelled, { expected: "that's", final: true })).toBe("that's");
   });
 
+  it('keeps a whole-word sign at its letter reading while the word is open', () => {
+    // ⠉ toward exactly "can": the learner may be mid-way through spelling
+    // c,a,n — the standalone reading would jump ahead of them (and complete
+    // a print-judged prompt early, landing their remaining chords on the
+    // next prompt). While a longer spelling could still reach the expected
+    // print, the open reading stays the prefix actually chorded.
+    expect(backTranslateWord([[1, 4]], { expected: 'can', final: false })).toBe('c');
+    expect(backTranslateWord([[3, 4]], { expected: 'still', final: false })).toBe('st');
+    expect(backTranslateWord([[6], [1, 4]], { expected: 'Can', final: false })).toBe('C');
+  });
+
+  it('reads a whole-word sign with no spelling reading straight away', () => {
+    // ⠯ ("and") is no letter — nothing longer could still reach the word.
+    expect(backTranslateWord([[1, 2, 3, 4, 6]], { expected: 'and', final: false })).toBe('and');
+    // ⠭ is the "it" wordsign but reads as the letter x, not a prefix of "it".
+    expect(backTranslateWord([[1, 3, 4, 6]], { expected: 'it', final: false })).toBe('it');
+  });
+
+  it('closes the last word of a buffer only when the buffer is closed', () => {
+    const cells = cellsOf('the can');
+    expect(backTranslateBuffer(cells, 'the can')).toBe('the c');
+    expect(backTranslateBuffer(cells, 'the can', true)).toBe('the can');
+  });
+
   it('still reads the wordsign itself when it was chorded', () => {
     // Buffer [⠉] alone, committed final: the standalone reading must win.
     expect(backTranslateWord([[1, 4]], { expected: 'can', final: true })).toBe('can');
@@ -169,12 +193,12 @@ describe('backTranslateBuffer — punctuation in context', () => {
   ];
   for (const [text] of cases) {
     it(`round-trips ${JSON.stringify(text)}`, () => {
-      expect(backTranslateBuffer(cellsOf(text), text)).toBe(text);
+      expect(backTranslateBuffer(cellsOf(text), text, true)).toBe(text);
     });
   }
 
   it('does not misread a terminal ⠦ as the wordsign "his"', () => {
-    expect(backTranslateBuffer(cellsOf('cab?'), 'cab?')).toBe('cab?');
+    expect(backTranslateBuffer(cellsOf('cab?'), 'cab?', true)).toBe('cab?');
   });
 });
 
@@ -235,7 +259,10 @@ describe('backTranslateBuffer — round-trip over the promptable universe', () =
       } catch {
         return;
       }
-      expect(backTranslateBuffer(cells, text)).toBe(text);
+      // Closed: a committed buffer round-trips exactly. Open, a trailing
+      // whole-word sign keeps its spelling-prefix reading (see the open-word
+      // deferral tests), so the property is stated over closed buffers.
+      expect(backTranslateBuffer(cells, text, true)).toBe(text);
     });
   }
 });
