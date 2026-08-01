@@ -26,6 +26,14 @@ describe('isChordCode', () => {
     expect(isChordCode('KeyG')).toBe(false);
     expect(isChordCode('Enter')).toBe(false);
   });
+
+  it('recognises the top-row dot keys', () => {
+    for (const code of ['KeyR', 'KeyE', 'KeyW', 'KeyQ', 'KeyU', 'KeyI', 'KeyO', 'KeyP']) {
+      expect(isChordCode(code)).toBe(true);
+    }
+    expect(isChordCode('KeyT')).toBe(false);
+    expect(isChordCode('KeyY')).toBe(false);
+  });
 });
 
 describe('chord resolution', () => {
@@ -70,6 +78,36 @@ describe('chord resolution', () => {
       ['down', 'KeyF'], ['down', 'KeyG'], ['down', 'KeyF'], ['up', 'KeyF'],
     ]);
     expect(actions).toEqual([{ kind: 'cell', cell: [1] }]);
+  });
+
+  it('resolves top-row chords to the same dots as the home row', () => {
+    const { actions } = play([
+      ['down', 'KeyR'], ['down', 'KeyU'], ['down', 'KeyI'], ['up', 'KeyR'], ['up', 'KeyU'], ['up', 'KeyI'],
+    ]);
+    expect(actions).toEqual([{ kind: 'cell', cell: [1, 4, 5] }]);
+  });
+
+  it('lets the two rows mix within one chord', () => {
+    // f (dot 1, home row) + i (dot 5, top row) -> dots 1,5.
+    const { actions } = play([
+      ['down', 'KeyF'], ['down', 'KeyI'], ['up', 'KeyF'], ['up', 'KeyI'],
+    ]);
+    expect(actions).toEqual([{ kind: 'cell', cell: [1, 5] }]);
+  });
+
+  it('counts a dot once when both rows press it', () => {
+    // f and r are both dot 1: the cell is [1], not [1, 1].
+    const { actions } = play([
+      ['down', 'KeyF'], ['down', 'KeyR'], ['up', 'KeyF'], ['up', 'KeyR'],
+    ]);
+    expect(actions).toEqual([{ kind: 'cell', cell: [1] }]);
+  });
+
+  it('discards a chord containing a top-row dot 7 or 8', () => {
+    const withSeven = play([['down', 'KeyR'], ['down', 'KeyQ'], ['up', 'KeyR'], ['up', 'KeyQ']]);
+    expect(withSeven.actions).toEqual([]);
+    const withEight = play([['down', 'KeyO'], ['down', 'KeyP'], ['up', 'KeyO'], ['up', 'KeyP']]);
+    expect(withEight.actions).toEqual([]);
   });
 
   it('yields no action for a keyup with no matching keydown', () => {
