@@ -607,7 +607,12 @@ or effects — `main.ts` re-renders the root on every store notification.
   plus a score bar toward 10 — no cells, no visible number; the exact score
   stays in each progressbar's aria-label) rendered at the bottom of the
   drill card, and the "Overall" panel (totals and per-group progress) as its
-  own card below the fold.
+  own card below the fold. The "N of M skills learnt" line is deliberately
+  **not** a live region (`role=status` with `aria-live=off`): it used to
+  announce politely, but the count changes mid-prompt, so the milestone
+  spoke over the typing that earned it — and over a fox run, where nothing
+  should interrupt. Progress stays readable on demand, like the rest of
+  the panel.
 - `help.ts` — the help section that closes the page: a collapsed
   `<details>` holding the chord key map (`F D S`/`J K L`, space,
   backspace), rendered in chord mode only. Chording is learned in one

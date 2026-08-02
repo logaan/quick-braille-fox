@@ -129,6 +129,13 @@ describe('App rendering', () => {
     expect(html).toContain(`Prompt 2: ${store.viewModel().promptText}`);
   });
 
+  it('keeps the learnt count out of speech: not a live region', () => {
+    const store = drillStore();
+    const html = render(store);
+    const tag = /<p class="overall"[^>]*>/.exec(html)?.[0] ?? '';
+    expect(tag).toContain('aria-live="off"');
+  });
+
   it('announces a mistake via an alert region, wrong input first', () => {
     const store = drillStore();
     const text = store.viewModel().promptText;

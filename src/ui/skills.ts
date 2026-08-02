@@ -59,11 +59,14 @@ export function OverallPanel(props: SkillPanelProps): ReactElement {
     'section',
     { className: 'panel', 'aria-label': 'Overall progress' },
     e('h2', { className: 'panel-heading' }, 'Overall'),
-    // A polite live region: crossing the learnt threshold changes this text,
-    // so the milestone is announced without the user leaving the drill.
+    // Deliberately NOT a live region. This used to announce politely on
+    // every change, but the count moves while the learner is mid-prompt —
+    // a milestone interrupting the typing it rewards, worst of all during a
+    // fox run. role=status still names it for a screen reader that comes
+    // looking; aria-live=off keeps it out of speech until then.
     e(
       'p',
-      { className: 'overall', role: 'status', 'aria-live': 'polite' },
+      { className: 'overall', role: 'status', 'aria-live': 'off' },
       e('strong', null, String(vm.learntCount)),
       ` of ${vm.totalSkills} skills learnt`,
     ),
