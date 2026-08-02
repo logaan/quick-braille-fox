@@ -181,12 +181,26 @@ describe('App rendering', () => {
     expect(html.indexOf(firstHintCell)).toBeLessThan(html.indexOf('hint: dots '));
   });
 
-  it('describes the chording keys while chord mode is on', () => {
+  it('tucks the chording keys into the help section at the page foot', () => {
     const store = createTutorStore({ seed: 1 });
     store.handlers.onInputModeSelect('emulated');
     const html = render(store);
-    expect(html).toContain('Chording: F D S');
+    // Collapsed (no `open`) and last in DOM order — the drill card itself
+    // says nothing about chording — but still the input's description.
+    expect(html).toContain('<details class="help">');
+    expect(html).toContain('<summary>Chording keys</summary>');
+    expect(html).toContain('F D S = dots 1 2 3');
     expect(html).toContain('aria-describedby="chord-help"');
+    expect(html.indexOf('id="chord-help"')).toBeGreaterThan(html.indexOf('id="drill-input"'));
+    expect(html.indexOf('id="chord-help"')).toBeGreaterThan(html.indexOf('a11y-note'));
+  });
+
+  it('leaves out the chording help in VoiceOver mode', () => {
+    const store = createTutorStore({ seed: 1 });
+    store.handlers.onInputModeSelect('voiceover');
+    const html = render(store);
+    expect(html).not.toContain('class="help"');
+    expect(html).not.toContain('aria-describedby="chord-help"');
   });
 
   it('leads the fox result with a focusable outcome summary', () => {

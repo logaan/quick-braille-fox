@@ -565,7 +565,8 @@ Pure render functions of `AppViewModel` + `AppHandlers` (both defined in
 every component uses `createElement as e`. No component owns state, timers,
 or effects — `main.ts` re-renders the root on every store notification.
 
-- `app.ts` — layout: header, drill view, skill panel.
+- `app.ts` — layout: header, drill view, skill panel, then the page-foot
+  reference material (braille-passthrough note, help section).
 - `header.ts` — the logo: "Quick braille fox" as a 3×3 grid of braille
   cells, one word per row — ⠠⠟⠅ (capital sign + shortform "qk"), ⠃⠗⠇
   (shortform "brl"), ⠋⠕⠭ ("fox" in full) — with aria-label "Quick Braille
@@ -607,6 +608,15 @@ or effects — `main.ts` re-renders the root on every store notification.
   stays in each progressbar's aria-label) rendered at the bottom of the
   drill card, and the "Overall" panel (totals and per-group progress) as its
   own card below the fold.
+- `help.ts` — the help section that closes the page: a collapsed
+  `<details>` holding the chord key map (`F D S`/`J K L`, space,
+  backspace), rendered in chord mode only. Chording is learned in one
+  session and then known, so the keys are reference material, not drill
+  furniture — they sit below the fold and cost a click. The drill input
+  still points `aria-describedby` at the (hidden) text via
+  `CHORD_HELP_ID`: a description referenced by id is exposed even when its
+  element is hidden, so speech and braille users get the keys at the field
+  while the sighted layout stays clear.
 - `braille.ts` — `BrailleCells`: renders a U+2800 string as large,
   individually boxed cells. The braille characters stay accessible (not
   aria-hidden) on purpose: a connected braille display renders them as

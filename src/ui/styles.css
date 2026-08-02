@@ -587,13 +587,6 @@ input:focus-visible {
   color: var(--wrong);
 }
 
-/* Chord-mode key map: on screen whenever chording is active, because the
-   mode is undiscoverable otherwise (the field swallows printable keys). */
-.chord-help {
-  margin: 0.4rem 0 0;
-  font-size: 0.8rem;
-  color: var(--dim);
-}
 
 /* --- Prompt grid --------------------------------------------------------
  *
@@ -948,4 +941,20 @@ input:focus-visible {
   margin: 0;
   color: var(--dim);
   font-size: 0.85rem;
+}
+
+/* Help: reference material (currently the chord key map) at the page foot,
+   below the fold and collapsed. Chording is learned once and then known, so
+   it costs a click to see and nothing to ignore. */
+.help {
+  color: var(--dim);
+  font-size: 0.85rem;
+}
+
+.help summary {
+  cursor: pointer;
+}
+
+.help-body {
+  margin: 0.35rem 0 0;
 }

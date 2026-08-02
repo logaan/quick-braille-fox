@@ -24,6 +24,7 @@ import {
 import type { Column, FoxResult, RowModel } from '../core';
 import type { AppHandlers, AppViewModel, FoxFailureView } from '../state';
 import { BrailleCells, describeCells } from './braille';
+import { CHORD_HELP_ID } from './help';
 import { formatPercent, signLabel } from './labels';
 import { LearningNowLine } from './skills';
 
@@ -489,7 +490,11 @@ export function Drill(props: DrillProps): ReactElement {
     id: 'drill-input',
     type: 'text',
     defaultValue: vm.typed,
-    'aria-describedby': vm.inputMode === 'emulated' ? 'chord-help' : undefined,
+    // The chord key map lives in the collapsed help section at the foot of
+    // the page (help.ts), but a description referenced by id is exposed even
+    // when the element is hidden — so speech and braille users still get the
+    // keys at the field, where they are needed, with nothing on screen.
+    'aria-describedby': vm.inputMode === 'emulated' ? CHORD_HELP_ID : undefined,
     onChange: on.onInput,
     // In chord mode these drive typing (dot keys, space, backspace); they
     // no-op while VoiceOver input is on.
@@ -550,14 +555,6 @@ export function Drill(props: DrillProps): ReactElement {
         role: 'status', 'aria-live': 'off' },
       statusLine(vm),
     ),
-    vm.inputMode !== 'emulated'
-      ? null
-      : e(
-          'p',
-          { className: 'chord-help', id: 'chord-help' },
-          'Chording: F D S = dots 1 2 3 · J K L = dots 4 5 6 · ' +
-            'Space = space · Backspace deletes a cell',
-        ),
     vm.isFox
       ? e(
           'div',

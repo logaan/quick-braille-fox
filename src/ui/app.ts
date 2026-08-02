@@ -3,12 +3,14 @@
 // brand (page identity), then the drill and progress panels, then the
 // settings controls — which CSS grid places back in the visual header row,
 // pixel-equivalent to the old header-first layout. A note on how the braille
-// glyphs behave on a real display closes the page.
+// glyphs behave on a real display and a collapsed help section close the
+// page: reference material, last in reading order, below the fold.
 
 import { createElement as e, type ReactElement } from 'react';
 import type { AppHandlers, AppViewModel } from '../state';
 import { Drill } from './drill';
 import { Brand, HeaderControls } from './header';
+import { HelpSection } from './help';
 import { OverallPanel } from './skills';
 
 export interface AppProps {
@@ -37,6 +39,7 @@ export function App(props: AppProps): ReactElement {
           'braille display shows exactly the dots on screen, whatever output ' +
           'table you use.',
       ),
+      e(HelpSection, { inputMode: vm.inputMode }),
     ),
     e(HeaderControls, {
       bestFox: vm.bestFox,
