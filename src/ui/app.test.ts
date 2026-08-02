@@ -89,7 +89,7 @@ describe('App rendering', () => {
   it('renders the fresh-session drill view', () => {
     const store = createTutorStore({ seed: 1 });
     const html = render(store);
-    expect(html).toContain('⠟'); // brand cell
+    expect(html).toContain('brand-dot-raised'); // brand dot grid
     expect(html).toContain('aria-label="Quick Braille Fox"');
     expect(html).toContain('id="drill-input"');
     expect(html).toContain('Learning now');

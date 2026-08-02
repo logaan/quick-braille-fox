@@ -569,7 +569,10 @@ or effects — `main.ts` re-renders the root on every store notification.
 - `header.ts` — the logo: "Quick braille fox" as a 3×3 grid of braille
   cells, one word per row — ⠠⠟⠅ (capital sign + shortform "qk"), ⠃⠗⠇
   (shortform "brl"), ⠋⠕⠭ ("fox" in full) — with aria-label "Quick Braille
-  Fox"; the input-mode switch (`role="switch"`, "VoiceOver input", on by
+  Fox". The cells are rendered not as glyphs in boxes but as one evenly
+  spaced 6×9 field of dots (`BRAND_DOT_ROWS` unpacks each character's
+  U+2800 bitmask into dot rows), so the logo reads as a single braille
+  shape; the input-mode switch (`role="switch"`, "VoiceOver input", on by
   default), the persisted best fox result (👑 or `+N%`), and the two-step
   reset-progress control.
 - `drill.ts` — the prompt as the **aligned column grid** (`vm.rows`, core

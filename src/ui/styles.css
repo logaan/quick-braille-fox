@@ -224,34 +224,36 @@ input:focus-visible {
   padding: 0.85rem clamp(0.75rem, 3vw, 1.5rem) 0.85rem 0;
 }
 
+/* The nine brand cells are drawn as one evenly spaced 6×9 field of dots
+   (see BRAND_DOT_ROWS), not as nine bordered glyph boxes: no containers, no
+   rounded corners, just the shape the dots make. Unraised positions stay
+   visible but faint, so the grid still reads as braille rather than as
+   scattered marks. */
 .brand {
   margin: 0;
   display: inline-flex;
-  flex-direction: column;
-  gap: 0.15rem;
-  font-size: 0.8rem;
   font-weight: 400;
   line-height: 1;
-  font-family: var(--braille-font);
 }
 
-.brand-row {
-  display: inline-flex;
-  gap: 0.15rem;
+/* Gap ≈ 60% of the dot diameter, roughly the proportion of embossed braille
+   (1.5mm dots on a 2.5mm pitch), and sized so the logo costs no more header
+   height than the boxed cells it replaced. */
+.brand-dots {
+  --brand-dot-size: 0.32rem;
+  display: grid;
+  grid-template-columns: repeat(6, var(--brand-dot-size));
+  grid-template-rows: repeat(9, var(--brand-dot-size));
+  gap: 0.2rem;
 }
 
-.brand-cell {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  min-width: 0.95rem;
-  min-height: 1.15rem;
-  padding: 0.05rem 0.1rem;
-  color: var(--accent);
-  background: var(--surface);
-  border: 1px solid var(--line);
-  border-radius: var(--radius-sm);
-  box-shadow: var(--shadow-sm);
+.brand-dot {
+  border-radius: 50%;
+  background: var(--line);
+}
+
+.brand-dot-raised {
+  background: var(--accent);
 }
 
 /* Terse announcements: a small visible checkbox in the settings cluster. */

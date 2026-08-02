@@ -40,6 +40,26 @@ const BRAND_ROWS = [
   ['⠋', '⠕', '⠭'],
 ];
 
+/**
+ * Those nine cells flattened into one 6-wide, 9-tall field of dots — three
+ * cells across is six dot columns, three rows of cells is nine dot rows.
+ * Drawing the dots directly on one evenly spaced grid reads as a single
+ * braille shape; nine boxed glyphs read as nine cramped little cards.
+ *
+ * A braille character is U+2800 plus a bitmask, bit n−1 standing for dot n,
+ * and dots 1–3 run down a cell's left column with 4–6 down its right — so
+ * within a row of cells, dot row `r` takes bits `r` and `r + 3` from each
+ * cell in turn.
+ */
+const BRAND_DOT_ROWS: readonly (readonly boolean[])[] = BRAND_ROWS.flatMap((cells) =>
+  [0, 1, 2].map((r) =>
+    cells.flatMap((cell) => {
+      const dots = (cell.codePointAt(0) ?? 0x2800) - 0x2800;
+      return [r, r + 3].map((bit) => (dots & (1 << bit)) !== 0);
+    }),
+  ),
+);
+
 function BestFoxBadge(props: { readonly best: BestFox }): ReactElement {
   const { best } = props;
   return e(
@@ -270,11 +290,16 @@ export function Brand(): ReactElement {
     e(
       'h1',
       { className: 'brand', 'aria-label': 'Quick Braille Fox' },
-      BRAND_ROWS.map((row, r) =>
-        e(
-          'span',
-          { key: r, className: 'brand-row', 'aria-hidden': 'true' },
-          row.map((c, i) => e('span', { key: i, className: 'brand-cell' }, c)),
+      e(
+        'span',
+        { className: 'brand-dots', 'aria-hidden': 'true' },
+        BRAND_DOT_ROWS.flatMap((row, r) =>
+          row.map((raised, c) =>
+            e('span', {
+              key: `${r}-${c}`,
+              className: raised ? 'brand-dot brand-dot-raised' : 'brand-dot',
+            }),
+          ),
         ),
       ),
     ),

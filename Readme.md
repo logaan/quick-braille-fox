@@ -6,7 +6,8 @@
 
 The logo spells "Quick braille fox" as a 3×3 grid of braille cells, one word
 per row: the capital sign + the shortform "qk", the shortform "brl", and
-"fox" in full.
+"fox" in full. In the app those nine cells are drawn as a single 6×9 field of
+dots rather than nine boxed glyphs.
 
 Quick Braille Fox is a web app that teaches you to type Unified English Braille — grade 1
 (uncontracted) first, then grade 2 (contractions and shortforms). It drills
