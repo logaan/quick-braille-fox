@@ -49,27 +49,27 @@ and drive everything with `Runtime.evaluate` (`returnByValue`,
 
 - The score-0 auto-hint fires 400 ms after a prompt appears — read/act fast
   or expect `hintShown` behaviour.
-- **Reaching `src/core` from the page:** `Runtime.evaluate` runs a classic
-  script, so a dynamic `import()` in the expression fails with
-  `SyntaxError: Unexpected token 'import'`. Inject a module script instead
-  and park the namespace on `window`, then use `window.__core` from later
-  evaluates (`awaitPromise: true` on this one):
+- **Reaching `src/core` from the page:** `Runtime.evaluate` runs the
+  expression as a *classic script*, so a static `import` statement fails
+  (`SyntaxError: Cannot use import statement outside a module`) and so does
+  a top-level `await`. Dynamic `import()` works — wrap it in an async IIFE
+  and park the namespace on `window` (`awaitPromise: true` on this call):
 
   ```js
-  new Promise((resolve) => {
-    if (window.__core) { resolve(true); return; }
-    window.__coreReady = () => resolve(true);
-    const s = document.createElement('script');
-    s.type = 'module';
-    s.textContent = "import * as core from '/src/core/index.ts';"
-      + " window.__core = core; window.__coreReady();";
-    document.head.appendChild(s);
-  })
+  (async () => {
+    window.__core = await import('/src/core/index.ts');
+    return Object.keys(window.__core).length;
+  })()
   ```
 
   Vite serves the TS entry, so the `/src/core/index.ts` URL is correct as
-  written. Re-inject after every navigation — `window.__core` dies with the
-  document.
+  written. Park it rather than returning it: `returnByValue` JSON-serialises
+  the module namespace, which drops every function (12 of 60 exports survive).
+  Re-run after every navigation — `window.__core` dies with the document.
+
+  If a context ever refuses dynamic `import()`, the fallback is to inject a
+  `<script type="module">` that assigns `window.__core` and resolves a
+  promise you await.
 
 - **Seeding localStorage:** the app flushes its in-memory state on
   `pagehide`, and closing leftover tabs flushes too — a seed written from
