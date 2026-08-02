@@ -49,11 +49,71 @@ and drive everything with `Runtime.evaluate` (`returnByValue`,
 
 - The score-0 auto-hint fires 400 ms after a prompt appears — read/act fast
   or expect `hintShown` behaviour.
+- **Reaching `src/core` from the page:** `Runtime.evaluate` runs the
+  expression as a *classic script*, so a static `import` statement fails
+  (`SyntaxError: Cannot use import statement outside a module`) and so does
+  a top-level `await`. Dynamic `import()` works — wrap it in an async IIFE
+  and park the namespace on `window` (`awaitPromise: true` on this call):
+
+  ```js
+  (async () => {
+    window.__core = await import('/src/core/index.ts');
+    return Object.keys(window.__core).length;
+  })()
+  ```
+
+  Vite serves the TS entry, so the `/src/core/index.ts` URL is correct as
+  written. Park it rather than returning it: `returnByValue` JSON-serialises
+  the module namespace, which drops every function (12 of 60 exports survive).
+  Re-run after every navigation — `window.__core` dies with the document.
+
+  If a context ever refuses dynamic `import()`, the fallback is to inject a
+  `<script type="module">` that assigns `window.__core` and resolves a
+  promise you await.
+
 - **Seeding localStorage:** the app flushes its in-memory state on
   `pagehide`, and closing leftover tabs flushes too — a seed written from
-  another page gets clobbered. The reliable way is
-  `Page.addScriptToEvaluateOnNewDocument` (guard with a sessionStorage
-  flag), which runs before the app boots and reads storage.
+  another page gets clobbered. The fix is to hand the seed over in
+  sessionStorage (which the app never touches, and which survives a
+  same-tab navigation) and let a new-document script move it into
+  localStorage. Register once, after attaching:
+
+  ```js
+  await send('Page.addScriptToEvaluateOnNewDocument', { source: `
+    const cmd = sessionStorage.getItem('__seed');
+    if (cmd) {
+      sessionStorage.removeItem('__seed');
+      if (cmd === 'CLEAR') localStorage.clear();
+      else localStorage.setItem('qbf-progress-v1', cmd);
+    }
+  ` });
+  ```
+
+  Then, from the current page, set the command and navigate:
+
+  ```js
+  // Start clean:
+  await evaluate(`sessionStorage.setItem('__seed', 'CLEAR'); true`);
+  await goto(APP);
+
+  // Or seed a specific round (needs window.__core, see above):
+  await evaluate(`(() => {
+    const core = window.__core;
+    const state = core.makeTutorState({
+      seed: 7, promptCounter: 1,
+      prompt: core.makePrompt({ text: 'the dog', targetSkillId: 'letter-d' }),
+    });
+    sessionStorage.setItem('__seed', JSON.stringify({
+      version: 1, tutor: core.serialize(state), bestQbf: null,
+      inputMode: 'emulated',
+    }));
+  })(); true`);
+  await goto(APP);
+  ```
+
+  The ordering is the whole point: the new-document script runs *after* the
+  outgoing page's `pagehide` flush and *before* the app boots, which is the
+  only window in which a write to localStorage survives.
 - Close stale CDP tabs (`/json/close/<id>`) before a scenario; leftover
   app tabs hold timers that re-save old state.
 - Worktrees: symlink the main checkout's `node_modules` into the worktree
