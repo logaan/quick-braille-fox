@@ -39,7 +39,8 @@ and drive everything with `Runtime.evaluate` (`returnByValue`,
   ```
 
 - Read state from the DOM: prompt text at `.prompt .visually-hidden`,
-  active skills/scores at `.active-skill` (`.skill-print`, `.skill-score`),
+  active skills at `.learning-skill` (`.learning-print` for the print form;
+  the score lives in the progressbar's `aria-valuenow`/`aria-label`),
   hint at `.hint`, totals at `.overall`, group rows at `.group-row`.
 - Progress persists in localStorage key `qbf-progress-v1`
   (envelope `{ version, tutor, bestQbf, introducedSkillIds }`).

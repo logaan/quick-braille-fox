@@ -553,8 +553,8 @@ A "New skill" introduction banner used to live here, keyed on
 was removed: skills are used in prompt text — and score points — from the
 moment they enter the active window, which is long before they are randomly
 picked as a target, so the banner announced skills as "new" after the learner
-had already been drilling them. The "Learning now" panel already shows all
-five active skills with cells, print, and score, continuously. Envelopes
+had already been drilling them. The "Learning now" line already shows all
+five active skills, with score bars, continuously. Envelopes
 written by older versions still carry `introducedSkillIds`; the loader
 ignores unknown fields, so no version bump was needed.
 
@@ -599,8 +599,11 @@ or effects — `main.ts` re-renders the root on every store notification.
   text, and hint reveals reach a visually-hidden `aria-live=polite` region
   as spoken dots plus the raw glyphs. The fox result screen is unchanged
   (crown / `+N%` badge / failed, with a Continue button).
-- `skills.ts` — the 5 active skills (cells, print, score bar toward 10) and
-  overall/per-group progress.
+- `skills.ts` — the "Learning now" line (the 5 active skills as print form
+  plus a score bar toward 10 — no cells, no visible number; the exact score
+  stays in each progressbar's aria-label) rendered at the bottom of the
+  drill card, and the "Overall" panel (totals and per-group progress) as its
+  own card below the fold.
 - `braille.ts` — `BrailleCells`: renders a U+2800 string as large,
   individually boxed cells. The braille characters stay accessible (not
   aria-hidden) on purpose: a connected braille display renders them as
@@ -612,7 +615,14 @@ or effects — `main.ts` re-renders the root on every store notification.
   hard borders, with transitions disabled under `prefers-reduced-motion`.
   Every text/background pair holds WCAG AA (the deliberately dim untyped
   prompt chars are large text, ≥ 3:1), and wrong chars keep an underline so
-  the monkeytype colouring never relies on hue alone. Responsive: CSS grid
+  the monkeytype colouring never relies on hue alone. Responsive: the root
+  font size scales with the viewport (`clamp(11px, min(2.75vh, 2vw), 72px)`
+  on `html`) so the rem-sized layout grows proportionally until the drill
+  card fills the window — fullscreen laptop, 4K TV, and landscape phone all
+  get a full-height card — and the card's `min-height` puts the fold at its
+  bottom edge, keeping the Overall panel below it. One trade-off: because
+  the scale is viewport-derived, browser zoom barely changes the rendered
+  size (the layout is already as large as the window allows). CSS grid
   collapses to one column under 52rem; `100dvh` keeps the input visible
   with the on-screen keyboard up; no horizontal page scroll.
 

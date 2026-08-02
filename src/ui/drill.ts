@@ -25,6 +25,7 @@ import type { Column, FoxResult, RowModel } from '../core';
 import type { AppHandlers, AppViewModel, FoxFailureView } from '../state';
 import { BrailleCells, describeCells } from './braille';
 import { formatPercent, signLabel } from './labels';
+import { LearningNowLine } from './skills';
 
 const BLANK = '⠀';
 
@@ -575,5 +576,8 @@ export function Drill(props: DrillProps): ReactElement {
           { className: 'visually-hidden', 'aria-live': 'polite' },
           vm.hint === null ? '' : `${vm.hint} — hint: ${describeCells(vm.hint)}.`,
         ),
+    // Progress lives in the drill card, pinned to its bottom edge — one
+    // compact line, after everything the round itself needs in DOM order.
+    e(LearningNowLine, { vm }),
   );
 }

@@ -87,6 +87,17 @@ body {
   padding: 0;
 }
 
+/* The whole layout is sized in rem, so scaling the root font size scales the
+ * app proportionally with the window: the game card grows until it fills the
+ * viewport height (the 2.75vh term — the above-the-fold stack is ~36rem
+ * tall) or runs out of width (the 2vw term — the column is 46rem wide),
+ * whichever bites first. Sized for fullscreen on a 13" laptop, a 4K TV, and
+ * a phone in landscape; the lower clamp keeps text legible on short
+ * viewports (landscape phone with the keyboard up). */
+html {
+  font-size: clamp(11px, min(2.75vh, 2vw), 72px);
+}
+
 body {
   background: var(--bg);
   color: var(--text);
@@ -463,6 +474,11 @@ input:focus-visible {
 
 /* --- Drill ------------------------------------------------------------- */
 
+/* The card fills the first viewport: min-height is 100dvh less the header
+   (~5.5rem) and the layout's top padding, so the fold lands at the card's
+   bottom edge and the Overall panel sits below it. The prompt area flexes to
+   absorb any slack, which pins the input/status/learning-line group to the
+   bottom of the card. */
 .drill {
   position: relative; /* anchors the hidden input so focusing it can't scroll away */
   display: flex;
@@ -470,20 +486,28 @@ input:focus-visible {
   gap: 1.4rem;
   background: var(--surface);
   border-radius: var(--radius-lg);
-  padding: clamp(1.1rem, 3vw, 2.5rem);
+  padding: 2rem;
   min-width: 0;
+  min-height: calc(100dvh - 7.5rem);
   box-shadow: var(--shadow-md);
 }
 
 .prompt-label {
-  display: block;
+  display: flex;
+  align-items: center;
+  flex: 1;
   cursor: text;
+}
+
+.prompt-label .prompt {
+  width: 100%;
+  min-width: 0;
 }
 
 .prompt {
   display: block;
   font-family: var(--mono);
-  font-size: clamp(1.5rem, 4.5vw, 2.25rem);
+  font-size: 2rem;
   letter-spacing: 0.02em;
   white-space: pre-wrap;
   word-break: break-word;
@@ -529,7 +553,7 @@ input:focus-visible {
   padding: 0.85rem 1rem;
   font: inherit;
   font-family: var(--mono);
-  font-size: clamp(1.05rem, 2.5vw, 1.35rem);
+  font-size: 1.2rem;
   color: var(--text);
   background: var(--surface);
   border: 1px solid var(--line);
@@ -619,7 +643,7 @@ input:focus-visible {
 
 .col-print {
   font-family: var(--mono);
-  font-size: clamp(1.3rem, 3.5vw, 1.8rem);
+  font-size: 1.6rem;
   line-height: 1.2;
   min-height: 1.2em;
   white-space: pre; /* a space column's print is a space — keep its width */
@@ -785,9 +809,47 @@ input:focus-visible {
   color: var(--wrong);
 }
 
+/* --- Learning now line -------------------------------------------------- */
+
+/* The active skills as one compact strip at the bottom of the drill card:
+   print form + progress bar per skill, evenly sharing the row. margin-top
+   auto pins it to the card's bottom edge (the prompt area flexes above). */
+.learning-line {
+  margin-top: auto;
+  padding-top: 1rem;
+  border-top: 1px solid var(--line);
+}
+
+.learning-skills {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem 1.5rem;
+}
+
+.learning-skill {
+  flex: 1 1 0;
+  min-width: 5.5rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.learning-print {
+  font-family: var(--mono);
+  font-size: 1rem;
+  white-space: nowrap;
+}
+
+.learning-skill .bar {
+  flex: 1;
+}
+
 /* --- Skill panel ---------------------------------------------------------- */
 
-/* "Learning now" and "Overall" are separate cards, stacked under the drill. */
+/* The "Overall" card, below the fold under the drill. */
 .panel {
   display: flex;
   flex-direction: column;
@@ -808,7 +870,6 @@ input:focus-visible {
   font-weight: 650;
 }
 
-.active-skills,
 .groups {
   list-style: none;
   margin: 0;
@@ -816,32 +877,6 @@ input:focus-visible {
   display: flex;
   flex-direction: column;
   gap: 0.6rem;
-}
-
-.active-skill {
-  display: flex;
-  align-items: center;
-  gap: 0.7rem;
-}
-
-.active-skill-info {
-  flex: 1;
-  min-width: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 0.25rem;
-}
-
-.skill-print {
-  font-family: var(--mono);
-  font-size: 1.05rem;
-  overflow-wrap: anywhere;
-}
-
-.skill-score {
-  color: var(--dim);
-  font-size: 0.85rem;
-  font-variant-numeric: tabular-nums;
 }
 
 .bar {

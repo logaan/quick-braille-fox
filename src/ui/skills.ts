@@ -1,52 +1,52 @@
-// Progress panels: "Learning now" (the 5 active skills with braille cells,
-// print form, and score bars) and "Overall" (totals and per-group progress).
-// They are separate cards so the single-column layout can stack them.
+// Progress views: the "Learning now" line (the 5 active skills as print form
+// plus a score bar, compact enough to live inside the drill card) and the
+// "Overall" panel (totals and per-group progress, its own card below the
+// fold).
 
 import { createElement as e, type ReactElement } from 'react';
 import { LEARNT_THRESHOLD } from '../core';
 import type { AppViewModel } from '../state';
-import { BrailleCells } from './braille';
 import { GROUP_LABELS } from './labels';
 
 export interface SkillPanelProps {
   readonly vm: AppViewModel;
 }
 
-export function LearningNowPanel(props: SkillPanelProps): ReactElement {
+/**
+ * The active skills as one compact line: each skill is its print form beside
+ * a progress bar — no cells (the drill itself teaches those) and no numeric
+ * score (the bar carries it; the exact value stays in the aria-label). Lives
+ * at the bottom of the drill card so glancing at progress never means
+ * leaving the drill.
+ */
+export function LearningNowLine(props: SkillPanelProps): ReactElement {
   const { vm } = props;
   return e(
     'section',
-    { className: 'panel', 'aria-label': 'Learning now' },
-    e('h2', { className: 'panel-heading' }, 'Learning now'),
+    { className: 'learning-line', 'aria-label': 'Learning now' },
     e(
       'ul',
-      { className: 'active-skills' },
+      { className: 'learning-skills' },
       vm.activeSkills.map((s) =>
         e(
           'li',
-          { key: s.id, className: 'active-skill' },
-          e(BrailleCells, { unicode: s.unicode, size: 'md' }),
+          { key: s.id, className: 'learning-skill' },
+          e('span', { className: 'learning-print' }, s.print),
           e(
             'div',
-            { className: 'active-skill-info' },
-            e('span', { className: 'skill-print' }, s.print),
-            e(
-              'div',
-              {
-                className: 'bar',
-                role: 'progressbar',
-                'aria-valuemin': 0,
-                'aria-valuemax': LEARNT_THRESHOLD,
-                'aria-valuenow': Math.min(LEARNT_THRESHOLD, s.score),
-                'aria-label': `${s.print}: score ${s.score} of ${LEARNT_THRESHOLD}`,
-              },
-              e('div', {
-                className: 'bar-fill',
-                style: { width: `${s.progress * 100}%` },
-              }),
-            ),
+            {
+              className: 'bar',
+              role: 'progressbar',
+              'aria-valuemin': 0,
+              'aria-valuemax': LEARNT_THRESHOLD,
+              'aria-valuenow': Math.min(LEARNT_THRESHOLD, s.score),
+              'aria-label': `${s.print}: score ${s.score} of ${LEARNT_THRESHOLD}`,
+            },
+            e('div', {
+              className: 'bar-fill',
+              style: { width: `${s.progress * 100}%` },
+            }),
           ),
-          e('span', { className: 'skill-score', 'aria-hidden': 'true' }, String(s.score)),
         ),
       ),
     ),

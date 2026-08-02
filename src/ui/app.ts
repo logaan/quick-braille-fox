@@ -9,7 +9,7 @@ import { createElement as e, type ReactElement } from 'react';
 import type { AppHandlers, AppViewModel } from '../state';
 import { Drill } from './drill';
 import { Brand, HeaderControls } from './header';
-import { LearningNowPanel, OverallPanel } from './skills';
+import { OverallPanel } from './skills';
 
 export interface AppProps {
   readonly vm: AppViewModel;
@@ -26,7 +26,6 @@ export function App(props: AppProps): ReactElement {
       'main',
       { className: 'layout' },
       e(Drill, { vm, on }),
-      e(LearningNowPanel, { vm }),
       e(OverallPanel, { vm }),
       // MDN's aria-braillelabel guidance: when content contains Unicode
       // braille patterns, tell users, so they know how it interacts with
