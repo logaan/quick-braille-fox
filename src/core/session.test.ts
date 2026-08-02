@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest';
 import { skills } from '../data/skills';
 import {
   activeSkills,
-  hintDelayFor,
+  hintDelayForSkills,
   isSkillLearnt,
   learntSkills,
   learntSkillsIn,
@@ -102,18 +102,25 @@ describe('hint timing', () => {
     expect(hintDelayMs(10)).toBe(3400);
   });
 
-  it('unlearnt-skill prompts get a time-based hint delay', () => {
-    let state = makeTutorState().set('scores', Map({ 'letter-a': 4 }));
-    state = withPrompt(state, 'a', 'letter-a');
-    expect(hintDelayFor(state)).toBe(1600);
+  it('signs with an unlearnt skill get a time-based hint delay', () => {
+    const state = makeTutorState().set('scores', Map({ 'letter-a': 4 }));
+    expect(hintDelayForSkills(state, ['letter-a'])).toBe(1600);
   });
 
-  it('learnt-skill and fox prompts get no time-based hint', () => {
-    let state = makeTutorState().set('scores', Map({ 'letter-a': 11 }));
-    state = withPrompt(state, 'a', 'letter-a');
-    expect(hintDelayFor(state)).toBeNull();
-    const fox = withPrompt(makeTutorState(), FOX_SENTENCE, null, true);
-    expect(hintDelayFor(fox)).toBeNull();
+  it('waits on the weakest unlearnt skill, ignoring learnt ones', () => {
+    const state = makeTutorState().set(
+      'scores',
+      Map({ 'letter-a': 11, 'capital-letter-indicator': 2, 'letter-b': 5 }),
+    );
+    expect(hintDelayForSkills(state, ['capital-letter-indicator', 'letter-a', 'letter-b'])).toBe(
+      hintDelayMs(2),
+    );
+  });
+
+  it('all-learnt signs and skill-less (space) signs get no time-based hint', () => {
+    const state = makeTutorState().set('scores', Map({ 'letter-a': 11 }));
+    expect(hintDelayForSkills(state, ['letter-a'])).toBeNull();
+    expect(hintDelayForSkills(state, [])).toBeNull();
   });
 });
 

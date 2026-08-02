@@ -1,10 +1,10 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { ChangeEvent, KeyboardEvent } from 'react';
 import {
-  HINT_REVEAL_COOLDOWN_MS,
   FOX_INTERVAL,
   FOX_MIN_CELLS,
   FOX_SENTENCE,
+  hintDelayMs,
   makePrompt,
   makeTutorState,
   serialize,
@@ -278,8 +278,8 @@ describe('a sign’s countdown starts when the caret reaches it', () => {
     typeText(store, 'the');
     vi.advanceTimersByTime(600_000); // dawdle with the caret on the space
     expect(store.viewModel().hint).toBeNull();
-    // Only now does "d" start counting — and it gets its full time (the
-    // prompt delay, since nothing has been hinted yet).
+    // Only now does "d" start counting — and it gets its full time (its
+    // own skill's delay; earlier hints have no bearing on it).
     insert(store, 'the ');
     vi.advanceTimersByTime(399);
     expect(store.viewModel().hint).toBeNull();
@@ -307,16 +307,16 @@ describe('progressive hint reveal', () => {
 
     typeText(store, 'the ');
     expect(store.viewModel().hint).toBeNull(); // the next word starts covered
-    vi.advanceTimersByTime(HINT_REVEAL_COOLDOWN_MS);
+    vi.advanceTimersByTime(hintDelayMs(0));
     expect(store.viewModel().hint).toBe('⠙');
 
-    // Each further sign waits its own cooldown, and only from the moment
-    // the sign before it is typed.
+    // Each further sign waits its own skill's delay, and only from the
+    // moment the sign before it is typed.
     typeText(store, 'the d');
-    vi.advanceTimersByTime(HINT_REVEAL_COOLDOWN_MS);
+    vi.advanceTimersByTime(hintDelayMs(0));
     expect(store.viewModel().hint).toBe('⠙⠕');
     typeText(store, 'the do');
-    vi.advanceTimersByTime(HINT_REVEAL_COOLDOWN_MS);
+    vi.advanceTimersByTime(hintDelayMs(0));
     expect(store.viewModel().hint).toBe('⠙⠕⠛');
   });
 

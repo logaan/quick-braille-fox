@@ -9,10 +9,9 @@
 // revealHint().
 
 import { dotsToUnicode, tryTranslate } from './braille';
-import { hintDelayFor } from './progress';
+import { hintDelayForSkills } from './progress';
 import { judgedPrintCaret } from './scoring';
 import type { TutorState } from './types';
-import { HINT_REVEAL_COOLDOWN_MS } from './types';
 
 /** One reveal unit of a hinted word. */
 export interface HintUnit {
@@ -98,10 +97,12 @@ export interface PendingHint {
  * first sign of a word start its clock only once the space before it has
  * been typed.
  *
- * The wait is the prompt's hintDelayFor() for the first sign hinted in a
- * prompt, and HINT_REVEAL_COOLDOWN_MS for each sign after that — once the
- * learner is leaning on the hint, the rest of the word comes at the faster
- * cadence, but still a sign at a time and still only as they type.
+ * The wait is per sign, gated on *that sign's own* skills
+ * (hintDelayForSkills): a sign whose skills are all learnt never goes on
+ * the clock — its hint appears only via the two-mistake rule — and a sign
+ * still being learned waits hintDelayMs of its weakest unlearnt skill, so
+ * the wait stretches as the learner's score on that skill grows. Earlier
+ * signs being hinted has no bearing on later ones.
  */
 export function nextHintFor(state: TutorState): PendingHint | null {
   const p = state.prompt;
@@ -112,9 +113,10 @@ export function nextHintFor(state: TutorState): PendingHint | null {
   const unitIndex = units.findIndex((u) => u.start <= caret && caret < u.end);
   if (unitIndex === -1) return null; // typed past the end of the text
   const unit = units[unitIndex]!;
-  if (unit.skillIds.length === 0) return null; // a space: no sign to hint
   if (p.hintedUnits.has(unitIndex)) return null; // already revealed
-  if (!p.hintedUnits.isEmpty()) return { unitIndex, delayMs: HINT_REVEAL_COOLDOWN_MS };
-  const delayMs = hintDelayFor(state);
+  // A space bears no skill, so it also gets no countdown (null here), which
+  // is what makes the first sign of a word start its clock only once the
+  // space before it has been typed.
+  const delayMs = hintDelayForSkills(state, unit.skillIds);
   return delayMs === null ? null : { unitIndex, delayMs };
 }

@@ -1,8 +1,8 @@
-import { Set } from 'immutable';
+import { Map, Set } from 'immutable';
 import { describe, expect, it } from 'vitest';
 import { hintWordForPrompt, nextHintFor } from './hints';
 import type { TutorState } from './types';
-import { HINT_REVEAL_COOLDOWN_MS, hintDelayMs, makePrompt, makeTutorState } from './types';
+import { LEARNT_THRESHOLD, hintDelayMs, makePrompt, makeTutorState } from './types';
 
 function state(text: string, typed: string, isFox = false): TutorState {
   return makeTutorState({
@@ -57,9 +57,17 @@ describe('hintWordForPrompt', () => {
 });
 
 describe('nextHintFor', () => {
-  /** "the dog" with `typed` typed and `hinted` unit indexes already shown. */
-  function drill(typed: string, hinted: number[] = []): TutorState {
+  /**
+   * "the dog" with `typed` typed, `hinted` unit indexes already shown, and
+   * the given committed skill scores (unlisted skills score 0).
+   */
+  function drill(
+    typed: string,
+    hinted: number[] = [],
+    scores: Record<string, number> = {},
+  ): TutorState {
     return makeTutorState({
+      scores: Map(scores),
       prompt: makePrompt({
         text: 'the dog',
         typed,
@@ -69,8 +77,22 @@ describe('nextHintFor', () => {
     });
   }
 
-  it('puts the sign at the caret on the clock, at the prompt delay', () => {
+  it('puts the sign at the caret on the clock, at its own skill’s delay', () => {
     expect(nextHintFor(drill(''))).toEqual({ unitIndex: 0, delayMs: hintDelayMs(0) });
+    expect(nextHintFor(drill('', [], { 'contraction-the': 4 }))).toEqual({
+      unitIndex: 0,
+      delayMs: hintDelayMs(4),
+    });
+  });
+
+  it('runs no clock at all for a learnt sign', () => {
+    // Its hint appears only via the two-mistake rule (keystroke), never a
+    // timer — even after an earlier sign of the prompt was hinted.
+    const learnt = { 'contraction-the': LEARNT_THRESHOLD };
+    expect(nextHintFor(drill('', [], learnt))).toBeNull();
+    expect(
+      nextHintFor(drill('the ', [0], { ...learnt, 'letter-d': LEARNT_THRESHOLD })),
+    ).toBeNull();
   });
 
   it('stops the clock once that sign has been revealed', () => {
@@ -83,18 +105,19 @@ describe('nextHintFor', () => {
     expect(nextHintFor(drill('the', [0]))).toBeNull();
   });
 
-  it('starts the next sign\u2019s clock only once the space is typed', () => {
-    expect(nextHintFor(drill('the ', [0]))).toEqual({
+  it('starts the next sign\u2019s clock, at its own skill\u2019s delay, once the space is typed', () => {
+    expect(nextHintFor(drill('the ', [0], { 'letter-d': 6 }))).toEqual({
       unitIndex: 2,
-      delayMs: HINT_REVEAL_COOLDOWN_MS,
+      delayMs: hintDelayMs(6),
     });
   });
 
-  it('charges later signs the shorter cooldown, once one has been hinted', () => {
-    expect(nextHintFor(drill('the d', [0, 2]))).toEqual({
-      unitIndex: 3,
-      delayMs: HINT_REVEAL_COOLDOWN_MS,
+  it('waits on the weakest unlearnt skill of a multi-skill sign', () => {
+    const st = makeTutorState({
+      scores: Map({ 'contraction-the': LEARNT_THRESHOLD, 'capital-letter-indicator': 4 }),
+      prompt: makePrompt({ text: 'The', targetSkillId: 'capital-letter-indicator' }),
     });
+    expect(nextHintFor(st)).toEqual({ unitIndex: 0, delayMs: hintDelayMs(4) });
   });
 
   it('keeps the caret sign on the clock while the typing has diverged', () => {

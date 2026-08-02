@@ -41,7 +41,6 @@ export {
   ACTIVE_SKILL_COUNT,
   BASE_AWARD,
   CLEAN_AWARD,
-  HINT_REVEAL_COOLDOWN_MS,
   LEARNT_THRESHOLD,
   MISTAKE_PENALTY,
   MISTAKES_BEFORE_PENALTY,
@@ -67,7 +66,7 @@ export {
 
 export {
   activeSkills,
-  hintDelayFor,
+  hintDelayForSkills,
   isLearntIn,
   isSkillLearnt,
   knownSkillIds,

@@ -46,20 +46,11 @@ export function isLearntScore(score: number): boolean {
 
 /**
  * Milliseconds before the hint is auto-shown for an *unlearnt* skill.
- * Learnt skills get no time-based hint (see hintDelayFor).
+ * Learnt skills get no time-based hint (see hintDelayForSkills).
  */
 export function hintDelayMs(score: number): number {
   return 400 + 300 * score;
 }
-
-/**
- * Milliseconds a sign waits before its hint shows, once an earlier sign in
- * the same prompt has already been hinted. The clock starts when the caret
- * *reaches* the sign — i.e. when the sign before it has been typed — not
- * when the previous sign's hint appeared, so a long pause on one sign never
- * eats the next sign's time.
- */
-export const HINT_REVEAL_COOLDOWN_MS = 1000;
 
 // --- Prompt ----------------------------------------------------------------
 

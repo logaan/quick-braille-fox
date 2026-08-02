@@ -63,18 +63,26 @@ export function knownSkillIds(state: TutorState): ReadonlySet<string> {
 }
 
 /**
- * How long (ms) a sign waits before the *first* hint of the current prompt
- * shows, or null if no time-based hint applies: no/finished prompt, the fox
- * challenge (never hinted), or a learnt-skill revision (hint only after two
- * consecutive mistakes, which keystroke() handles internally). Later signs
- * of the same prompt wait HINT_REVEAL_COOLDOWN_MS instead — see
- * nextHintFor() in hints.ts, which decides *which* sign is waiting and is
- * what the state layer actually runs its timer from.
+ * How long (ms) a sign exercising these skills waits before its hint is
+ * revealed, or null when no time-based hint applies: every skill of the
+ * sign is learnt (its hint appears only after two mistakes on the
+ * occurrence, which keystroke() handles internally), or the sign bears no
+ * skill at all (a space). The wait is hintDelayMs of the sign's weakest
+ * *unlearnt* skill — the skill actually being learned there — so the delay
+ * grows as that skill's score does. Committed scores, like the rest of
+ * selection: a sign's wait holds still for the length of the prompt.
+ * nextHintFor() in hints.ts decides *which* sign is waiting and is what
+ * the state layer actually runs its timer from.
  */
-export function hintDelayFor(state: TutorState): number | null {
-  const p = state.prompt;
-  if (!p || p.completed || p.isFox) return null;
-  if (p.targetSkillId === null) return null;
-  if (isSkillLearnt(state, p.targetSkillId)) return null;
-  return hintDelayMs(scoreFor(state, p.targetSkillId));
+export function hintDelayForSkills(
+  state: TutorState,
+  skillIds: readonly string[],
+): number | null {
+  let weakest: number | null = null;
+  for (const id of skillIds) {
+    const score = scoreFor(state, id);
+    if (isLearntScore(score)) continue;
+    if (weakest === null || score < weakest) weakest = score;
+  }
+  return weakest === null ? null : hintDelayMs(weakest);
 }

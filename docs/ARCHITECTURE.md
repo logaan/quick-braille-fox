@@ -190,12 +190,13 @@ everything from `src/core` (`import { startSession, keystroke } from
   time. A caret sitting on a space has no countdown at all (a space unit
   bears no skill), so the first sign of a word starts its clock only once
   the space before it is typed.
-- The wait is `hintDelayMs(score)` = 400 + 300 × score ms for the first sign
-  hinted in a prompt, and `HINT_REVEAL_COOLDOWN_MS` (1000 ms) for each sign
-  after that — once the learner is leaning on the hint the rest comes at the
-  faster cadence, but still a sign at a time and still only as they type.
-  Learnt skills get **no** time-based hint (`hintDelayFor` returns null);
-  their hint appears only via the two-mistake rule.
+- The wait is per sign, gated on *that sign's own* skills
+  (`hintDelayForSkills`): a sign whose skills are all learnt never goes on
+  the clock — its hint appears only via the two-mistake rule — and a sign
+  still being learned waits `hintDelayMs(score)` = 400 + 300 × score ms of
+  its weakest unlearnt skill, so the wait stretches as the learner's score
+  on that skill grows. Earlier signs being hinted has no bearing on later
+  ones.
 - Core `nextHintFor(state)` (`hints.ts`) is what puts this together: it
   names the sign currently on the clock and its wait, and the state layer
   runs exactly one timer from it, calling `revealHint(state, unitIndex)`
@@ -274,7 +275,7 @@ and the view layer display it while the round runs.
 | `isLearntIn(scores, skillId)` / `learntSkillsIn(scores)` | the same against any score map (pass `derivedScores(state)` for the live view) |
 | `learntSkills(state)` / `activeSkills(state)` | `Skill[]` in curriculum order, by *committed* score — selection deliberately ignores the round in flight so the active window does not churn mid-prompt |
 | `knownSkillIds(state)` | `Set` of learnt ∪ active ids |
-| `hintDelayFor(state)` | ms a sign waits before the *first* hint of the current prompt, or `null` (no prompt / fox / learnt-skill revision) |
+| `hintDelayForSkills(state, skillIds)` | ms a sign exercising these skills waits before its hint, or `null` (all learnt, or no skills at all — a space) |
 
 ### Prompt generation (`prompts.ts`, `corpus.ts`)
 
