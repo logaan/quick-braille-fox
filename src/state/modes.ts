@@ -1,6 +1,5 @@
-// How the learner enters braille, and how much the announcements say. Their
-// own module because both the view models and persistence name them, and
-// persistence must not depend on the view layer.
+// How the learner enters braille. Its own module because both the view models
+// and persistence name it, and persistence must not depend on the view layer.
 
 /**
  * 'emulated': braille chords typed on the QWERTY home row (f d s a j k l ;).
@@ -23,19 +22,4 @@ export const INPUT_MODE_LABELS: readonly {
 
 export function isInputMode(value: unknown): value is InputMode {
   return value === 'emulated' || value === 'voiceover';
-}
-
-/**
- * How much the announcements and status strings say. 'terse' is for
- * practiced users — especially on a braille display, where every boilerplate
- * word costs a pan of a 14–40 cell line: fixed prefixes go, fox rules
- * collapse behind a disclosure, and the fox result shrinks to its first
- * line. The default stays 'verbose' so first-time users get full sentences.
- */
-export type Verbosity = 'verbose' | 'terse';
-
-export const DEFAULT_VERBOSITY: Verbosity = 'verbose';
-
-export function isVerbosity(value: unknown): value is Verbosity {
-  return value === 'verbose' || value === 'terse';
 }

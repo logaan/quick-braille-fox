@@ -51,8 +51,12 @@ the manual test matrix.)
 
 The drill keeps a persistent status line directly under the input — current
 position, or where typing went wrong — because live-region messages tend to
-flash or vanish on braille displays. A "Terse" toggle in the settings
-shortens announcements for practiced users.
+flash or vanish on braille displays. Announcements themselves carry only
+their variable facts — `2: <prompt> — 9 cells.`, `wrong at 12: d` — with no
+fixed prefix and no boilerplate tail, because a word repeated on every prompt
+is a pan of a short line repeated on every prompt. Explanation lives where it
+is read once rather than per event: the fox rules, on screen for the whole
+round, and the detail under a fox result.
 
 ## Commands
 

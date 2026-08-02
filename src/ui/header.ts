@@ -1,7 +1,7 @@
 // The page top: the "fox" brand as three braille cells (Brand), and the
-// settings/controls cluster (HeaderControls) — input mode, terse
-// announcements, best fox result, fullscreen, and the reset-progress control
-// with its confirm step. Brand and controls are separate components because
+// settings/controls cluster (HeaderControls) — input mode, best fox result,
+// fullscreen, and the reset-progress control with its confirm step. Brand
+// and controls are separate components because
 // they sit apart in DOM order: braille users read the page top-to-bottom one
 // line at a time, so everything between the title and the drill costs them a
 // pan — the controls render *after* the drill and panels, and CSS grid puts
@@ -25,7 +25,6 @@ export interface HeaderControlsProps {
   readonly resetConfirmText: string;
   readonly canConfirmReset: boolean;
   readonly inputMode: InputMode;
-  readonly terse: boolean;
   readonly on: AppHandlers;
 }
 
@@ -251,37 +250,6 @@ function ResetConfirm(props: {
   );
 }
 
-/**
- * Terse announcements, as a visible checkbox: shorter status lines and
- * screen reader messages for practiced users — on a braille display every
- * boilerplate word is a pan of a short line, so the drill loop should cost
- * one window per event once the wording is familiar.
- */
-function TerseToggle(props: {
-  readonly terse: boolean;
-  readonly onToggle: (terse: boolean) => void;
-}): ReactElement {
-  const { terse, onToggle } = props;
-  return e(
-    'label',
-    { className: 'terse-toggle' },
-    e('input', {
-      type: 'checkbox',
-      className: 'terse-toggle-input',
-      checked: terse,
-      onChange: (event: ChangeEvent<HTMLInputElement>) => {
-        onToggle(event.currentTarget.checked);
-      },
-    }),
-    e('span', { className: 'terse-toggle-text' }, 'Terse'),
-    e(
-      'span',
-      { className: 'visually-hidden' },
-      ' announcements — shorter status lines and screen reader messages',
-    ),
-  );
-}
-
 /** The page title, first in DOM order — it alone identifies the page. */
 export function Brand(): ReactElement {
   return e(
@@ -313,13 +281,11 @@ export function Brand(): ReactElement {
  * stops — and the reset flow never sits between the page top and the drill.
  */
 export function HeaderControls(props: HeaderControlsProps): ReactElement {
-  const { bestFox, confirmingReset, resetConfirmText, canConfirmReset, inputMode, terse, on } =
-    props;
+  const { bestFox, confirmingReset, resetConfirmText, canConfirmReset, inputMode, on } = props;
   return e(
     'section',
     { className: 'header-controls', 'aria-label': 'Settings' },
     e(InputModePicker, { inputMode, onSelect: on.onInputModeSelect }),
-    e(TerseToggle, { terse, onToggle: on.onTerseToggle }),
     bestFox === null ? null : e(BestFoxBadge, { best: bestFox }),
     e(FullscreenButton),
     confirmingReset

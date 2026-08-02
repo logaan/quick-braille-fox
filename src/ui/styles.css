@@ -256,21 +256,6 @@ input:focus-visible {
   background: var(--accent);
 }
 
-/* Terse announcements: a small visible checkbox in the settings cluster. */
-.terse-toggle {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.35rem;
-  color: var(--dim);
-  font-size: 0.85rem;
-  cursor: pointer;
-}
-
-.terse-toggle-input {
-  accent-color: var(--accent);
-  margin: 0;
-}
-
 .best-fox {
   color: var(--dim);
   font-size: 0.9rem;
@@ -701,14 +686,6 @@ input:focus-visible {
   display: flex;
   flex-direction: column;
   gap: 0.4rem;
-}
-
-/* Terse mode: the rules collapse behind a disclosure, still one interaction
-   away but no longer re-read on every fox round. */
-.fox-rules-disclosure summary {
-  color: var(--gold-text);
-  font-size: 0.9rem;
-  cursor: pointer;
 }
 
 .fox-rule-list {

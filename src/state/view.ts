@@ -27,7 +27,7 @@ import {
 } from '../core';
 import type { SkillGroup } from '../data/skills';
 import { skills } from '../data/skills';
-import type { InputMode, Verbosity } from './modes';
+import type { InputMode } from './modes';
 import type { BestFox } from './persistence';
 
 /** One of the (up to) 5 skills currently being taught. */
@@ -128,8 +128,6 @@ export interface AppViewModel {
   readonly canConfirmReset: boolean;
   /** Which input mode the drill is in; see InputMode. */
   readonly inputMode: InputMode;
-  /** True when announcements are in terse mode; see Verbosity. */
-  readonly terse: boolean;
   /**
    * Identity of the current prompt instance. The UI keys the uncontrolled
    * drill input on it, so the field clears (remounts) only at a prompt
@@ -152,8 +150,6 @@ export interface AppHandlers {
   readonly onDrillKeyUp: (event: KeyboardEvent<HTMLInputElement>) => void;
   /** Choose the input mode: emulated (QWERTY chording) or VoiceOver. */
   readonly onInputModeSelect: (mode: InputMode) => void;
-  /** Switch terse announcements on or off (see Verbosity). */
-  readonly onTerseToggle: (terse: boolean) => void;
   /** Dismiss the fox result screen and move to the next prompt. */
   readonly onFoxContinue: () => void;
   readonly onResetRequest: () => void;
@@ -203,8 +199,6 @@ export interface ViewSources {
   /** Raw text typed into the reset confirmation field (store-owned). */
   readonly resetConfirmText: string;
   readonly inputMode: InputMode;
-  /** How much the announcements say; see Verbosity. */
-  readonly verbosity: Verbosity;
   /** Identity of the current prompt instance (store-owned epoch). */
   readonly promptKey: number;
   /** Cells committed by chording this prompt (empty in VoiceOver mode). */
@@ -311,7 +305,6 @@ export function buildViewModel(src: ViewSources): AppViewModel {
     resetConfirmText: src.resetConfirmText,
     canConfirmReset: matchesResetWord(src.resetConfirmText),
     inputMode: src.inputMode,
-    terse: src.verbosity === 'terse',
     promptKey: src.promptKey,
   };
 }

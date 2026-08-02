@@ -10,9 +10,11 @@
 //
 // String budget: refreshable braille displays show one line of 12–80 cells
 // (commonly 14, 20 or 40) at a time, and every extra word costs a physical
-// pan. User-facing strings therefore lead with the variable information
-// (position, wrong input, outcome) and keep boilerplate short, last, or —
-// in terse mode (vm.terse) — dropped.
+// pan. The announcements a learner hears on every prompt and every slip are
+// therefore cut to their variable information — position, wrong input,
+// outcome — with no fixed prefixes and no boilerplate tail. Explanation
+// lives where it is read once and not per event: the fox rules and the fox
+// result detail, both of which come round only every foxInterval prompts.
 
 import {
   createElement as e,
@@ -42,25 +44,19 @@ function promptCellCount(rows: RowModel): number {
  * users see the prompt swap and the gold fox banner appear; a screen reader
  * hears nothing on either unless this text changes and gets announced — so
  * it names a fox round and numbers ordinary prompts so a completed one
- * audibly gives way to the next. The prompt text comes first; the fox
- * stakes trail it (the full rules stay on screen in FoxRules) and are
- * dropped entirely in terse mode. The cell count carries what the
- * placeholder row shows sighted users — how much braille the prompt
- * expects — and trails the text as variable information, so it survives
- * terse mode (only the "Prompt" boilerplate is dropped there).
+ * audibly gives way to the next. Nothing but the variable facts: the number
+ * alone does the disambiguating a "Prompt" prefix would, and the fox stakes
+ * are already on screen in FoxRules rather than repeated into speech. The
+ * cell count carries what the placeholder row shows sighted users — how much
+ * braille the prompt expects.
  */
 function promptAnnouncement(vm: AppViewModel): string {
   if (vm.foxResult !== null) return ''; // the result panel takes over
-  if (vm.isFox) {
-    if (vm.terse) return `fox: ${vm.promptText}`;
-    return `fox: ${vm.promptText} — type it exactly; no hints, one wrong character ends the run.`;
-  }
+  if (vm.isFox) return `fox: ${vm.promptText}`;
   const n = vm.promptsCompleted + 1;
   const cells = promptCellCount(vm.rows);
   const suffix = cells === 0 ? '' : ` — ${cells} ${cells === 1 ? 'cell' : 'cells'}.`;
-  return vm.terse
-    ? `${n}: ${vm.promptText}${suffix}`
-    : `Prompt ${n}: ${vm.promptText}${suffix}`;
+  return `${n}: ${vm.promptText}${suffix}`;
 }
 
 /** Is `ch` a U+2800-block braille glyph (a chorded cell shown literally)? */
@@ -87,15 +83,15 @@ function wrongLabel(vm: AppViewModel): string | null {
  * Positions come from vm.matchedPrint, so on a cell-judged round the
  * mistake is placed where the *cells* went wrong — even when the derived
  * print still spells a prefix of the prompt — and the offending input is
- * spoken as the dots that were chorded. Variable facts first: "wrong at 12:
- * d", boilerplate last (dropped in terse mode).
+ * spoken as the dots that were chorded. The variable facts and nothing else:
+ * "wrong at 12: d". What to do about it is not repeated here, because the
+ * status line a pan below already ends in "— backspace" and stays there.
  */
 function mistakeAnnouncement(vm: AppViewModel): string {
   if (!vm.diverged) return '';
   const at = `wrong at ${vm.matchedPrint + 1}`;
   const label = wrongLabel(vm);
-  const fact = label === null ? at : `${at}: ${label}`;
-  return vm.terse ? fact : `${fact} — backspace to fix.`;
+  return label === null ? at : `${at}: ${label}`;
 }
 
 /**
@@ -408,7 +404,7 @@ function FoxResultPanel(props: {
       foxOutcomeLine(vm),
     ),
     outcome,
-    vm.terse ? null : e('p', { className: 'fox-detail' }, detail),
+    e('p', { className: 'fox-detail' }, detail),
     vm.foxFailure === null ? null : e(FoxFailureDetail, { failure: vm.foxFailure }),
     e('button', { className: 'btn btn-primary', onClick: onContinue }, 'Continue'),
   );
@@ -417,17 +413,17 @@ function FoxResultPanel(props: {
 /**
  * The challenge's rules, on screen for the whole fox round — it turns up
  * rarely enough (and scores differently enough) that the learner should
- * never have to remember how it works. In terse mode the list collapses
- * behind a disclosure: still one interaction away, no longer re-read by a
- * practiced user's screen reader every fox.
+ * never have to remember how it works. Spelled out in full, always: once
+ * every foxInterval prompts is not the per-event cost the announcements are
+ * budgeted against, and a rule you have to go looking for is one you will be
+ * failed by.
  */
 function FoxRules(props: {
   readonly interval: number;
   readonly award: number;
   readonly minCells: number;
-  readonly terse: boolean;
 }): ReactElement {
-  const { interval, award, minCells, terse } = props;
+  const { interval, award, minCells } = props;
   const list = e(
     'ul',
     { className: 'fox-rule-list' },
@@ -454,14 +450,7 @@ function FoxRules(props: {
       e('strong', null, 'fox challenge'),
       ` — every ${interval} prompts, starting with your first.`,
     ),
-    terse
-      ? e(
-          'details',
-          { className: 'fox-rules-disclosure' },
-          e('summary', null, 'rules'),
-          list,
-        )
-      : list,
+    list,
   );
 }
 
@@ -527,7 +516,6 @@ export function Drill(props: DrillProps): ReactElement {
           interval: vm.foxInterval,
           award: vm.foxAward,
           minCells: vm.foxMinCells,
-          terse: vm.terse,
         })
       : null,
     e(

@@ -23,8 +23,8 @@ import {
 } from '../core';
 import type { ChordState } from './chords';
 import { EMPTY_CHORD_STATE, chordKeyDown, chordKeyUp, isChordCode } from './chords';
-import type { InputMode, Verbosity } from './modes';
-import { DEFAULT_INPUT_MODE, DEFAULT_VERBOSITY } from './modes';
+import type { InputMode } from './modes';
+import { DEFAULT_INPUT_MODE } from './modes';
 import type { BestFox, StorageLike } from './persistence';
 import { clearProgress, loadProgress, saveProgress } from './persistence';
 import type { AppHandlers, AppViewModel } from './view';
@@ -58,8 +58,6 @@ export class TutorStore {
 
   /** Which input mode the drill is in; see InputMode. */
   private inputMode: InputMode = DEFAULT_INPUT_MODE;
-  /** How much the announcements say; see Verbosity. */
-  private verbosity: Verbosity = DEFAULT_VERBOSITY;
   /** Chord key state (chord mode only); not persisted. */
   private chordState: ChordState = EMPTY_CHORD_STATE;
   /** Committed braille cells for the current prompt (chord mode; blank = space). */
@@ -93,7 +91,6 @@ export class TutorStore {
     } else {
       this.bestFox = persisted.bestFox;
       this.inputMode = persisted.inputMode;
-      this.verbosity = persisted.verbosity;
       const p = persisted.tutor.prompt;
       // Resume an in-flight prompt as-is. Move on from a prompt saved after
       // completion (e.g. mid result screen). A half-typed fox restarts
@@ -113,12 +110,6 @@ export class TutorStore {
       onDrillKeyDown: (event) => this.handleKeyDown(event),
       onDrillKeyUp: (event) => this.handleKeyUp(event),
       onInputModeSelect: (mode) => this.selectInputMode(mode),
-      onTerseToggle: (terse) => {
-        const next: Verbosity = terse ? 'terse' : 'verbose';
-        if (next === this.verbosity) return;
-        this.verbosity = next;
-        this.changed();
-      },
       onFoxContinue: () => this.continueAfterFox(),
       onResetRequest: () => {
         this.confirmingReset = true;
@@ -171,7 +162,6 @@ export class TutorStore {
       confirmingReset: this.confirmingReset,
       resetConfirmText: this.resetConfirmText,
       inputMode: this.inputMode,
-      verbosity: this.verbosity,
       promptKey: this.promptEpoch,
       cellBuffer: this.cellBuffer,
     });
@@ -540,7 +530,6 @@ export class TutorStore {
       tutor: this.tutor,
       bestFox: this.bestFox,
       inputMode: this.inputMode,
-      verbosity: this.verbosity,
     });
   }
 }

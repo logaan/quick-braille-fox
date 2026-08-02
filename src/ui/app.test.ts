@@ -126,7 +126,9 @@ describe('App rendering', () => {
     const store = drillStore();
     const html = render(store);
     expect(html).toContain('role="status"');
-    expect(html).toContain(`Prompt 2: ${store.viewModel().promptText}`);
+    // The number alone numbers the prompt; no "Prompt" prefix to pan past.
+    expect(html).toContain(`2: ${store.viewModel().promptText}`);
+    expect(html).not.toContain('Prompt 2:');
   });
 
   it('keeps the learnt count out of speech: not a live region', () => {
@@ -143,13 +145,20 @@ describe('App rendering', () => {
     type(store, wrong);
     const html = render(store);
     expect(html).toContain('role="alert"');
-    expect(html).toContain(`wrong at 1: ${wrong} — backspace to fix.`);
+    // Position and input, nothing else — the status line below still carries
+    // what to do about it, and stays put while the alert flashes past.
+    expect(html).toContain(`wrong at 1: ${wrong}`);
+    expect(html).not.toContain('backspace to fix');
+    expect(html).toContain(`wrong at 1: ${wrong} — backspace<`);
   });
 
-  it('announces the fox challenge, sentence first, stakes after', () => {
+  it('announces the fox challenge as the sentence alone, stakes on screen', () => {
     const html = render(foxReadyStore());
     expect(html).toContain(`fox: ${FOX_SENTENCE}`);
-    expect(html).toContain('type it exactly');
+    expect(html).not.toContain('type it exactly; no hints');
+    // The rules are spelled out on screen instead, never behind a disclosure.
+    expect(html).toContain('One wrong character ends the run on the spot.');
+    expect(html).not.toContain('<details');
   });
 
   it('always renders a status line straight after the drill input', () => {
@@ -221,19 +230,11 @@ describe('App rendering', () => {
     expect(html).toContain('Run failed'); // the big visual outcome stays
   });
 
-  it('shortens announcements and collapses fox rules in terse mode', () => {
-    const fox = foxReadyStore();
-    fox.handlers.onTerseToggle(true);
-    const foxHtml = render(fox);
-    expect(foxHtml).toContain(`fox: ${FOX_SENTENCE}`);
-    expect(foxHtml).not.toContain('type it exactly;');
-    expect(foxHtml).toContain('<details');
-
-    const drill = drillStore();
-    drill.handlers.onTerseToggle(true);
-    const html = render(drill);
-    expect(html).toContain(`2: ${drill.viewModel().promptText}`);
-    expect(html).not.toContain('Prompt 2:');
+  it('spells out the fox result detail, always', () => {
+    const store = foxReadyStore();
+    type(store, 'X'); // a wrong first character fails the run instantly
+    const html = render(store);
+    expect(html).toContain('One wrong character ends a fox run.');
   });
 
   it('shows the actually-typed character where typing diverged', () => {

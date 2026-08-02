@@ -47,7 +47,6 @@ export function App(props: AppProps): ReactElement {
       resetConfirmText: vm.resetConfirmText,
       canConfirmReset: vm.canConfirmReset,
       inputMode: vm.inputMode,
-      terse: vm.terse,
       on,
     }),
   );
