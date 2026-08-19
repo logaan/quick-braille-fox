@@ -1,4 +1,4 @@
-import { Map, is } from 'immutable';
+import { List, Map, is } from 'immutable';
 import { describe, expect, it } from 'vitest';
 import { skills } from '../data/skills';
 import {
@@ -562,6 +562,15 @@ describe('serialization', () => {
     const raw = serialize(startSession(7)) as unknown as Record<string, unknown>;
     delete raw.revealTimer;
     expect(deserialize(raw).revealTimer).toBe(true);
+  });
+
+  it('round-trips a part-used rotation, and loads an envelope written before it', () => {
+    const mid = makeTutorState({ seed: 3 }).set('rotation', List(['letter-d', 'letter-b']));
+    const revived = deserialize(JSON.parse(JSON.stringify(serialize(mid))));
+    expect(revived.rotation.toArray()).toEqual(['letter-d', 'letter-b']);
+    const raw = serialize(startSession(7)) as unknown as Record<string, unknown>;
+    delete raw.rotation;
+    expect(deserialize(raw).rotation.isEmpty()).toBe(true); // a fresh round is dealt
   });
 
   it('rejects garbage', () => {

@@ -128,7 +128,7 @@ describe('target selection under policies', () => {
   it('never picks a blocked skill', () => {
     const state = setGroupPolicy(learnt(base, 30), 'letters', 'block');
     for (const rng of rngs) {
-      expect(policyFor(state, pickTarget(state, rng).id)).not.toBe('block');
+      expect(policyFor(state, pickTarget(state, rng).target.id)).not.toBe('block');
     }
   });
 

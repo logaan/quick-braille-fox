@@ -1,3 +1,4 @@
+import { List } from 'immutable';
 import type { Skill } from '../data/skills';
 import { skills } from '../data/skills';
 import { translate } from './braille';
@@ -13,7 +14,7 @@ import {
 } from './progress';
 import { capitalizeFirst } from './text';
 import type { Rng } from './rng';
-import { choice, mulberry32 } from './rng';
+import { choice, mulberry32, shuffle } from './rng';
 import type { TutorState } from './types';
 import { REVISION_PROBABILITY } from './types';
 
@@ -52,14 +53,40 @@ function intersects(ids: ReadonlySet<string>, other: ReadonlySet<string>): boole
   return false;
 }
 
-export function pickTarget(state: TutorState, rng: Rng): Skill {
+/**
+ * The skill the next prompt should drill, together with the rotation left
+ * behind for the prompt after it (see TutorStateProps.rotation).
+ */
+export interface PickedTarget {
+  readonly target: Skill;
+  readonly rotation: List<string>;
+}
+
+export function pickTarget(state: TutorState, rng: Rng): PickedTarget {
   const active = activeSkills(state);
   const learnt = revisableSkills(state);
-  if (active.length === 0) return pickRevision(state, learnt, rng);
-  if (learnt.length > 0 && rng() < REVISION_PROBABILITY) {
-    return pickRevision(state, learnt, rng);
+  if (active.length === 0) {
+    return { target: pickRevision(state, learnt, rng), rotation: List<string>() };
   }
-  return choice(active, rng)!;
+  if (learnt.length > 0 && rng() < REVISION_PROBABILITY) {
+    // Revision comes from outside the round, so it does not use up a turn.
+    return { target: pickRevision(state, learnt, rng), rotation: state.rotation };
+  }
+  return drawFromRotation(state, active, rng);
+}
+
+/**
+ * Take the next skill off the rotation, dealing a fresh round first if the
+ * current one is spent. Skills that have stopped being taught since the
+ * round was dealt (learnt, blocked, or pushed out of the active window) are
+ * dropped from it; ones that have newly started being taught join the round
+ * after this one, so that within a round every skill gets exactly one turn.
+ */
+function drawFromRotation(state: TutorState, active: readonly Skill[], rng: Rng): PickedTarget {
+  const byId = new Map(active.map((s) => [s.id, s] as const));
+  const remaining = state.rotation.filter((id) => byId.has(id));
+  const round = remaining.isEmpty() ? List(shuffle([...byId.keys()], rng)) : remaining;
+  return { target: byId.get(round.first()!)!, rotation: round.rest() };
 }
 
 function pickRevision(state: TutorState, learnt: readonly Skill[], rng: Rng): Skill {
