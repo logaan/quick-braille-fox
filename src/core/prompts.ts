@@ -1,54 +1,31 @@
-// Prompt generation: choose which skill to drill and produce a print text
-// for it that only uses cells the learner has learnt or is actively
-// learning.
-//
-// Prompts are monkeytype-style: sequences of a few real English words —
-// 3..N, where N grows with progress — so the learner types several words
-// at a time from the very first prompt. Nonsense letter clusters are never
-// emitted, and a
-// single letter is only ever prompted alone if it is a real standalone word
-// ("a", "I") — letters that are grade-2 wordsigns (b=but, c=can, ...) are
-// drilled inside real words instead, because typed standalone they would
-// translate to the contraction word.
-//
-// A text is *usable* iff its greedy grade-2 translation (braille.ts) both
-// succeeds and uses only known skills — so "bed" is off-limits until the
-// "ed" groupsign is known (a braille display would render it ⠃⠫), and a
-// capitalised word is off-limits until the capital indicator is known.
-//
-// Every word of a prompt — not just the one exercising the target — must
-// also exercise at least one skill that is *currently being taught* (the
-// active window, plus the target when it is a revision item). Otherwise
-// the earliest-learnt words would go on filling prompts forever, and a
-// prompt would spend most of its keystrokes on nothing being taught.
-
 import type { Skill } from '../data/skills';
 import { skills } from '../data/skills';
 import { translate } from './braille';
 import { WORDS } from './corpus';
 import { STANDALONE_LOWER } from './lower-signs';
-import { learntSkills, activeSkills, knownSkillIds, scoreFor } from './progress';
+import { policyFor } from './policy';
+import {
+  activeSkills,
+  knownSkillIds,
+  learntSkills,
+  revisableSkills,
+  scoreFor,
+} from './progress';
 import { capitalizeFirst } from './text';
 import type { Rng } from './rng';
 import { choice, mulberry32 } from './rng';
 import type { TutorState } from './types';
 import { REVISION_PROBABILITY } from './types';
 
-/** A generated drill prompt. */
 export interface GeneratedPrompt {
   readonly text: string;
   readonly targetSkillId: string;
 }
 
-/** Shortest word sequence a prompt aims for (a few words from the start). */
 const MIN_SEQUENCE_WORDS = 3;
-/** Longest word sequence a prompt will ever grow to. */
 const MAX_SEQUENCE_WORDS = 5;
-/** One more word of maximum sequence length per this many learnt skills. */
 const LEARNT_PER_EXTRA_WORD = 15;
-/** How many of the lowest-scoring learnt skills the revision picker uses. */
 const LOWEST_SCORE_POOL = 5;
-/** Single letters that are real standalone English words in lowercase. */
 const STANDALONE_LETTER_WORDS = new Set(['a', 'o']);
 
 function usable(text: string, known: ReadonlySet<string>, requiredId?: string): boolean {
@@ -62,7 +39,6 @@ function usable(text: string, known: ReadonlySet<string>, requiredId?: string): 
   return requiredId === undefined || translation.skillIds.includes(requiredId);
 }
 
-/** The skills a text exercises, or null if it does not translate. */
 function skillIdsOf(text: string): ReadonlySet<string> | null {
   try {
     return new Set(translate(text).skillIds);
@@ -76,17 +52,9 @@ function intersects(ids: ReadonlySet<string>, other: ReadonlySet<string>): boole
   return false;
 }
 
-// --- Target selection -------------------------------------------------------
-
-/**
- * Pick the skill the next prompt should drill: usually one of the (up to) 5
- * active skills; with probability REVISION_PROBABILITY (when anything is
- * learnt) a revision item — half chosen uniformly from all learnt skills,
- * half from the LOWEST_SCORE_POOL learnt skills with the lowest scores.
- */
 export function pickTarget(state: TutorState, rng: Rng): Skill {
   const active = activeSkills(state);
-  const learnt = learntSkills(state);
+  const learnt = revisableSkills(state);
   if (active.length === 0) return pickRevision(state, learnt, rng);
   if (learnt.length > 0 && rng() < REVISION_PROBABILITY) {
     return pickRevision(state, learnt, rng);
@@ -96,8 +64,7 @@ export function pickTarget(state: TutorState, rng: Rng): Skill {
 
 function pickRevision(state: TutorState, learnt: readonly Skill[], rng: Rng): Skill {
   if (learnt.length === 0) {
-    // Degenerate (can't happen with a full curriculum); keep total anyway.
-    return skills[0]!;
+    return skills.find((s) => policyFor(state, s.id) !== 'block') ?? skills[0]!;
   }
   if (rng() < 0.5) return choice(learnt, rng)!;
   const lowest = [...learnt]
@@ -106,15 +73,11 @@ function pickRevision(state: TutorState, learnt: readonly Skill[], rng: Rng): Sk
   return choice(lowest, rng)!;
 }
 
-// --- Word pools --------------------------------------------------------------
-
-/** A corpus word that translates using only known skills. */
 interface UsableWord {
   readonly word: string;
   readonly skillIds: ReadonlySet<string>;
 }
 
-/** Every corpus word (plus "I") usable with the given known set. */
 function usableWords(known: ReadonlySet<string>): UsableWord[] {
   const out: UsableWord[] = [];
   for (const word of [...WORDS, 'I']) {
@@ -132,29 +95,16 @@ function usableWords(known: ReadonlySet<string>): UsableWord[] {
   return out;
 }
 
-/**
- * Words to pad a prompt with: usable words that each exercise at least one
- * skill currently being taught.
- *
- * A window can hold nothing a plain word shows — all digits, the capital
- * indicators, a run of punctuation — and then no word qualifies. Rather
- * than reopening the whole corpus (which would put "bad cab" in prompts
- * forever), fall back to the words built from the most recently learnt
- * skills, so the filler is at least fresh revision.
- */
 function fillerWords(pool: readonly UsableWord[], focus: ReadonlySet<string>): string[] {
   const focused = pool.filter((w) => intersects(w.skillIds, focus));
   if (focused.length > 0) return focused.map((w) => w.word);
   return recentWords(pool);
 }
 
-/** Curriculum order of a skill id (-1 for ids outside the curriculum). */
 const SKILL_ORDER = new Map(skills.map((s) => [s.id, s.order] as const));
 
-/** How many words the recent-material fallback keeps. */
 const RECENT_FILLER_WORDS = 24;
 
-/** The usable words drawing on the latest curriculum material. */
 function recentWords(pool: readonly UsableWord[]): string[] {
   const latest = (w: UsableWord) => {
     let max = -1;
@@ -167,7 +117,6 @@ function recentWords(pool: readonly UsableWord[]): string[] {
     .map((w) => w.word);
 }
 
-/** Usable words whose translation exercises the required skill. */
 function targetWords(pool: readonly UsableWord[], requiredId: string): string[] {
   return pool.filter((w) => w.skillIds.has(requiredId)).map((w) => w.word);
 }
@@ -180,13 +129,11 @@ function maxSequenceLength(state: TutorState): number {
   );
 }
 
-/** A sequence length drawn uniformly from MIN_SEQUENCE_WORDS..max. */
 function sequenceLength(rng: Rng, max: number): number {
   const min = Math.min(MIN_SEQUENCE_WORDS, max);
   return min + Math.floor(rng() * (max - min + 1));
 }
 
-/** A min..max word sequence containing `targetWord` at a random position. */
 function wordSequence(
   targetWord: string,
   filler: readonly string[],
@@ -200,22 +147,12 @@ function wordSequence(
   return words.join(' ');
 }
 
-/** A min..max word sequence of filler words only. */
 function fillerSequence(filler: readonly string[], rng: Rng, max: number): string | null {
   if (filler.length === 0) return null;
   const n = sequenceLength(rng, max);
   return Array.from({ length: n }, () => choice(filler, rng)!).join(' ');
 }
 
-// --- Text generation --------------------------------------------------------
-
-/**
- * Generate a prompt text for a target skill, deterministically from
- * state.seed. Letters and every contraction kind are drilled inside real
- * words; digits as digit strings; punctuation/symbols in word or number
- * context; capitals as capitalised (or ALL-CAPS) words. Sequence length
- * scales with the number of learnt skills.
- */
 export function generatePrompt(state: TutorState, targetSkill: Skill): GeneratedPrompt {
   const rng = mulberry32(state.seed);
   return {
@@ -224,24 +161,16 @@ export function generatePrompt(state: TutorState, targetSkill: Skill): Generated
   };
 }
 
-/** Everything the per-kind generators need besides the target and the Rng. */
 interface PromptContext {
-  /** Skills the prompt may use at all (learnt ∪ active ∪ the target). */
   readonly known: ReadonlySet<string>;
-  /** Usable corpus words with the skills each exercises. */
   readonly pool: readonly UsableWord[];
-  /** Words every prompt word is drawn from — each exercises a taught skill. */
   readonly filler: readonly string[];
-  /** Longest word sequence to emit. */
   readonly max: number;
 }
 
-/** Internal variant sharing the caller's Rng (used by nextPrompt). */
 export function generatePromptText(state: TutorState, target: Skill, rng: Rng): string {
   const known = new Set(knownSkillIds(state));
-  known.add(target.id); // always allowed to use the skill being drilled
-  // Skills "currently being taught": the active window, plus the target
-  // itself, which is a learnt skill when this prompt is a revision item.
+  known.add(target.id);
   const focus = new Set(activeSkills(state).map((s) => s.id));
   focus.add(target.id);
   const pool = usableWords(known);
@@ -261,12 +190,10 @@ export function generatePromptText(state: TutorState, target: Skill, rng: Rng): 
     case 'capital':
       return capitalPrompt(target, ctx, rng);
     default:
-      // letters and all word/contraction kinds
       return wordPrompt(target, ctx, rng);
   }
 }
 
-/** Is the skill's own print form a real standalone English word? */
 function printIsRealWord(target: Skill): boolean {
   switch (target.kind) {
     case 'wordsign':
@@ -288,10 +215,6 @@ function wordPrompt(target: Skill, ctx: PromptContext, rng: Rng): string {
   if (targets.length > 0) {
     return wordSequence(choice(targets, rng)!, ctx.filler, rng, ctx.max);
   }
-  // No corpus word exercises the target. If the print form is itself a real
-  // word ("and", "about", "a") use it; otherwise emit *some* real-word
-  // prompt rather than nonsense (the reachability tests guarantee this
-  // branch is never needed for real curriculum states).
   if (printIsRealWord(target) && usable(target.print, ctx.known)) return target.print;
   return fillerSequence(ctx.filler, rng, ctx.max) ?? 'a';
 }
@@ -313,13 +236,8 @@ function digitPrompt(target: Skill, known: ReadonlySet<string>, rng: Rng): strin
 }
 
 function numberSignPrompt(ctx: PromptContext, rng: Rng): string {
-  // Typing any digit exercises the number sign (braille input needs ⠼).
   const digit = choice(knownDigitPrints(ctx.known), rng);
   if (digit !== undefined) return digit;
-  // The number sign can become active before any digit is (the 5-skill
-  // window may still be full of letters/capitals). A digit prompt would
-  // need an unknown digit skill, so emit an ordinary gated word prompt;
-  // the sign gets drilled as soon as the first digit activates.
   return fillerSequence(ctx.filler, rng, ctx.max) ?? 'a';
 }
 
@@ -335,26 +253,18 @@ function capitalPrompt(target: Skill, ctx: PromptContext, rng: Rng): string {
   if (candidates.length === 0) {
     return fillerSequence(filler, rng, ctx.max) ?? 'a';
   }
-  // Every word is capitalised, not just one: no plain word exercises a
-  // capital indicator, so mixing lowercase filler in would spend most of
-  // the prompt on skills that are not being taught.
   return fillerSequence(candidates, rng, ctx.max)!;
 }
 
-/**
- * How a punctuation mark is shown in context. Word shapes draw from the
- * filler pool; number shapes need a known digit. Marks absent from every
- * table take the default shape (a word, mark attached).
- */
 type PunctShape =
-  | 'terminator' //  words…P    (sentence-final)
-  | 'separator' //   wP w       (between two words)
-  | 'possessive' //  w'P… ('s)
-  | 'tight-join' //  wPw
-  | 'spaced-join' // w P w
-  | 'op' //          dPd        (number context)
-  | 'prefix' //      Pd
-  | 'suffix'; //     dP
+  | 'terminator'
+  | 'separator'
+  | 'possessive'
+  | 'tight-join'
+  | 'spaced-join'
+  | 'op'
+  | 'prefix'
+  | 'suffix';
 
 const PUNCT_SHAPES: ReadonlyMap<string, PunctShape> = new Map([
   ...(['.', '!', '?', '…'] as const).map((p) => [p, 'terminator'] as const),
@@ -367,7 +277,6 @@ const PUNCT_SHAPES: ReadonlyMap<string, PunctShape> = new Map([
   ['%', 'suffix'] as const,
 ]);
 
-/** Enclosure pairs, keyed by either half: the word is wrapped in the pair. */
 const ENCLOSURE_PAIRS: readonly (readonly [string, string])[] = [
   ['"', '"'],
   ['(', ')'],

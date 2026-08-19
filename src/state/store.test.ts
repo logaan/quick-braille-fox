@@ -1296,3 +1296,174 @@ describe('chord input', () => {
     });
   });
 });
+
+describe('curriculum page', () => {
+  it('starts on the drill and builds no curriculum view until asked', () => {
+    const store = createTutorStore({ storage: drillReadyStorage(), seed: 1 });
+    expect(store.viewModel().page).toBe('drill');
+    expect(store.viewModel().curriculum).toBeNull();
+
+    store.handlers.onNavigate('curriculum');
+    expect(store.viewModel().page).toBe('curriculum');
+    expect(store.viewModel().curriculum).not.toBeNull();
+  });
+
+  it('lists every skill, grouped as the Overall panel groups them', () => {
+    const store = createTutorStore({ storage: drillReadyStorage(), seed: 1 });
+    store.handlers.onNavigate('curriculum');
+    const vm = store.viewModel();
+    const curriculum = vm.curriculum!;
+    expect(curriculum.groups.map((g) => g.group)).toEqual(vm.groups.map((g) => g.group));
+    const listed = curriculum.groups.flatMap((g) => g.skills);
+    expect(listed).toHaveLength(skills.length);
+    expect(listed.map((s) => s.id)).toEqual(skills.map((s) => s.id));
+    expect(curriculum.counts).toEqual({ force: 0, allow: skills.length, block: 0 });
+    expect(curriculum.policy).toBe('allow');
+    expect(curriculum.activeCount).toBe(5);
+  });
+
+  it('carries every field the app holds for a skill', () => {
+    const store = createTutorStore({ storage: drillReadyStorage(), seed: 1 });
+    store.handlers.onNavigate('curriculum');
+    const row = store
+      .viewModel()
+      .curriculum!.groups.flatMap((g) => g.skills)
+      .find((s) => s.id === 'shortform-about')!;
+    expect(row).toMatchObject({
+      id: 'shortform-about',
+      kind: 'shortform',
+      group: 'shortforms',
+      print: 'about',
+      unicode: '⠁⠃',
+      dots: '1-12',
+      policy: 'allow',
+      learnt: false,
+      active: false,
+      score: 0,
+    });
+    expect(row.order).toBe(skills.findIndex((s) => s.id === 'shortform-about'));
+  });
+
+  it('marks the skills that are in rotation right now', () => {
+    const store = createTutorStore({ storage: drillReadyStorage(), seed: 1 });
+    store.handlers.onNavigate('curriculum');
+    const active = store
+      .viewModel()
+      .curriculum!.groups.flatMap((g) => g.skills)
+      .filter((s) => s.active)
+      .map((s) => s.id);
+    expect(active).toEqual(store.viewModel().activeSkills.map((s) => s.id));
+  });
+
+  it('sets one skill, a whole group, and everything', () => {
+    const store = createTutorStore({ storage: drillReadyStorage(), seed: 1 });
+    store.handlers.onNavigate('curriculum');
+    const policyOf = (id: string): string =>
+      store
+        .viewModel()
+        .curriculum!.groups.flatMap((g) => g.skills)
+        .find((s) => s.id === id)!.policy;
+
+    store.handlers.onSkillPolicyChange('letter-a', 'block');
+    expect(policyOf('letter-a')).toBe('block');
+    expect(policyOf('letter-b')).toBe('allow');
+
+    store.handlers.onGroupPolicyChange('numbers', 'force');
+    const numbers = store.viewModel().curriculum!.groups.find((g) => g.group === 'numbers')!;
+    expect(numbers.policy).toBe('force');
+    expect(numbers.skills.every((s) => s.policy === 'force')).toBe(true);
+    expect(policyOf('letter-a')).toBe('block');
+
+    store.handlers.onAllPolicyChange('allow');
+    expect(store.viewModel().curriculum!.policy).toBe('allow');
+    expect(policyOf('letter-a')).toBe('allow');
+  });
+
+  it('reports a group of mixed rulings as no single policy', () => {
+    const store = createTutorStore({ storage: drillReadyStorage(), seed: 1 });
+    store.handlers.onNavigate('curriculum');
+    store.handlers.onSkillPolicyChange('letter-a', 'block');
+    const letters = store.viewModel().curriculum!.groups.find((g) => g.group === 'letters')!;
+    expect(letters.policy).toBeNull();
+    expect(letters.counts).toEqual({ force: 0, allow: 25, block: 1 });
+    expect(store.viewModel().curriculum!.policy).toBeNull();
+  });
+
+  it('a blocked skill leaves the rotation and a forced one joins it', () => {
+    const store = createTutorStore({ storage: drillReadyStorage(), seed: 1 });
+    store.handlers.onNavigate('curriculum');
+    store.handlers.onSkillPolicyChange('letter-a', 'block');
+    store.handlers.onSkillPolicyChange('shortform-about', 'force');
+    const active = store.viewModel().activeSkills.map((s) => s.id);
+    expect(active).not.toContain('letter-a');
+    expect(active).toContain('shortform-about');
+  });
+
+  it('persists rulings', () => {
+    const storage = drillReadyStorage();
+    const store = createTutorStore({ storage, seed: 1 });
+    store.handlers.onNavigate('curriculum');
+    store.handlers.onSkillPolicyChange('letter-a', 'block');
+    store.flushSave();
+
+    const resumed = createTutorStore({ storage, seed: 1 });
+    resumed.handlers.onNavigate('curriculum');
+    const letterA = resumed
+      .viewModel()
+      .curriculum!.groups.flatMap((g) => g.skills)
+      .find((s) => s.id === 'letter-a')!;
+    expect(letterA.policy).toBe('block');
+  });
+
+  it('regenerates the prompt on the way back when rulings changed', () => {
+    const store = createTutorStore({ storage: midPromptStorage(), seed: 1 });
+    expect(store.viewModel().promptText).toBe('the dog');
+
+    store.handlers.onNavigate('curriculum');
+    store.handlers.onSkillPolicyChange('letter-d', 'block');
+    store.handlers.onNavigate('drill');
+    const vm = store.viewModel();
+    expect(vm.promptText).not.toBe('the dog');
+    expect(vm.promptText).not.toContain('d');
+    expect(vm.typed).toBe('');
+  });
+
+  it('keeps the prompt, but clears the typing, when nothing changed', () => {
+    const store = createTutorStore({ storage: midPromptStorage(), seed: 1 });
+    typeText(store, 'the');
+    expect(store.viewModel().typed).toBe('the');
+
+    const key = store.viewModel().promptKey;
+    store.handlers.onNavigate('curriculum');
+    store.handlers.onNavigate('drill');
+    const vm = store.viewModel();
+    expect(vm.promptText).toBe('the dog');
+    expect(vm.typed).toBe('');
+    expect(vm.promptKey).not.toBe(key);
+  });
+
+  it('keeps a finished fox run on its result screen across a visit', () => {
+    const store = createTutorStore({ storage: foxReadyStorage(), seed: 1 });
+    typeText(store, FOX_SENTENCE);
+    expect(store.viewModel().foxResult).not.toBeNull();
+
+    store.handlers.onNavigate('curriculum');
+    store.handlers.onNavigate('drill');
+    expect(store.viewModel().foxResult).not.toBeNull();
+  });
+
+  it('reset progress erases scores but keeps the curriculum rulings', () => {
+    const store = createTutorStore({ storage: memoryStorage(), seed: 1 });
+    store.handlers.onNavigate('curriculum');
+    store.handlers.onSkillPolicyChange('letter-a', 'block');
+    store.handlers.onNavigate('drill');
+    typeText(store, store.viewModel().promptText);
+    expect(store.viewModel().promptsCompleted).toBeGreaterThan(0);
+
+    store.handlers.onResetRequest();
+    store.handlers.onResetTextChange('reset');
+    store.handlers.onResetConfirm();
+    expect(store.viewModel().promptsCompleted).toBe(0);
+    expect(store.viewModel().activeSkills.map((s) => s.id)).not.toContain('letter-a');
+  });
+});

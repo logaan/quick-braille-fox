@@ -1,6 +1,3 @@
-// src/core — pure domain logic (no DOM, no React, no I/O).
-// Public API surface; see docs/ARCHITECTURE.md "Core API".
-
 export type { Cell, Translation, TranslationUnit } from './braille';
 export {
   cellCount,
@@ -66,14 +63,27 @@ export {
 
 export {
   activeSkills,
+  forcedSkills,
   hintDelayForSkills,
   isLearntIn,
   isSkillLearnt,
   knownSkillIds,
   learntSkills,
   learntSkillsIn,
+  revisableSkills,
   scoreFor,
 } from './progress';
+
+export type { SkillPolicy } from './policy';
+export {
+  DEFAULT_SKILL_POLICY,
+  SKILL_POLICIES,
+  isSkillPolicy,
+  policyFor,
+  setAllPolicies,
+  setGroupPolicy,
+  setSkillPolicy,
+} from './policy';
 
 export type { GeneratedPrompt } from './prompts';
 export { generatePrompt, pickTarget } from './prompts';

@@ -1,12 +1,3 @@
-// The page top: the "fox" brand as three braille cells (Brand), and the
-// settings/controls cluster (HeaderControls) — input mode, best fox result,
-// fullscreen, and the reset-progress control with its confirm step. Brand
-// and controls are separate components because
-// they sit apart in DOM order: braille users read the page top-to-bottom one
-// line at a time, so everything between the title and the drill costs them a
-// pan — the controls render *after* the drill and panels, and CSS grid puts
-// them back in the visual header row.
-
 import {
   createElement as e,
   useEffect,
@@ -28,28 +19,12 @@ export interface HeaderControlsProps {
   readonly on: AppHandlers;
 }
 
-/**
- * The logo: "Quick braille fox" as a 3×3 grid of braille cells, one word per
- * row — ⠠⠟⠅ (capital sign + the shortform "qk"), ⠃⠗⠇ (the shortform "brl"),
- * and ⠋⠕⠭ ("fox" in full).
- */
 const BRAND_ROWS = [
   ['⠠', '⠟', '⠅'],
   ['⠃', '⠗', '⠇'],
   ['⠋', '⠕', '⠭'],
 ];
 
-/**
- * Those nine cells flattened into one 6-wide, 9-tall field of dots — three
- * cells across is six dot columns, three rows of cells is nine dot rows.
- * Drawing the dots directly on one evenly spaced grid reads as a single
- * braille shape; nine boxed glyphs read as nine cramped little cards.
- *
- * A braille character is U+2800 plus a bitmask, bit n−1 standing for dot n,
- * and dots 1–3 run down a cell's left column with 4–6 down its right — so
- * within a row of cells, dot row `r` takes bits `r` and `r + 3` from each
- * cell in turn.
- */
 const BRAND_DOT_ROWS: readonly (readonly boolean[])[] = BRAND_ROWS.flatMap((cells) =>
   [0, 1, 2].map((r) =>
     cells.flatMap((cell) => {
@@ -287,6 +262,17 @@ export function HeaderControls(props: HeaderControlsProps): ReactElement {
     { className: 'header-controls', 'aria-label': 'Settings' },
     e(InputModePicker, { inputMode, onSelect: on.onInputModeSelect }),
     bestFox === null ? null : e(BestFoxBadge, { best: bestFox }),
+    e(
+      'button',
+      {
+        type: 'button',
+        className: 'btn btn-quiet',
+        onClick: () => {
+          on.onNavigate('curriculum');
+        },
+      },
+      'Curriculum',
+    ),
     e(FullscreenButton),
     confirmingReset
       ? e(ResetConfirm, { text: resetConfirmText, canConfirm: canConfirmReset, on })

@@ -935,3 +935,352 @@ input:focus-visible {
 .help-body {
   margin: 0.35rem 0 0;
 }
+
+/* --- Curriculum page ------------------------------------------------------ */
+
+/* Its own page rather than a modal: the whole curriculum is 258 rows of nine
+   fields, which wants the window's full width and its own scroll, not a
+   dialog laid over the drill.
+
+   The root font size is derived from the viewport so the *drill card* grows
+   to fill it (see the html rule at the top), which is exactly wrong for a
+   dense table — on a 4K display 1rem is 38px and nine columns of that stop
+   fitting anywhere. So this page pins its own base size and sizes everything
+   below in em, relative to that base rather than to the drill's scale. */
+.app-curriculum {
+  font-size: 16px;
+}
+
+.curriculum {
+  max-width: 72em;
+  min-width: 0;
+  gap: 1.5em;
+  padding: 1em clamp(0.75em, 3vw, 1.5em) 3em;
+}
+
+.curriculum .btn {
+  font-size: 0.85em;
+  padding: 0.4em 0.95em;
+}
+
+.curriculum-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 1em;
+  flex-wrap: wrap;
+}
+
+.curriculum-heading {
+  margin: 0;
+  font-size: 1.5em;
+  font-weight: 650;
+}
+
+/* The heading takes focus on arrival so a screen reader lands on the page's
+   name rather than back at <body>; it is not a control, so it shows a ring
+   only when keyboard focus actually rests there. */
+.curriculum-heading:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 4px;
+}
+
+.curriculum-intro {
+  margin: 0;
+  max-width: 50em;
+  color: var(--dim);
+  font-size: 0.9em;
+}
+
+/* min-width: 0 down the whole chain: a flex item defaults to min-width:auto,
+   which would let the table's intrinsic width push the page wide instead of
+   letting the wrapper below scroll. */
+.curriculum-body {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5em;
+  min-width: 0;
+}
+
+.curriculum-summary,
+.curriculum-group-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75em 1em;
+  flex-wrap: wrap;
+}
+
+/* Sticky: "Force/Allow/Block everything" is the control you reach for after
+   scrolling into the middle of 258 rows, not before. */
+.curriculum-summary {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  background: var(--surface);
+  border-radius: var(--radius-lg);
+  padding: 0.85em 1.15em;
+  box-shadow: var(--shadow-md);
+}
+
+.curriculum-counts {
+  margin: 0;
+  font-size: 0.9em;
+  font-variant-numeric: tabular-nums;
+}
+
+.curriculum-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6em;
+  min-width: 0;
+}
+
+.curriculum-group-name {
+  margin: 0;
+  font-size: 1.05em;
+  font-weight: 650;
+}
+
+.curriculum-group-meta {
+  margin: 0 auto 0 0;
+  color: var(--dim);
+  font-size: 0.85em;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Wide content scrolls inside its own box; the page never scrolls sideways. */
+.curriculum-table-wrap {
+  min-width: 0;
+  overflow-x: auto;
+  background: var(--surface);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-md);
+}
+
+/* Fixed layout with declared widths, so the columns line up down the whole
+   page: thirteen independent tables sized by their own content would put
+   CELLS in a different place in every group. */
+.curriculum-table {
+  width: 100%;
+  min-width: 81em;
+  table-layout: fixed;
+  border-collapse: collapse;
+  font-size: 0.85em;
+}
+
+.curriculum-table th:nth-child(1) {
+  width: 4.5em;
+}
+.curriculum-table th:nth-child(2) {
+  width: 6em;
+}
+.curriculum-table th:nth-child(3) {
+  width: 11em;
+}
+.curriculum-table th:nth-child(4) {
+  width: 12em;
+}
+.curriculum-table th:nth-child(5) {
+  width: 13em;
+}
+.curriculum-table th:nth-child(6) {
+  width: 14.5em;
+}
+.curriculum-table th:nth-child(7) {
+  width: 10.5em;
+}
+.curriculum-table th:nth-child(8) {
+  width: 9.5em;
+}
+
+/* Positioned so the visually-hidden spans inside a cell (the spoken dot
+   description, the policy explanations) resolve against the cell rather than
+   against the page: unpositioned, they take their static position out at the
+   far right of the table and overflow the *document*, which then scrolls
+   sideways however well the table wrapper scrolls. */
+.curriculum-table th,
+.curriculum-table td {
+  position: relative;
+  text-align: left;
+  padding: 0.5em 0.75em;
+  border-bottom: 1px solid var(--line);
+  vertical-align: middle;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.curriculum-table thead th {
+  font-size: 0.85em;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  color: var(--dim);
+  font-weight: 650;
+}
+
+.curriculum-table tbody tr:last-child th,
+.curriculum-table tbody tr:last-child td {
+  border-bottom: 0;
+}
+
+.skill-order {
+  color: var(--dim);
+  font-variant-numeric: tabular-nums;
+}
+
+.skill-print {
+  font-family: var(--mono);
+  font-size: 1.15em;
+  font-weight: 650;
+}
+
+/* The cells are the point of the row, so they are drawn at a size you can
+   actually read the dots at rather than at the table's text size. */
+.skill-cells .cells {
+  gap: 0.25em;
+  flex-wrap: nowrap;
+}
+
+.skill-cells .cell {
+  font-size: 2em;
+  min-width: 0.8em;
+  min-height: 1.1em;
+  padding: 0 0.08em;
+}
+
+.skill-dots,
+.skill-id {
+  font-family: var(--mono);
+  font-size: 0.9em;
+  color: var(--dim);
+}
+
+.skill-kind,
+.skill-status {
+  color: var(--dim);
+}
+
+.skill-score .bar {
+  display: inline-block;
+  width: 4em;
+  vertical-align: middle;
+}
+
+.skill-score-value {
+  margin-left: 0.5em;
+  font-size: 0.9em;
+  color: var(--dim);
+  font-variant-numeric: tabular-nums;
+}
+
+/* Rotation is the one thing this page changes, so a row carries its own
+   state: struck through when blocked, gold when forced, tinted when the
+   skill is in the rotation right now — never the radio alone. */
+.skill-row-active {
+  background: var(--accent-tint);
+}
+
+.skill-row-block .skill-print,
+.skill-row-block .skill-dots,
+.skill-row-block .skill-id,
+.skill-row-block .skill-kind,
+.skill-row-block .skill-status {
+  opacity: 0.55;
+  text-decoration: line-through;
+}
+
+.skill-row-force .skill-print {
+  color: var(--gold-text);
+}
+
+.policy-picker {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.15em;
+  padding: 0.1em;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--surface-2);
+}
+
+.policy-option {
+  display: inline-flex;
+  align-items: center;
+  cursor: pointer;
+}
+
+/* Collapsed rather than display:none, so the radio stays focusable and
+   announced and arrow keys still move through the group. */
+.policy-option-input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: 0;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.policy-option-text {
+  display: inline-block;
+  padding: 0.25em 0.7em;
+  border-radius: 999px;
+  color: var(--dim);
+  font-size: 0.9em;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+.policy-option:hover .policy-option-text {
+  color: var(--text);
+}
+
+.policy-option-input:checked + .policy-option-text {
+  color: var(--accent-ink);
+  background: var(--accent);
+  font-weight: 650;
+}
+
+.policy-force .policy-option-input:checked + .policy-option-text {
+  background: var(--gold);
+}
+
+.policy-block .policy-option-input:checked + .policy-option-text {
+  background: var(--wrong);
+}
+
+/* The input is visually collapsed, so its focus ring is drawn on the label. */
+.policy-option-input:focus-visible + .policy-option-text {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.policy-batch {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25em;
+}
+
+.policy-batch-btn[aria-pressed='true'] {
+  color: var(--accent-ink);
+  background: var(--accent);
+  border-color: transparent;
+}
+
+.policy-batch-btn.policy-force[aria-pressed='true'] {
+  background: var(--gold);
+}
+
+.policy-batch-btn.policy-block[aria-pressed='true'] {
+  background: var(--wrong);
+}
+
+/* The way into the curriculum from the Overall panel, below the fold. */
+.panel-link {
+  align-self: flex-start;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .policy-option-text {
+    transition: none;
+  }
+}

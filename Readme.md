@@ -71,5 +71,3 @@ Every common task is a script:
 | `./scripts/preview.sh` | Serve the production build locally |
 | `./scripts/generate-skills.sh` | Regenerate `src/data/skills.json` (copies the macOS braille tables into `data/` first if missing) |
 | `./scripts/copy-braille-tables.sh` | Copy the liblouis UEB tables from macOS into `data/` |
-
-Design details live in `docs/ARCHITECTURE.md`.

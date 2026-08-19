@@ -1,24 +1,12 @@
-// Progress views: the "Learning now" line (the 5 active skills as print form
-// plus a score bar, compact enough to live inside the drill card) and the
-// "Overall" panel (totals and per-group progress, its own card below the
-// fold).
-
 import { createElement as e, type ReactElement } from 'react';
 import { LEARNT_THRESHOLD } from '../core';
-import type { AppViewModel } from '../state';
+import type { AppHandlers, AppViewModel } from '../state';
 import { GROUP_LABELS } from './labels';
 
 export interface SkillPanelProps {
   readonly vm: AppViewModel;
 }
 
-/**
- * The active skills as one compact line: each skill is its print form beside
- * a progress bar — no cells (the drill itself teaches those) and no numeric
- * score (the bar carries it; the exact value stays in the aria-label). Lives
- * at the bottom of the drill card so glancing at progress never means
- * leaving the drill.
- */
 export function LearningNowLine(props: SkillPanelProps): ReactElement {
   const { vm } = props;
   return e(
@@ -53,8 +41,13 @@ export function LearningNowLine(props: SkillPanelProps): ReactElement {
   );
 }
 
-export function OverallPanel(props: SkillPanelProps): ReactElement {
-  const { vm } = props;
+export interface OverallPanelProps {
+  readonly vm: AppViewModel;
+  readonly on: AppHandlers;
+}
+
+export function OverallPanel(props: OverallPanelProps): ReactElement {
+  const { vm, on } = props;
   return e(
     'section',
     { className: 'panel', 'aria-label': 'Overall progress' },
@@ -94,6 +87,17 @@ export function OverallPanel(props: SkillPanelProps): ReactElement {
           ),
         ),
       ),
+    ),
+    e(
+      'button',
+      {
+        type: 'button',
+        className: 'btn btn-quiet panel-link',
+        onClick: () => {
+          on.onNavigate('curriculum');
+        },
+      },
+      'Open curriculum',
     ),
   );
 }

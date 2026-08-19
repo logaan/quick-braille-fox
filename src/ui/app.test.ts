@@ -1,6 +1,3 @@
-// Render-path smoke tests: the full App renders from real store view-models
-// (fresh session, hint showing, fox challenge, fox result) without throwing.
-
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { createElement as e } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
@@ -9,6 +6,7 @@ import { skills } from '../data/skills';
 import type { AppHandlers, StorageLike, TutorStore } from '../state';
 import { STORAGE_KEY, createTutorStore } from '../state';
 import { App } from './index';
+import { GROUP_LABELS } from './labels';
 
 beforeEach(() => {
   vi.useFakeTimers();
@@ -34,12 +32,10 @@ function memoryStorage(): StorageLike {
   };
 }
 
-/** A store whose next prompt is an ordinary drill (prompt 0 is the fox). */
 function drillStore(): TutorStore {
   return storeAt(1);
 }
 
-/** A store whose next prompt is the fox challenge. */
 function foxReadyStore(): TutorStore {
   return storeAt(FOX_INTERVAL);
 }
@@ -89,7 +85,7 @@ describe('App rendering', () => {
   it('renders the fresh-session drill view', () => {
     const store = createTutorStore({ seed: 1 });
     const html = render(store);
-    expect(html).toContain('brand-dot-raised'); // brand dot grid
+    expect(html).toContain('brand-dot-raised');
     expect(html).toContain('aria-label="Quick Braille Fox"');
     expect(html).toContain('id="drill-input"');
     expect(html).toContain('Learning now');
@@ -370,5 +366,67 @@ describe('App rendering', () => {
     expect(html).toContain('Run failed');
     expect(html).toContain('You typed');
     expect(html).toContain('⠕');
+  });
+});
+
+describe('curriculum page', () => {
+  function curriculumStore(): TutorStore {
+    const store = drillStore();
+    store.handlers.onNavigate('curriculum');
+    return store;
+  }
+
+  it('renders every skill, once', () => {
+    const html = render(curriculumStore());
+    for (const skill of skills) {
+      expect(html.split(`name="policy-${skill.id}"`)).toHaveLength(4);
+    }
+  });
+
+  it('groups the skills under the same headings as the Overall panel', () => {
+    const html = render(curriculumStore());
+    for (const label of Object.values(GROUP_LABELS)) {
+      expect(html).toContain(`>${label}</h3>`);
+    }
+  });
+
+  it('shows what the app knows about a skill', () => {
+    const html = render(curriculumStore());
+    expect(html).toContain('>about</th>');
+    expect(html).toContain('>shortform-about</td>');
+    expect(html).toContain('>Shortform</td>');
+    expect(html).toContain('>1-12</td>');
+    expect(html).toContain('dots 1, dots 1-2');
+  });
+
+  it('offers Force, Allow and Block per skill and in batch', () => {
+    const html = render(curriculumStore());
+    expect(html).toContain('Rotation for a');
+    expect(html).toContain('Set rotation for every skill');
+    expect(html).toContain('Set rotation for all Letters');
+    expect(html).toContain('Set rotation for all Shortforms');
+  });
+
+  it('checks the ruling each skill currently has', () => {
+    const store = curriculumStore();
+    store.handlers.onSkillPolicyChange('letter-a', 'block');
+    const html = render(store);
+    expect(html).toContain('name="policy-letter-a" checked="" value="block"');
+    expect(html).toContain('name="policy-letter-b" checked="" value="allow"');
+  });
+
+  it('leaves the drill behind while it is open, and comes back to it', () => {
+    const store = curriculumStore();
+    expect(render(store)).not.toContain('class="drill"');
+
+    store.handlers.onNavigate('drill');
+    const html = render(store);
+    expect(html).toContain('class="drill"');
+    expect(html).not.toContain('Back to drill');
+  });
+
+  it('is reachable from the drill page', () => {
+    expect(render(drillStore())).toContain('>Curriculum</button>');
+    expect(render(drillStore())).toContain('>Open curriculum</button>');
   });
 });

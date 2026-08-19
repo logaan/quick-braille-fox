@@ -1,12 +1,14 @@
-// src/state — interaction store and persistence around the pure core.
-// The UI consumes AppViewModel/AppHandlers; main.ts creates the store.
-
 export type {
   ActiveSkillView,
   AppHandlers,
+  AppPage,
   AppViewModel,
+  CurriculumGroupView,
+  CurriculumSkillView,
+  CurriculumView,
   GroupProgressView,
   FoxFailureView,
+  PolicyCounts,
 } from './view';
 export { RESET_CONFIRM_WORD, matchesResetWord } from './view';
 export type { InputMode } from './modes';

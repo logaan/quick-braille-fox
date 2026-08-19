@@ -1,12 +1,7 @@
-// View models: plain-data snapshots of the store for the UI to render, plus
-// the handler interface the UI wires to DOM events. UI components are pure
-// render functions of these props; the dependency direction is ui -> state.
-
-// Immutable's Map, aliased so the native Map stays available below.
 import type { Map as ScoreMap } from 'immutable';
-import { Set } from 'immutable';
+import { Set as ImmutableSet } from 'immutable';
 import type { ChangeEvent, KeyboardEvent } from 'react';
-import type { Cell, FoxResult, RowModel, TutorState } from '../core';
+import type { Cell, FoxResult, RowModel, SkillPolicy, TutorState } from '../core';
 import {
   LEARNT_THRESHOLD,
   FOX_AWARD,
@@ -24,19 +19,18 @@ import {
   isLearntIn,
   judgedPrintCaret,
   learntSkillsIn,
+  policyFor,
 } from '../core';
-import type { SkillGroup } from '../data/skills';
+import type { Skill, SkillGroup, SkillKind } from '../data/skills';
 import { skills } from '../data/skills';
 import type { InputMode } from './modes';
 import type { BestFox } from './persistence';
 
-/** One of the (up to) 5 skills currently being taught. */
 export interface ActiveSkillView {
   readonly id: string;
   readonly print: string;
   readonly unicode: string;
   readonly score: number;
-  /** Score as a 0..1 fraction of the learnt threshold, for progress bars. */
   readonly progress: number;
 }
 
@@ -46,75 +40,62 @@ export interface GroupProgressView {
   readonly total: number;
 }
 
-/**
- * Why a fox run ended, in braille. Shown on the failure screen: "I was sure I
- * typed that right" is the usual reaction, and the print prompt alone does not
- * settle it.
- */
+export type AppPage = 'drill' | 'curriculum';
+
+export interface CurriculumSkillView {
+  readonly id: string;
+  readonly kind: SkillKind;
+  readonly group: SkillGroup;
+  readonly order: number;
+  readonly print: string;
+  readonly unicode: string;
+  readonly dots: string;
+  readonly score: number;
+  readonly progress: number;
+  readonly learnt: boolean;
+  readonly active: boolean;
+  readonly policy: SkillPolicy;
+}
+
+export interface CurriculumGroupView {
+  readonly group: SkillGroup;
+  readonly learnt: number;
+  readonly total: number;
+  readonly policy: SkillPolicy | null;
+  readonly counts: PolicyCounts;
+  readonly skills: readonly CurriculumSkillView[];
+}
+
+export type PolicyCounts = Readonly<Record<SkillPolicy, number>>;
+
+export interface CurriculumView {
+  readonly groups: readonly CurriculumGroupView[];
+  readonly policy: SkillPolicy | null;
+  readonly counts: PolicyCounts;
+  readonly activeCount: number;
+}
+
 export interface FoxFailureView {
-  /** Cells the learner owed where the run broke (U+2800). */
   readonly expected: string;
-  /** The print those cells stand for: "ow", "The", " " for a space. */
   readonly expectedPrint: string;
-  /**
-   * Cells the learner actually entered there (U+2800), or null when there is
-   * nothing honest to show. VoiceOver braille screen input hands us print, not
-   * the cells behind it, so in that mode showing "what you typed" as braille
-   * would only be echoing our own translation back as if it were their input.
-   */
   readonly typed: string | null;
 }
 
-/** Everything the UI needs to render, as plain data. */
 export interface AppViewModel {
   readonly promptText: string;
   readonly typed: string;
-  /**
-   * How many leading characters of the *prompt text* count as accepted
-   * progress; the UI paints them correct and renders `divergedText` red
-   * after them. On a print-judged round this is the common prefix of prompt
-   * and typed. On a cell-judged (emulated, non-fox) round it stops at the
-   * last unit whose *cells* were chorded: derived print past that (a valid
-   * alternate spelling of the sign being drilled) must read as wrong, not
-   * as progress, or the prompt would show all-correct text while the round
-   * is diverged.
-   */
   readonly matchedPrint: number;
-  /**
-   * What the learner has produced beyond the accepted prefix, rendered red
-   * at the caret while diverged: the diverged typed print on a print-judged
-   * round, the unaccepted chorded cells (U+2800 glyphs) on a cell-judged
-   * one. '' while typing is in step.
-   */
   readonly divergedText: string;
   readonly diverged: boolean;
   readonly isFox: boolean;
-  /** Non-null while the fox result screen should be shown. */
   readonly foxResult: FoxResult | null;
-  /** Non-null when that result screen is a failure it can explain. */
   readonly foxFailure: FoxFailureView | null;
   readonly bestFox: BestFox | null;
   readonly foxMinCells: number;
-  /** Prompts between fox challenges, for the on-screen rules. */
   readonly foxInterval: number;
-  /** Points a skill scores per occurrence typed during a fox run. */
   readonly foxAward: number;
-  /** How many completed prompts until the next fox challenge (1 = this one). */
   readonly nextFoxIn: number;
-  /**
-   * The hint as U+2800 braille: the caret word's cells, limited to the
-   * signs uncovered so far (one is uncovered per elapsed countdown, and
-   * each sign's countdown only starts once the caret reaches it). The
-   * grid's hint row shows reveals in place; this feeds the spoken live
-   * region, which braille displays and speech users get instead of tints.
-   */
   readonly hint: string | null;
-  /**
-   * The aligned column grid for the prompt: one column per translation
-   * unit, shared by the expected-cells row, the target print, and (in
-   * emulated mode) what the learner produced. Built from core
-   * buildRowModel so the UI never computes alignment itself.
-   */
   readonly rows: RowModel;
   readonly activeSkills: readonly ActiveSkillView[];
   readonly learntCount: number;
@@ -122,56 +103,36 @@ export interface AppViewModel {
   readonly promptsCompleted: number;
   readonly groups: readonly GroupProgressView[];
   readonly confirmingReset: boolean;
-  /** What the user has typed into the reset confirmation field so far. */
   readonly resetConfirmText: string;
-  /** True once resetConfirmText matches RESET_CONFIRM_WORD; gates the erase. */
   readonly canConfirmReset: boolean;
-  /** Which input mode the drill is in; see InputMode. */
   readonly inputMode: InputMode;
-  /**
-   * Identity of the current prompt instance. The UI keys the uncontrolled
-   * drill input on it, so the field clears (remounts) only at a prompt
-   * change — never mid-typing, which would fight VoiceOver.
-   */
   readonly promptKey: number;
+  readonly page: AppPage;
+  readonly curriculum: CurriculumView | null;
 }
 
-/**
- * Event handlers the store exposes for the UI to attach to DOM events.
- * Function properties, not methods: the store implements them as arrows,
- * and the UI passes them around detached (`this` never matters).
- */
 export interface AppHandlers {
-  /** Wire to the drill input's change/input event. */
   readonly onInput: (event: ChangeEvent<HTMLInputElement>) => void;
-  /** Wire to the drill input's keydown (chord press / backspace / swallow). */
   readonly onDrillKeyDown: (event: KeyboardEvent<HTMLInputElement>) => void;
-  /** Wire to the drill input's keyup (chord commit). */
   readonly onDrillKeyUp: (event: KeyboardEvent<HTMLInputElement>) => void;
-  /** Choose the input mode: emulated (QWERTY chording) or VoiceOver. */
   readonly onInputModeSelect: (mode: InputMode) => void;
-  /** Dismiss the fox result screen and move to the next prompt. */
   readonly onFoxContinue: () => void;
   readonly onResetRequest: () => void;
   readonly onResetConfirm: () => void;
   readonly onResetCancel: () => void;
-  /** Wire to the reset confirmation field's change event. */
   readonly onResetTextChange: (value: string) => void;
+  readonly onNavigate: (page: AppPage) => void;
+  readonly onSkillPolicyChange: (skillId: string, policy: SkillPolicy) => void;
+  readonly onGroupPolicyChange: (group: SkillGroup, policy: SkillPolicy) => void;
+  readonly onAllPolicyChange: (policy: SkillPolicy) => void;
 }
 
-/** Typing this word (case/space insensitive) unlocks the erase button. */
 export const RESET_CONFIRM_WORD = 'reset';
 
-/** Does what the user typed unlock the erase button? */
 export function matchesResetWord(value: string): boolean {
   return value.trim().toLowerCase() === RESET_CONFIRM_WORD;
 }
 
-/**
- * Prompts until the next fox challenge, counting the current one (1 = the
- * prompt on screen *is* the challenge). fox lands whenever the counter is a
- * multiple of FOX_INTERVAL.
- */
 function nextFoxIn(promptCounter: number): number {
   const since = promptCounter % FOX_INTERVAL;
   return since === 0 ? 1 : FOX_INTERVAL - since + 1;
@@ -196,50 +157,30 @@ export interface ViewSources {
   readonly bestFox: BestFox | null;
   readonly lastFox: FoxResult | null;
   readonly confirmingReset: boolean;
-  /** Raw text typed into the reset confirmation field (store-owned). */
   readonly resetConfirmText: string;
   readonly inputMode: InputMode;
-  /** Identity of the current prompt instance (store-owned epoch). */
   readonly promptKey: number;
-  /** Cells committed by chording this prompt (empty in VoiceOver mode). */
   readonly cellBuffer: readonly Cell[];
+  readonly page: AppPage;
 }
 
-/**
- * The uncovered part of the caret word's hint: its leading run of units that
- * are revealed or already typed. Units the learner typed cleanly count as
- * uncovered for display (they are never *revealed* — that would cost their
- * clean award — but hiding a revealed sign behind them left a stuck learner
- * with a hint the system had charged for and never showed). Stopping at the
- * first still-covered unit keeps a sign hinted by the two-mistake rule from
- * dragging later, still-earnable signs of the word on screen with it, and
- * nothing shows until at least one sign has actually been revealed.
- */
 function hintText(src: ViewSources): string | null {
   const p = src.tutor.prompt;
   if (p === null || p.isFox) return null;
   const word = hintWordForPrompt(src.tutor);
   if (word === null) return null;
-  // The judged caret in print, so a cell-judged round counts a unit as
-  // "typed" only once its cells are chorded — derived print is not enough.
   const caret = judgedPrintCaret(p);
   let text = '';
   let anyRevealed = false;
   for (const unit of word.units) {
     const revealed = p.hintedUnits.has(unit.index);
-    if (!revealed && unit.end > caret) break; // neither revealed nor typed
+    if (!revealed && unit.end > caret) break;
     if (revealed) anyRevealed = true;
     text += unit.unicode;
   }
   return anyRevealed ? text : null;
 }
 
-/**
- * The braille behind a failed run, or null when there is none to give: any
- * prompt but a fox one, a run still in progress, or a "failure" recorded for
- * an impossible cell count rather than a mistake (nothing diverged, so there
- * is no sign to point at).
- */
 function foxFailureView(src: ViewSources): FoxFailureView | null {
   const p = src.tutor.prompt;
   if (p === null || !p.isFox || !p.completed || !p.failed) return null;
@@ -254,19 +195,86 @@ function foxFailureView(src: ViewSources): FoxFailureView | null {
   };
 }
 
+function emptyCounts(): Record<SkillPolicy, number> {
+  return { force: 0, allow: 0, block: 0 };
+}
+
+function uniformPolicy(counts: PolicyCounts, total: number): SkillPolicy | null {
+  if (counts.force === total) return 'force';
+  if (counts.allow === total) return 'allow';
+  if (counts.block === total) return 'block';
+  return null;
+}
+
+function dotsLabel(skill: Skill): string {
+  return skill.dots.map((cell) => cell.join('')).join('-');
+}
+
+function curriculumView(
+  tutor: TutorState,
+  scores: ScoreMap<string, number>,
+): CurriculumView {
+  const active = new Set(activeSkills(tutor).map((s) => s.id));
+  const totals = emptyCounts();
+  const order: SkillGroup[] = [];
+  const byGroup = new Map<
+    SkillGroup,
+    { learnt: number; counts: Record<SkillPolicy, number>; skills: CurriculumSkillView[] }
+  >();
+  for (const s of skills) {
+    let entry = byGroup.get(s.group);
+    if (entry === undefined) {
+      entry = { learnt: 0, counts: emptyCounts(), skills: [] };
+      byGroup.set(s.group, entry);
+      order.push(s.group);
+    }
+    const score = scores.get(s.id, 0);
+    const learnt = isLearntIn(scores, s.id);
+    const policy = policyFor(tutor, s.id);
+    if (learnt) entry.learnt += 1;
+    entry.counts[policy] += 1;
+    totals[policy] += 1;
+    entry.skills.push({
+      id: s.id,
+      kind: s.kind,
+      group: s.group,
+      order: s.order,
+      print: s.print,
+      unicode: s.unicode,
+      dots: dotsLabel(s),
+      score,
+      progress: Math.min(1, score / LEARNT_THRESHOLD),
+      learnt,
+      active: active.has(s.id),
+      policy,
+    });
+  }
+  const groups = order.map((group) => {
+    const entry = byGroup.get(group)!;
+    return {
+      group,
+      learnt: entry.learnt,
+      total: entry.skills.length,
+      policy: uniformPolicy(entry.counts, entry.skills.length),
+      counts: entry.counts,
+      skills: entry.skills,
+    };
+  });
+  return {
+    groups,
+    policy: uniformPolicy(totals, skills.length),
+    counts: totals,
+    activeCount: active.size,
+  };
+}
+
 export function buildViewModel(src: ViewSources): AppViewModel {
   const { tutor } = src;
   const p = tutor.prompt;
-  // Everything the learner sees moves with the round in flight; which
-  // skills are *shown* as active still comes from the committed scores, so
-  // the window does not churn mid-prompt.
   const shown = derivedScores(tutor);
   return {
     promptText: p?.text ?? '',
     typed: p?.typed ?? '',
-    // While in step, everything typed is accepted (on a cell-judged round a
-    // half-chorded multi-cell sign may already derive print — still correct,
-    // just unfinished). Once diverged, acceptance stops at the judged caret.
     matchedPrint:
       p === null ? 0 : p.diverged ? judgedPrintCaret(p) : commonPrefixLength(p.text, p.typed),
     divergedText: p === null ? '' : divergedTail(p),
@@ -283,9 +291,8 @@ export function buildViewModel(src: ViewSources): AppViewModel {
     rows: buildRowModel({
       text: p?.text ?? '',
       typed: p?.typed ?? '',
-      // Cells only mean anything in emulated mode; VoiceOver hands us print.
       cells: src.inputMode === 'emulated' ? src.cellBuffer : [],
-      hintedUnits: p?.hintedUnits ?? Set<number>(),
+      hintedUnits: p?.hintedUnits ?? ImmutableSet<number>(),
     }),
     activeSkills: activeSkills(tutor).map((s) => {
       const score = shown.get(s.id, 0);
@@ -306,5 +313,7 @@ export function buildViewModel(src: ViewSources): AppViewModel {
     canConfirmReset: matchesResetWord(src.resetConfirmText),
     inputMode: src.inputMode,
     promptKey: src.promptKey,
+    page: src.page,
+    curriculum: src.page === 'curriculum' ? curriculumView(tutor, shown) : null,
   };
 }

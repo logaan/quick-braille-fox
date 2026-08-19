@@ -1,6 +1,5 @@
-// Display strings for curriculum groups and fox percentages.
-
-import type { SkillGroup } from '../data/skills';
+import type { SkillPolicy } from '../core';
+import type { SkillGroup, SkillKind } from '../data/skills';
 
 export const GROUP_LABELS: Record<SkillGroup, string> = {
   letters: 'Letters',
@@ -18,15 +17,37 @@ export const GROUP_LABELS: Record<SkillGroup, string> = {
   symbols: 'Symbols',
 };
 
-/**
- * How a sign's print form reads on screen. A space's print is a space, which
- * would show as nothing at all next to its cell — name it instead.
- */
+export const KIND_LABELS: Record<SkillKind, string> = {
+  letter: 'Letter',
+  capital: 'Capital indicator',
+  number: 'Digit',
+  'number-sign': 'Number sign',
+  punctuation: 'Punctuation',
+  wordsign: 'Wordsign',
+  contraction: 'Contraction',
+  groupsign: 'Groupsign',
+  lowersign: 'Lower sign',
+  'initial-letter': 'Initial-letter contraction',
+  'final-letter': 'Final-letter groupsign',
+  shortform: 'Shortform',
+};
+
+export const POLICY_LABELS: Record<SkillPolicy, string> = {
+  force: 'Force',
+  allow: 'Allow',
+  block: 'Block',
+};
+
+export const POLICY_DESCRIPTIONS: Record<SkillPolicy, string> = {
+  force: ' — always in the rotation, whatever the algorithm picks',
+  allow: ' — the algorithm decides when to teach it',
+  block: ' — never in the rotation, and never used in prompt text',
+};
+
 export function signLabel(print: string): string {
   return print.trim() === '' ? 'space' : print;
 }
 
-/** "2.8", "25" — one decimal at most, no trailing ".0". */
 export function formatPercent(value: number): string {
   const rounded = Math.round(value * 10) / 10;
   return Number.isInteger(rounded) ? String(rounded) : rounded.toFixed(1);

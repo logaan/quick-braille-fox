@@ -1,10 +1,5 @@
-// The interaction store: wraps the core's pure TutorState with event
-// handling, the hint timer, fox cell counting, and localStorage persistence.
-// The UI renders viewModel() snapshots and wires `handlers` to DOM events;
-// it never calls core transitions itself.
-
 import type { ChangeEvent, KeyboardEvent } from 'react';
-import type { Cell, FoxResult, KeystrokeInput, Prompt, TutorState } from '../core';
+import type { Cell, FoxResult, KeystrokeInput, Prompt, SkillPolicy, TutorState } from '../core';
 import {
   backTranslateBuffer,
   commonPrefixLength,
@@ -15,6 +10,9 @@ import {
   foxResult,
   promptUnicode,
   revealHint,
+  setAllPolicies,
+  setGroupPolicy,
+  setSkillPolicy,
   spellOutCells,
   startSession,
   textToCells,
@@ -27,40 +25,30 @@ import type { InputMode } from './modes';
 import { DEFAULT_INPUT_MODE } from './modes';
 import type { BestFox, StorageLike } from './persistence';
 import { clearProgress, loadProgress, saveProgress } from './persistence';
-import type { AppHandlers, AppViewModel } from './view';
+import type { SkillGroup } from '../data/skills';
+import type { AppHandlers, AppPage, AppViewModel } from './view';
 import { buildViewModel, matchesResetWord } from './view';
 
 export interface TutorStoreOptions {
-  /** Where to persist progress; omit/null to disable persistence. */
   storage?: StorageLike | null;
-  /** Seed for fresh sessions (defaults to Date.now() at session start). */
   seed?: number;
-  /** Debounce for persistence writes, in ms. */
   saveDebounceMs?: number;
 }
 
 export class TutorStore {
   private tutor: TutorState;
   private bestFox: BestFox | null = null;
-  /** Result of the most recently completed fox run (shown until Continue). */
   private lastFox: FoxResult | null = null;
-  /** Insertion events during the current fox prompt (1 event = 1 cell). */
   private foxCellsTyped = 0;
-  /**
-   * Bumped every time a new prompt is shown (advance/reset). The UI keys the
-   * uncontrolled drill input on it so the field clears (remounts) exactly at
-   * a prompt change and never mid-typing — see handleInput.
-   */
   private promptEpoch = 0;
   private confirmingReset = false;
-  /** What the user has typed into the reset confirmation field. */
   private resetConfirmText = '';
 
-  /** Which input mode the drill is in; see InputMode. */
+  private page: AppPage = 'drill';
+  private policiesChanged = false;
+
   private inputMode: InputMode = DEFAULT_INPUT_MODE;
-  /** Chord key state (chord mode only); not persisted. */
   private chordState: ChordState = EMPTY_CHORD_STATE;
-  /** Committed braille cells for the current prompt (chord mode; blank = space). */
   private cellBuffer: Cell[] = [];
 
   private readonly storage: StorageLike | null;
@@ -69,15 +57,9 @@ export class TutorStore {
 
   private readonly listeners = new Set<() => void>();
   private hintTimer: ReturnType<typeof setTimeout> | null = null;
-  /**
-   * Which sign the running hint timer is counting down for, as
-   * `promptEpoch|unitIndex` — the epoch included so a new prompt never
-   * inherits the previous one's running clock for the same unit index.
-   */
   private hintTimerKey: string | null = null;
   private saveTimer: ReturnType<typeof setTimeout> | null = null;
 
-  /** Stable event-handler object for the UI to attach to DOM events. */
   readonly handlers: AppHandlers;
 
   constructor(options: TutorStoreOptions = {}) {
@@ -92,12 +74,6 @@ export class TutorStore {
       this.bestFox = persisted.bestFox;
       this.inputMode = persisted.inputMode;
       const p = persisted.tutor.prompt;
-      // Resume an in-flight prompt as-is. Move on from a prompt saved after
-      // completion (e.g. mid result screen). A half-typed fox restarts
-      // cleanly (its cell count was not persisted), which nextPrompt does
-      // automatically because promptCounter still selects the fox slot. A
-      // prompt whose text no longer translates (the curriculum changed
-      // between releases) is replaced rather than resumed.
       this.tutor =
         p === null || p.completed || (p.isFox && p.typed !== '') || tryTranslate(p.text) === null
           ? nextPrompt(persisted.tutor)
@@ -125,9 +101,16 @@ export class TutorStore {
         this.resetConfirmText = value;
         this.notify();
       },
-      // Erasing everything is unrecoverable, so it needs the word typed out —
-      // the UI disables the button too, but the guard lives here as well so
-      // the rule holds however the handler is reached.
+      onNavigate: (page) => this.navigate(page),
+      onSkillPolicyChange: (skillId, policy) => {
+        this.applyPolicies(setSkillPolicy(this.tutor, skillId, policy));
+      },
+      onGroupPolicyChange: (group: SkillGroup, policy: SkillPolicy) => {
+        this.applyPolicies(setGroupPolicy(this.tutor, group, policy));
+      },
+      onAllPolicyChange: (policy: SkillPolicy) => {
+        this.applyPolicies(setAllPolicies(this.tutor, policy));
+      },
       onResetConfirm: () => {
         if (!matchesResetWord(this.resetConfirmText)) return;
         this.resetProgress();
@@ -136,8 +119,6 @@ export class TutorStore {
 
     if (typeof window !== 'undefined') {
       window.addEventListener('pagehide', () => this.flushSave());
-      // Losing focus can strand a held chord key (its keyup never arrives);
-      // clear the chord accumulator so the next chord starts clean.
       window.addEventListener('blur', () => {
         this.chordState = EMPTY_CHORD_STATE;
       });
@@ -145,7 +126,6 @@ export class TutorStore {
     this.syncHintTimer();
   }
 
-  /** Subscribe to store changes; returns an unsubscribe function. */
   subscribe(listener: () => void): () => void {
     this.listeners.add(listener);
     return () => {
@@ -153,7 +133,6 @@ export class TutorStore {
     };
   }
 
-  /** A plain-data snapshot of everything the UI renders. */
   viewModel(): AppViewModel {
     return buildViewModel({
       tutor: this.tutor,
@@ -164,10 +143,10 @@ export class TutorStore {
       inputMode: this.inputMode,
       promptKey: this.promptEpoch,
       cellBuffer: this.cellBuffer,
+      page: this.page,
     });
   }
 
-  /** Write state to storage immediately (e.g. on pagehide). */
   flushSave(): void {
     if (this.saveTimer !== null) {
       clearTimeout(this.saveTimer);
@@ -176,17 +155,45 @@ export class TutorStore {
     this.saveNow();
   }
 
-  // --- internals -------------------------------------------------------
-
   private freshSeed(): number {
     return this.seedOption ?? Date.now();
+  }
+
+  private navigate(page: AppPage): void {
+    if (page === this.page) return;
+    this.page = page;
+    if (page === 'drill') this.restartPrompt();
+    this.changed();
+  }
+
+  private applyPolicies(next: TutorState): void {
+    if (next.policies.equals(this.tutor.policies)) return;
+    this.tutor = next;
+    this.policiesChanged = true;
+    this.changed();
+  }
+
+  private restartPrompt(): void {
+    const prompt = this.tutor.prompt;
+    if (prompt !== null && !prompt.completed) {
+      if (this.policiesChanged) {
+        this.tutor = nextPrompt(this.tutor);
+      } else if (prompt.typed !== '' || prompt.typedUnicode !== '') {
+        this.tutor = keystroke(this.tutor, { kind: 'print', typed: '' });
+      }
+      this.foxCellsTyped = 0;
+    }
+    this.policiesChanged = false;
+    this.cellBuffer = [];
+    this.chordState = EMPTY_CHORD_STATE;
+    this.promptEpoch += 1;
+    if (this.inputMode === 'emulated') this.reconstructBuffer();
   }
 
   private notify(): void {
     for (const listener of [...this.listeners]) listener();
   }
 
-  /** After every tutor-state transition: re-arm timers, persist, re-render. */
   private changed(): void {
     this.syncHintTimer();
     this.scheduleSave();
@@ -194,7 +201,7 @@ export class TutorStore {
   }
 
   private handleInput(event: ChangeEvent<HTMLInputElement>): void {
-    if (this.inputMode !== 'voiceover') return; // emulated mode types via key events
+    if (this.inputMode !== 'voiceover') return;
     const prompt = this.tutor.prompt;
     if (prompt === null || prompt.completed) return;
     const value = normalizeTypedValue(event.currentTarget.value, prompt.text);
@@ -204,15 +211,6 @@ export class TutorStore {
         ? native.inputType.startsWith('insert')
         : value.length > prompt.typed.length;
 
-    // fox cell counting: one cell per insertion event — VoiceOver braille
-    // screen input commits a whole contraction as a single insertion, a
-    // regular keypress inserts one char. Bulk insertions (paste, predictive
-    // text) never came from braille gestures, so they count one cell per
-    // character added instead: still one per event would fail a flawless
-    // run for coming in under the cell minimum, and counting them as their
-    // contracted form would award braille the learner never entered.
-    // Deletions never decrement. An event whose value was normalised back
-    // to what was already typed (a stripped VoiceOver space) is not a cell.
     if (prompt.isFox && inserted && value !== prompt.typed) {
       this.foxCellsTyped += bulkInsert(native.inputType)
         ? Math.max(1, value.length - commonPrefixLength(value, prompt.typed))
@@ -224,11 +222,8 @@ export class TutorStore {
     this.changed();
   }
 
-  // --- chord input (emulated mode) -------------------------------------
-
   private handleKeyDown(event: KeyboardEvent<HTMLInputElement>): void {
     if (this.inputMode !== 'emulated') return;
-    // Let editing/navigation shortcuts (⌘, Ctrl, Alt combos) through.
     if (event.ctrlKey || event.metaKey || event.altKey) return;
     const code = event.code;
     if (code === 'Backspace') {
@@ -244,11 +239,10 @@ export class TutorStore {
     }
     if (isChordCode(code)) {
       event.preventDefault();
-      if (event.repeat) return; // auto-repeat is not a new key press
+      if (event.repeat) return;
       this.chordState = chordKeyDown(this.chordState, code);
       return;
     }
-    // Swallow stray printable keys so they never reach the text field.
     if (event.key.length === 1) event.preventDefault();
   }
 
@@ -268,18 +262,11 @@ export class TutorStore {
       this.commitBuffer();
       return;
     }
-    // Space: a blank cell, unless it is a leading or artifact trailing space.
-    if (this.cellBuffer.length === 0) return; // ignore a leading space
+    if (this.cellBuffer.length === 0) return;
     const candidate: Cell[] = [...this.cellBuffer, []];
     const derived = backTranslateBuffer(candidate, prompt.text);
     const stripped = stripUnexpectedTrailingSpaces(derived, prompt.text);
     if (stripped !== derived) {
-      // A trailing space the prompt has no room for. On a print-judged fox
-      // run it is also how a final whole-word sign gets its standalone
-      // reading (a wordsign only reads as the word once the word is closed),
-      // so a space that completes the sentence is accepted — it closes the
-      // word rather than adding braille, so it never counts as a cell.
-      // Anything else is an artifact and is dropped.
       if (!(prompt.isFox && stripped === prompt.text)) return;
       this.cellBuffer = candidate;
       this.commitBuffer();
@@ -290,28 +277,9 @@ export class TutorStore {
     this.commitBuffer();
   }
 
-  /**
-   * What the cell buffer tells the core — the judging split lives here:
-   *
-   * - A fox run is judged on the derived *print*: any valid grade-1/grade-2
-   *   spelling that produces the sentence is acceptable, and efficiency is
-   *   what the cell-count grading is for. The cells ride along so the run's
-   *   awards credit the signs actually chorded and a resumed session
-   *   restores the learner's exact buffer.
-   * - Every other emulated round is judged on the *cells* themselves
-   *   (keystroke's 'cells' input): the prompt exists to drill a specific
-   *   piece of braille, so falling back to an uncontracted spelling —
-   *   correct print or not — is a mistake.
-   *
-   * VoiceOver mode never reaches this method and stays print-judged
-   * everywhere: the OS hands us print, there are no cells to judge.
-   */
   private bufferInput(prompt: Prompt): KeystrokeInput {
     const cells = this.cellBuffer;
     if (!prompt.isFox) return { kind: 'cells', cells };
-    // The stripping mirrors normalizeTypedValue's treatment of VoiceOver's
-    // trailing space: a word-closing space cell that completes the sentence
-    // must judge as the sentence, not as the sentence plus a space.
     const typed = stripUnexpectedTrailingSpaces(
       backTranslateBuffer(cells, prompt.text),
       prompt.text,
@@ -319,7 +287,6 @@ export class TutorStore {
     return { kind: 'print', typed, cells };
   }
 
-  /** Feed the cell buffer to the core and react to what it did. */
   private commitBuffer(): void {
     const prompt = this.tutor.prompt;
     if (prompt === null || prompt.completed) return;
@@ -328,39 +295,12 @@ export class TutorStore {
     this.changed();
   }
 
-  /**
-   * Rebuild the cell buffer for the current prompt (on entering emulated
-   * mode or resuming a persisted emulated-mode session).
-   *
-   * A buffer the core already holds (prompt.typedUnicode) is the learner's
-   * own cells and is restored exactly — but a regular round is judged on
-   * those cells, so it only resumes when it is still a prefix of the
-   * prompt's canonical cells. A valid-print-but-noncanonical buffer (typed
-   * before rounds were cell-judged, or saved mid-mistake) would resume
-   * already diverged, charging a mistake the learner is not making now;
-   * the prompt restarts cleanly instead. Fox runs stay print-judged, so
-   * there any buffer that round-tripped is welcome back as-is.
-   *
-   * Failing that only print is known, and print alone does not say which
-   * spelling was chorded, while a wrong guess decodes the next correct
-   * chord as divergent print (the "st" groupsign is also the "still"
-   * wordsign, so a canonical buffer for typed "st" reads as the whole
-   * word). So a candidate buffer is accepted only if it decodes back to
-   * exactly the typed prefix — and, on a cell-judged round, also keeps to
-   * the canonical cells, or the very first chord after it would count as a
-   * mistake. The letter-by-letter spelling is tried first (on a fox run
-   * chording continues from it cleanly whatever was actually entered), the
-   * canonical grade-2 cells as fallback. If no candidate passes, the
-   * in-progress typing is cleared and the prompt starts over.
-   */
   private reconstructBuffer(): void {
     const prompt = this.tutor.prompt;
     if (prompt === null || prompt.completed) {
       this.cellBuffer = [];
       return;
     }
-    // '' when the text is untranslatable, in which case the core judges the
-    // round on derived print anyway and no cell canon exists to hold to.
     const canonical = prompt.isFox ? '' : promptUnicode(prompt);
     const onCanon = (cells: readonly Cell[]): boolean =>
       canonical === '' || canonical.startsWith(dotsToUnicode(cells));
@@ -377,11 +317,6 @@ export class TutorStore {
       for (const spelling of [spellOutCells, textToCells]) {
         try {
           const cells = spelling(prompt.typed).map((c): Cell => [...c]);
-          // A candidate that is already the *whole* canon while the typed
-          // print is only a prefix (typed "st" of "still" guessed as the ⠌
-          // wordsign, whose open reading is "st") would resume into a dead
-          // end: the buffer says "done", so every continuation chord counts
-          // as a mistake. Restart instead.
           const canonComplete = canonical !== '' && dotsToUnicode(cells) === canonical;
           if (
             !canonComplete &&
@@ -392,15 +327,11 @@ export class TutorStore {
             return;
           }
         } catch {
-          // untranslatable with this spelling: try the next, else restart
         }
       }
     }
     this.tutor = keystroke(this.tutor, { kind: 'print', typed: '' });
     this.cellBuffer = [];
-    // The typed text just changed under the uncontrolled drill input; bump
-    // the epoch so the field remounts to match, or its stale value would be
-    // fed back to keystroke() on the next VoiceOver input event.
     this.promptEpoch += 1;
   }
 
@@ -417,18 +348,12 @@ export class TutorStore {
     this.changed();
   }
 
-  /**
-   * Leaving emulated mode: the chorded cells stop meaning anything (the
-   * next input events are print), so strip them from the prompt while
-   * keeping the print they produced.
-   */
   private dropChordedCells(): void {
     const prompt = this.tutor.prompt;
     if (prompt === null || prompt.completed || prompt.typedUnicode === '') return;
     this.tutor = keystroke(this.tutor, { kind: 'print', typed: prompt.typed });
   }
 
-  /** Shared post-keystroke handling: fox scoring/result, or advance. */
   private afterKeystroke(): void {
     const after = this.tutor.prompt;
     if (!after?.completed) return;
@@ -436,7 +361,6 @@ export class TutorStore {
       const result: FoxResult = after.failed ? { kind: 'failed' } : foxResult(this.foxCellsTyped);
       this.lastFox = result;
       if (result.kind !== 'failed' && this.isNewBest(result)) this.bestFox = result;
-      // Stay on the result screen until onFoxContinue().
     } else {
       this.advance();
     }
@@ -448,7 +372,6 @@ export class TutorStore {
     this.changed();
   }
 
-  /** Move to the next prompt and reset per-prompt bookkeeping. */
   private advance(): void {
     this.tutor = nextPrompt(this.tutor);
     this.foxCellsTyped = 0;
@@ -468,7 +391,7 @@ export class TutorStore {
 
   private resetProgress(): void {
     if (this.storage !== null) clearProgress(this.storage);
-    this.tutor = startSession(this.freshSeed());
+    this.tutor = startSession(this.freshSeed(), this.tutor.policies);
     this.bestFox = null;
     this.lastFox = null;
     this.foxCellsTyped = 0;
@@ -480,19 +403,6 @@ export class TutorStore {
     this.changed();
   }
 
-  /**
-   * Keep the hint countdown in sync with the tutor state. Core
-   * nextHintFor() names the sign whose hint is due next — always the one at
-   * the caret — and how long it waits.
-   *
-   * The timer is (re)started only when that sign *changes*, i.e. when the
-   * caret moves to a new sign. That is the whole point: the countdown for a
-   * sign begins when the learner arrives at it, so a long pause on one sign
-   * costs the next one nothing, and revealing one sign's hint does not
-   * start the clock on the sign after it — typing does. Once the caret's
-   * sign has been revealed, nextHintFor() returns null and no timer runs
-   * until the caret moves on.
-   */
   private syncHintTimer(): void {
     const pending = nextHintFor(this.tutor);
     const key = pending === null ? null : `${this.promptEpoch}|${pending.unitIndex}`;

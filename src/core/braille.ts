@@ -1,31 +1,3 @@
-// Greedy grade-2 braille translation, driven entirely by src/data/skills.json.
-//
-// This is NOT a full liblouis reimplementation (see docs/ARCHITECTURE.md,
-// "Table-parsing caveats"): it applies the canonical patterns from the skill
-// records with a small set of positional usage rules. It is used for
-//   - rendering hints/answers as braille cells,
-//   - computing the minimum cell count of the fox challenge sentence,
-//   - deciding which prompts only contain cells the learner knows
-//     (a prompt text is usable iff its translation uses only known skills).
-//
-// Usage rules applied (approximations of the real UEB rules):
-//   - wordsigns and shortforms: standalone whole words only
-//   - strong contractions (and/for/of/the/with) and initial-letter
-//     contractions: anywhere in a word
-//   - strong groupsigns: anywhere, except "ing" never starts a word
-//   - final-letter groupsigns: never at the start of a word
-//   - lower signs: ea/bb/cc/ff/gg strictly inside a word; be/con/dis only at
-//     the start of a word with at least three letters following (syllable
-//     heuristic); en/in anywhere; be/enough/his/in/was/were also standalone
-//   - capital letter -> the capital-letter-indicator skill's cell (dot 6)
-//     before the letter/sign; an ALL-CAPS word (>= 2 letters) -> the
-//     capital-word-indicator (dots 6, 6) once, before the word
-//   - digit run -> number sign cell, then the digit cells
-//   - space -> one blank cell (so spaces count toward cell totals)
-//
-// Capitalisation and the number sign are skills, so capitalised words and
-// digits only pass known-skill gating once those indicators are learnt.
-
 import type { Skill } from '../data/skills';
 import { skills } from '../data/skills';
 import {
@@ -36,39 +8,21 @@ import {
   STANDALONE_LOWER,
 } from './lower-signs';
 
-/** One braille cell: ascending dot numbers 1-6. Empty array = blank cell. */
 export type Cell = readonly number[];
 
-/**
- * One indivisible chunk of a translation: the cells for one print span (a
- * whole-word sign, an in-word contraction, a single letter/digit/mark, a
- * space). Indicator cells attach to the unit they precede: a capital
- * indicator to its letter/sign, the number sign to the first digit of a
- * run, the capital word indicator to the word's first unit.
- */
 export interface TranslationUnit {
-  /** Print span [start, end) this unit covers, as indexes into the text. */
   readonly start: number;
   readonly end: number;
   readonly cells: readonly Cell[];
-  /** Ids of the skills this unit exercises (indicators included; a space
-   * unit has none). */
   readonly skillIds: readonly string[];
 }
 
-/** Result of translating a print string to braille cells. */
 export interface Translation {
-  /** The cells, in order (includes capital/number indicators and blanks). */
   readonly cells: readonly Cell[];
-  /** Ids of every skill used, in order of use (repeats possible). Only the
-   * blank space cell has no skill; capital indicators and the number sign
-   * are skills and do appear. */
   readonly skillIds: readonly string[];
-  /** The same cells grouped by print span, tiling the text left to right. */
   readonly units: readonly TranslationUnit[];
 }
 
-/** Convert cells (arrays of dot numbers) to a U+2800-block string. */
 export function dotsToUnicode(cells: readonly Cell[]): string {
   return cells
     .map((cell) => {
@@ -79,11 +33,6 @@ export function dotsToUnicode(cells: readonly Cell[]): string {
     .join('');
 }
 
-/**
- * The inverse of dotsToUnicode: read a U+2800-block string back as cells.
- * Characters outside the block decode as a blank cell, so a stray glyph can
- * never throw here.
- */
 export function unicodeToDots(unicode: string): Cell[] {
   const cells: Cell[] = [];
   for (const ch of unicode) {
@@ -97,11 +46,9 @@ export function unicodeToDots(unicode: string): Cell[] {
   return cells;
 }
 
-// --- Lookup structures, built once from the skills data -------------------
-
-const charSkills = new Map<string, Skill>(); // letters, digits, punctuation
-const wholeWordSkills = new Map<string, Skill>(); // print -> standalone sign
-const inWordSkills: Skill[] = []; // signs usable inside a word, longest first
+const charSkills = new Map<string, Skill>();
+const wholeWordSkills = new Map<string, Skill>();
+const inWordSkills: Skill[] = [];
 let foundNumberSign: Skill | undefined;
 let foundCapLetter: Skill | undefined;
 let foundCapWord: Skill | undefined;
@@ -150,17 +97,13 @@ if (!foundNumberSign) throw new Error('skills data has no number-sign skill');
 if (!foundCapLetter || !foundCapWord) {
   throw new Error('skills data has no capital indicator skills');
 }
-/** The number-sign skill, as defined by the skills data. */
 export const numberSignSkill: Skill = foundNumberSign;
-/** The capital-letter-indicator skill, as defined by the skills data. */
 export const capitalLetterSkill: Skill = foundCapLetter;
-/** The capital-word-indicator skill, as defined by the skills data. */
 export const capitalWordSkill: Skill = foundCapWord;
 const numberSign: Skill = numberSignSkill;
 const capLetter: Skill = capitalLetterSkill;
 const capWord: Skill = capitalWordSkill;
 
-/** May `skill` be used inside a word at [start, end) of a word of `len`? */
 function allowedInWord(skill: Skill, start: number, end: number, len: number): boolean {
   switch (skill.kind) {
     case 'contraction':
@@ -173,10 +116,9 @@ function allowedInWord(skill: Skill, start: number, end: number, len: number): b
     case 'lowersign':
       if (INTERIOR_LOWER.has(skill.print)) return start > 0 && end < len;
       if (BEGWORD_LOWER.has(skill.print)) {
-        // Syllable heuristic: begword only, with enough letters following.
         return start === 0 && end < len && len - end >= MIN_BEGWORD_TAIL;
       }
-      return ANYWHERE_LOWER.has(skill.print); // en, in
+      return ANYWHERE_LOWER.has(skill.print);
     default:
       return false;
   }
@@ -203,8 +145,6 @@ function emitUnit(
 function translateLetterRun(word: string, base: number, out: MutableTranslation): void {
   const lower = word.toLowerCase();
 
-  // An ALL-CAPS word gets one capital word indicator up front, carried by
-  // the word's first unit.
   let rest = word;
   const leadCells: Cell[] = [];
   const leadSkillIds: string[] = [];
@@ -214,8 +154,6 @@ function translateLetterRun(word: string, base: number, out: MutableTranslation)
     rest = lower;
   }
 
-  // Standalone whole-word sign (wordsign/shortform/contraction/...), with an
-  // optional leading capital ("The" -> capital letter indicator + ⠮).
   const whole = wholeWordSkills.get(lower);
   const isTitleCase = rest === (rest[0] ?? '').toUpperCase() + lower.slice(1) && rest !== lower;
   if (whole && (rest === lower || isTitleCase)) {
@@ -229,14 +167,13 @@ function translateLetterRun(word: string, base: number, out: MutableTranslation)
     return;
   }
 
-  // Greedy longest-match, left to right.
   let i = 0;
   while (i < lower.length) {
     let matched: Skill | undefined;
     for (const s of inWordSkills) {
       if (lower.startsWith(s.print, i) && allowedInWord(s, i, i + s.print.length, lower.length)) {
         matched = s;
-        break; // inWordSkills is sorted longest-first
+        break;
       }
     }
     if (!matched) {

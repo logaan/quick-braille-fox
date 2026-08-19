@@ -1,13 +1,6 @@
-// Top-level layout. DOM order is reading order for a braille display (one
-// line at a time, top to bottom), so the drill comes as early as possible:
-// brand (page identity), then the drill and progress panels, then the
-// settings controls — which CSS grid places back in the visual header row,
-// pixel-equivalent to the old header-first layout. A note on how the braille
-// glyphs behave on a real display and a collapsed help section close the
-// page: reference material, last in reading order, below the fold.
-
 import { createElement as e, type ReactElement } from 'react';
 import type { AppHandlers, AppViewModel } from '../state';
+import { CurriculumPage } from './curriculum';
 import { Drill } from './drill';
 import { Brand, HeaderControls } from './header';
 import { HelpSection } from './help';
@@ -20,6 +13,9 @@ export interface AppProps {
 
 export function App(props: AppProps): ReactElement {
   const { vm, on } = props;
+  if (vm.page === 'curriculum') {
+    return e('div', { className: 'app app-curriculum' }, e(Brand), e(CurriculumPage, { vm, on }));
+  }
   return e(
     'div',
     { className: 'app' },
@@ -28,10 +24,7 @@ export function App(props: AppProps): ReactElement {
       'main',
       { className: 'layout' },
       e(Drill, { vm, on }),
-      e(OverallPanel, { vm }),
-      // MDN's aria-braillelabel guidance: when content contains Unicode
-      // braille patterns, tell users, so they know how it interacts with
-      // their translation settings.
+      e(OverallPanel, { vm, on }),
       e(
         'p',
         { className: 'a11y-note' },
