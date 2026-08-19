@@ -1,3 +1,5 @@
+import type { Map } from 'immutable';
+import { List } from 'immutable';
 import type { Skill, SkillGroup } from '../data/skills';
 import { skills } from '../data/skills';
 import type { TutorState } from './types';
@@ -21,8 +23,8 @@ export function setSkillPolicy(
   skillId: string,
   policy: SkillPolicy,
 ): TutorState {
-  return state.set(
-    'policies',
+  return withPolicies(
+    state,
     policy === DEFAULT_SKILL_POLICY
       ? state.policies.remove(skillId)
       : state.policies.set(skillId, policy),
@@ -50,8 +52,8 @@ function setManyPolicies(
   affected: readonly Skill[],
   policy: SkillPolicy,
 ): TutorState {
-  return state.set(
-    'policies',
+  return withPolicies(
+    state,
     state.policies.withMutations((map) => {
       for (const s of affected) {
         if (policy === DEFAULT_SKILL_POLICY) map.remove(s.id);
@@ -59,4 +61,15 @@ function setManyPolicies(
       }
     }),
   );
+}
+
+/**
+ * Store a policy map. Changing the policies changes which skills are being
+ * taught, which makes the round already dealt stale (see
+ * TutorStateProps.rotation), so it is dropped and the next prompt deals a
+ * fresh one from the new configuration.
+ */
+function withPolicies(state: TutorState, policies: Map<string, SkillPolicy>): TutorState {
+  if (policies.equals(state.policies)) return state;
+  return state.set('policies', policies).set('rotation', List<string>());
 }

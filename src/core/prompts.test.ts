@@ -1,12 +1,13 @@
-import { Map } from 'immutable';
+import { List, Map } from 'immutable';
 import { describe, expect, it } from 'vitest';
 import type { Skill } from '../data/skills';
 import { skills } from '../data/skills';
 import { translate } from './braille';
 import { WORDS } from './corpus';
+import { setSkillPolicy } from './policy';
 import { activeSkills, knownSkillIds } from './progress';
 import { generatePrompt, pickTarget } from './prompts';
-import { mulberry32 } from './rng';
+import { drawSeed, mulberry32 } from './rng';
 import { keystroke, nextPrompt, startSession } from './session';
 import type { TutorState } from './types';
 import { makeTutorState } from './types';
@@ -274,7 +275,7 @@ describe('pickTarget', () => {
     const state = makeTutorState({ seed: 2 });
     const activeIds = ['letter-a', 'letter-b', 'letter-c', 'letter-d', 'letter-e'];
     for (let seed = 1; seed <= 40; seed++) {
-      const target = pickTarget(state, mulberry32(seed));
+      const { target } = pickTarget(state, mulberry32(seed));
       expect(activeIds).toContain(target.id);
     }
   });
@@ -283,7 +284,7 @@ describe('pickTarget', () => {
     const state = learntUpTo('punct-period');
     const picked = new Set<string>();
     for (let seed = 1; seed <= 200; seed++) {
-      picked.add(pickTarget(state, mulberry32(seed)).kind);
+      picked.add(pickTarget(state, mulberry32(seed)).target.kind);
     }
     expect(picked.has('punctuation')).toBe(true); // active window
     expect(picked.size).toBeGreaterThan(1); // some revision too
@@ -295,9 +296,71 @@ describe('pickTarget', () => {
     state = state.set('scores', state.scores.set('letter-q', 11));
     let sawQ = false;
     for (let seed = 1; seed <= 200; seed++) {
-      if (pickTarget(state, mulberry32(seed)).id === 'letter-q') sawQ = true;
+      if (pickTarget(state, mulberry32(seed)).target.id === 'letter-q') sawQ = true;
     }
     expect(sawQ).toBe(true);
+  });
+});
+
+describe('rotation', () => {
+  const FIRST_WINDOW = ['letter-a', 'letter-b', 'letter-c', 'letter-d', 'letter-e'];
+
+  /** Draw `count` targets, threading rotation and seed on as a session does. */
+  function draw(state: TutorState, count: number): { ids: string[]; state: TutorState } {
+    let s = state;
+    const ids: string[] = [];
+    for (let i = 0; i < count; i++) {
+      const rng = mulberry32(s.seed);
+      const { target, rotation } = pickTarget(s, rng);
+      ids.push(target.id);
+      s = s.set('rotation', rotation).set('seed', drawSeed(rng));
+    }
+    return { ids, state: s };
+  }
+
+  it('gives every skill a turn before any of them comes round again', () => {
+    for (let seed = 1; seed <= 20; seed++) {
+      const first = draw(makeTutorState({ seed }), FIRST_WINDOW.length);
+      expect([...first.ids].sort()).toEqual([...FIRST_WINDOW].sort());
+      const second = draw(first.state, FIRST_WINDOW.length);
+      expect([...second.ids].sort()).toEqual([...FIRST_WINDOW].sort());
+    }
+  });
+
+  it('deals each round in a fresh random order', () => {
+    const orders = new Set<string>();
+    for (let seed = 1; seed <= 20; seed++) {
+      orders.add(draw(makeTutorState({ seed }), FIRST_WINDOW.length).ids.join(' '));
+    }
+    expect(orders.size).toBeGreaterThan(1);
+  });
+
+  it('drops a skill that stops being taught, and holds a new one over', () => {
+    // Blocking letter-c takes it out of the window and pulls letter-f in.
+    const blocked = setSkillPolicy(makeTutorState({ seed: 4 }), 'letter-c', 'block');
+    const state = blocked.set('rotation', List(FIRST_WINDOW));
+    const { ids } = draw(state, 4);
+    expect(ids).toEqual(['letter-a', 'letter-b', 'letter-d', 'letter-e']);
+    expect(ids).not.toContain('letter-f'); // joins the round after this one
+  });
+
+  it('deals a fresh round when the policies change', () => {
+    const state = makeTutorState({ seed: 4 }).set('rotation', List(FIRST_WINDOW));
+    expect(setSkillPolicy(state, 'letter-z', 'force').rotation.isEmpty()).toBe(true);
+  });
+
+  it('does not spend a turn on revision', () => {
+    const rotation = List(['letter-a', 'letter-b']);
+    const state = learntUpTo('punct-period').set('rotation', rotation);
+    const active = new Set(activeSkills(state).map((s) => s.id));
+    let sawRevision = false;
+    for (let seed = 1; seed <= 200; seed++) {
+      const picked = pickTarget(state, mulberry32(seed));
+      if (active.has(picked.target.id)) continue;
+      sawRevision = true;
+      expect(picked.rotation).toEqual(rotation);
+    }
+    expect(sawRevision).toBe(true);
   });
 });
 

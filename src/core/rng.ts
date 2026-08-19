@@ -29,3 +29,13 @@ export function choice<T>(items: readonly T[], rng: Rng): T | undefined {
   if (items.length === 0) return undefined;
   return items[Math.floor(rng() * items.length)];
 }
+
+/** Fisher-Yates: a fresh array holding the same items in random order. */
+export function shuffle<T>(items: readonly T[], rng: Rng): T[] {
+  const out = [...items];
+  for (let i = out.length - 1; i > 0; i--) {
+    const j = Math.floor(rng() * (i + 1));
+    [out[i], out[j]] = [out[j]!, out[i]!];
+  }
+  return out;
+}

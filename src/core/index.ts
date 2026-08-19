@@ -85,7 +85,7 @@ export {
   setSkillPolicy,
 } from './policy';
 
-export type { GeneratedPrompt } from './prompts';
+export type { GeneratedPrompt, PickedTarget } from './prompts';
 export { generatePrompt, pickTarget } from './prompts';
 
 export type { HintUnit, HintWord, PendingHint } from './hints';

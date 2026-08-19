@@ -1,4 +1,4 @@
-import { Map, Record, Set } from 'immutable';
+import { List, Map, Record, Set } from 'immutable';
 import type { RecordOf } from 'immutable';
 import type { SkillPolicy } from './policy';
 
@@ -56,6 +56,15 @@ export interface TutorStateProps {
   scores: Map<string, number>;
   policies: Map<string, SkillPolicy>;
   /**
+   * The skills still to be drilled in the current round, in the order they
+   * will come up (see pickTarget). A round holds every skill being taught
+   * at the time it was dealt, shuffled; each target prompt takes the head,
+   * and once the list runs out the next round is dealt from whatever is
+   * being taught by then. That is what stops one skill coming round again
+   * before its siblings have had a turn.
+   */
+  rotation: List<string>;
+  /**
    * Whether the reveal timer runs: with it on, the sign at the caret shows
    * its cells once its own delay elapses (see hints.ts), and typing a sign
    * before that happens is what earns CLEAN_AWARD rather than BASE_AWARD.
@@ -73,6 +82,7 @@ export const makeTutorState = Record<TutorStateProps>(
   {
     scores: Map<string, number>(),
     policies: Map<string, SkillPolicy>(),
+    rotation: List<string>(),
     revealTimer: true,
     promptCounter: 0,
     prompt: null,

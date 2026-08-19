@@ -1,4 +1,4 @@
-import { Map, Set } from 'immutable';
+import { List, Map, Set } from 'immutable';
 import { backTranslateBuffer } from './backtranslate';
 import type { Cell, TranslationUnit } from './braille';
 import { dotsToUnicode } from './braille';
@@ -21,17 +21,19 @@ export function startSession(
 
 export function nextPrompt(state: TutorState): TutorState {
   const rng = mulberry32(state.seed);
+  let next = state;
   let prompt: Prompt;
   if (state.promptCounter % FOX_INTERVAL === 0) {
     prompt = makePrompt({ text: FOX_SENTENCE, isFox: true });
   } else {
-    const target = pickTarget(state, rng);
+    const { target, rotation } = pickTarget(state, rng);
+    next = next.set('rotation', rotation);
     prompt = makePrompt({
       text: generatePromptText(state, target, rng),
       targetSkillId: target.id,
     });
   }
-  return state.set('prompt', prompt).set('seed', drawSeed(rng));
+  return next.set('prompt', prompt).set('seed', drawSeed(rng));
 }
 
 function completePrompt(state: TutorState, prompt: Prompt): TutorState {
@@ -155,6 +157,8 @@ export interface SerializedTutorState {
   promptCounter: number;
   scores: Record<string, number>;
   policies?: Record<string, SkillPolicy>;
+  /** Optional (added later); absent deals a fresh round on the next prompt. */
+  rotation?: string[];
   /** Optional (added later); absent loads as on, the original behaviour. */
   revealTimer?: boolean;
   prompt: {
@@ -180,6 +184,7 @@ export function serialize(state: TutorState): SerializedTutorState {
     promptCounter: state.promptCounter,
     scores: state.scores.toObject(),
     policies: state.policies.toObject(),
+    rotation: state.rotation.toArray(),
     revealTimer: state.revealTimer,
     prompt:
       p === null
@@ -259,6 +264,9 @@ export function deserialize(raw: unknown): TutorState {
       }
     }
   }
+  const rotation = List(
+    Array.isArray(o.rotation) ? o.rotation.filter((id) => typeof id === 'string') : [],
+  );
   const p = o.prompt;
   const prompt =
     typeof p === 'object' && p !== null
@@ -281,6 +289,7 @@ export function deserialize(raw: unknown): TutorState {
     promptCounter: num(o.promptCounter, 0),
     scores,
     policies,
+    rotation,
     // Only an explicit `false` switches it off: envelopes written before the
     // setting existed have no key and keep the timer running.
     revealTimer: o.revealTimer !== false,

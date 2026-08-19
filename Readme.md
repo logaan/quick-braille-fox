@@ -18,7 +18,9 @@ the answer. The hesitation half of that is the reveal timer, which the
 “Reveal timer” checkbox in the header switches off: nothing is then shown
 until you have made two mistakes on a sign. The extra point a sign scores is
 for typing it before its hint appears, so with the clock stopped signs score
-at the base rate. Learnt skills come back for revision, and every dot
+at the base rate. The five in the window come up in a shuffled rotation, so
+each gets a turn before any of them comes round again. Learnt skills come
+back for revision, and every dot
 pattern is taken from the liblouis tables that macOS VoiceOver ships, so what
 you learn matches what a Mac actually produces. A real text field receives
 all typing, so VoiceOver braille screen input works throughout.
