@@ -130,6 +130,15 @@ function cellStroke(
   );
 }
 
+/**
+ * Switch the reveal timer on or off (see TutorStateProps.revealTimer). A
+ * preference rather than progress, but it lives in TutorState because
+ * scoring reads it, and it is serialized with the rest so it persists.
+ */
+export function setRevealTimer(state: TutorState, enabled: boolean): TutorState {
+  return state.set('revealTimer', enabled);
+}
+
 export function revealHint(state: TutorState, unitIndex: number): TutorState {
   const p = state.prompt;
   if (!p || p.completed || p.isFox || p.hintedUnits.has(unitIndex)) return state;
@@ -146,6 +155,8 @@ export interface SerializedTutorState {
   promptCounter: number;
   scores: Record<string, number>;
   policies?: Record<string, SkillPolicy>;
+  /** Optional (added later); absent loads as on, the original behaviour. */
+  revealTimer?: boolean;
   prompt: {
     text: string;
     targetSkillId: string | null;
@@ -169,6 +180,7 @@ export function serialize(state: TutorState): SerializedTutorState {
     promptCounter: state.promptCounter,
     scores: state.scores.toObject(),
     policies: state.policies.toObject(),
+    revealTimer: state.revealTimer,
     prompt:
       p === null
         ? null
@@ -269,6 +281,9 @@ export function deserialize(raw: unknown): TutorState {
     promptCounter: num(o.promptCounter, 0),
     scores,
     policies,
+    // Only an explicit `false` switches it off: envelopes written before the
+    // setting existed have no key and keep the timer running.
+    revealTimer: o.revealTimer !== false,
     prompt,
   });
 }

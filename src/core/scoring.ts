@@ -145,6 +145,10 @@ export function divergedTail(p: Prompt): string {
  *   BASE_AWARD. Cleanliness is per occurrence, not per prompt. On a
  *   cell-judged round "covered" means the occurrence's *cells* were
  *   chorded, not that its print appeared (see unitEnds).
+ * - With the reveal timer switched off every occurrence earns BASE_AWARD:
+ *   the extra point is for typing a sign before its hint appears, and with
+ *   no clock running there is nothing to beat. Points still accrue, just
+ *   without the bonus.
  * - Every occurrence that has reached MISTAKES_BEFORE_PENALTY mistakes
  *   costs its skills MISTAKE_PENALTY — once, however many mistakes follow.
  *   Mistakes are history, so this stands even after the mistake has been
@@ -168,7 +172,8 @@ export function pendingScoreDeltas(state: TutorState): Map<string, number> {
     const u = units[i]!;
     if (u.skillIds.length === 0) continue;
     if (ends[i]! <= caret) {
-      const award = p.isFox ? FOX_AWARD : unitTypedClean(p, i) ? CLEAN_AWARD : BASE_AWARD;
+      const clean = state.revealTimer && unitTypedClean(p, i);
+      const award = p.isFox ? FOX_AWARD : clean ? CLEAN_AWARD : BASE_AWARD;
       for (const id of u.skillIds) add(id, award);
     }
     // Penalties can land on an occurrence the caret has not reached, so

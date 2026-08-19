@@ -16,6 +16,7 @@ export interface HeaderControlsProps {
   readonly resetConfirmText: string;
   readonly canConfirmReset: boolean;
   readonly inputMode: InputMode;
+  readonly revealTimer: boolean;
   readonly on: AppHandlers;
 }
 
@@ -95,6 +96,40 @@ function InputModePicker(props: {
         e('span', { className: 'mode-option-text' }, label),
         e('span', { className: 'visually-hidden' }, MODE_DESCRIPTIONS[mode]),
       ),
+    ),
+  );
+}
+
+/**
+ * The reveal timer, as a visible checkbox: on (the default) a sign's cells
+ * flip over on their own once you have hesitated over it, which is how the
+ * drill teaches. Off, nothing is revealed by time — a sign still opens up
+ * after two mistakes on it — for learners who would rather sit and think
+ * than be told. The extra point for typing a sign before its hint appears
+ * goes with the clock; points still accrue at the base rate.
+ */
+function RevealTimerToggle(props: {
+  readonly revealTimer: boolean;
+  readonly onToggle: (enabled: boolean) => void;
+}): ReactElement {
+  const { revealTimer, onToggle } = props;
+  return e(
+    'label',
+    { className: 'reveal-toggle' },
+    e('input', {
+      type: 'checkbox',
+      className: 'reveal-toggle-input',
+      checked: revealTimer,
+      onChange: (event: ChangeEvent<HTMLInputElement>) => {
+        onToggle(event.currentTarget.checked);
+      },
+    }),
+    e('span', { className: 'reveal-toggle-text' }, 'Reveal timer'),
+    e(
+      'span',
+      { className: 'visually-hidden' },
+      ' — hesitate over a sign and its cells are shown. Off, only two mistakes ' +
+        'reveal a sign, and signs no longer earn their extra point for beating the clock.',
     ),
   );
 }
@@ -256,11 +291,13 @@ export function Brand(): ReactElement {
  * stops — and the reset flow never sits between the page top and the drill.
  */
 export function HeaderControls(props: HeaderControlsProps): ReactElement {
-  const { bestFox, confirmingReset, resetConfirmText, canConfirmReset, inputMode, on } = props;
+  const { bestFox, confirmingReset, resetConfirmText, canConfirmReset, inputMode, revealTimer, on } =
+    props;
   return e(
     'section',
     { className: 'header-controls', 'aria-label': 'Settings' },
     e(InputModePicker, { inputMode, onSelect: on.onInputModeSelect }),
+    e(RevealTimerToggle, { revealTimer, onToggle: on.onRevealTimerToggle }),
     bestFox === null ? null : e(BestFoxBadge, { best: bestFox }),
     e(
       'button',

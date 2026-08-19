@@ -124,6 +124,12 @@ describe('nextHintFor', () => {
     expect(nextHintFor(drill('thx'))).toEqual({ unitIndex: 0, delayMs: hintDelayMs(0) });
   });
 
+  it('runs no clock at all while the reveal timer is switched off', () => {
+    expect(nextHintFor(drill('').set('revealTimer', false))).toBeNull();
+    // The two-mistake rule still reveals; it is only the clock that stops.
+    expect(nextHintFor(drill('the ').set('revealTimer', false))).toBeNull();
+  });
+
   it('is null for fox, completed, and finished-text prompts', () => {
     expect(nextHintFor(makeTutorState())).toBeNull();
     expect(nextHintFor(state('the dog', '', true))).toBeNull();

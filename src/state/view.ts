@@ -104,6 +104,8 @@ export interface AppViewModel {
   readonly resetConfirmText: string;
   readonly canConfirmReset: boolean;
   readonly inputMode: InputMode;
+  /** True while the reveal timer is running; see TutorStateProps.revealTimer. */
+  readonly revealTimer: boolean;
   readonly promptKey: number;
   readonly page: AppPage;
   readonly curriculum: CurriculumView | null;
@@ -114,6 +116,8 @@ export interface AppHandlers {
   readonly onDrillKeyDown: (event: KeyboardEvent<HTMLInputElement>) => void;
   readonly onDrillKeyUp: (event: KeyboardEvent<HTMLInputElement>) => void;
   readonly onInputModeSelect: (mode: InputMode) => void;
+  /** Switch the reveal timer on or off (see TutorStateProps.revealTimer). */
+  readonly onRevealTimerToggle: (enabled: boolean) => void;
   readonly onFoxContinue: () => void;
   readonly onResetRequest: () => void;
   readonly onResetConfirm: () => void;
@@ -304,6 +308,7 @@ export function buildViewModel(src: ViewSources): AppViewModel {
     resetConfirmText: src.resetConfirmText,
     canConfirmReset: matchesResetWord(src.resetConfirmText),
     inputMode: src.inputMode,
+    revealTimer: tutor.revealTimer,
     promptKey: src.promptKey,
     page: src.page,
     curriculum: src.page === 'curriculum' ? curriculumView(tutor, shown) : null,

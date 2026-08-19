@@ -256,6 +256,21 @@ input:focus-visible {
   background: var(--accent);
 }
 
+/* The reveal timer: a small visible checkbox in the settings cluster. */
+.reveal-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  color: var(--dim);
+  font-size: 0.85rem;
+  cursor: pointer;
+}
+
+.reveal-toggle-input {
+  accent-color: var(--accent);
+  margin: 0;
+}
+
 .best-fox {
   color: var(--dim);
   font-size: 0.9rem;

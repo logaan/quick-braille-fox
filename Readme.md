@@ -13,12 +13,15 @@ Quick Braille Fox is a web app that teaches you to type Unified English Braille 
 (uncontracted) first, then grade 2 (contractions and shortforms). It drills
 258 skills, five at a time, monkeytype-style: type the printed prompt,
 where every sign carries blank placeholder cells showing how many braille
-cells it expects — and if you hesitate or slip twice they flip over to
-show the answer. Learnt
-skills come back for revision, and every dot pattern is taken from the
-liblouis tables that macOS VoiceOver ships, so what you learn matches what a
-Mac actually produces. A real text field receives all typing, so VoiceOver
-braille screen input works throughout.
+cells it expects — and if you hesitate or slip twice they flip over to show
+the answer. The hesitation half of that is the reveal timer, which the
+“Reveal timer” checkbox in the header switches off: nothing is then shown
+until you have made two mistakes on a sign. The extra point a sign scores is
+for typing it before its hint appears, so with the clock stopped signs score
+at the base rate. Learnt skills come back for revision, and every dot
+pattern is taken from the liblouis tables that macOS VoiceOver ships, so what
+you learn matches what a Mac actually produces. A real text field receives
+all typing, so VoiceOver braille screen input works throughout.
 
 Two input modes, two ways of judging. In VoiceOver mode the OS hands the app
 print, so prompts are judged on the text you produce. In emulated mode

@@ -12,6 +12,7 @@ import {
   revealHint,
   setAllPolicies,
   setGroupPolicy,
+  setRevealTimer,
   setSkillPolicy,
   spellOutCells,
   startSession,
@@ -86,6 +87,7 @@ export class TutorStore {
       onDrillKeyDown: (event) => this.handleKeyDown(event),
       onDrillKeyUp: (event) => this.handleKeyUp(event),
       onInputModeSelect: (mode) => this.selectInputMode(mode),
+      onRevealTimerToggle: (enabled) => this.toggleRevealTimer(enabled),
       onFoxContinue: () => this.continueAfterFox(),
       onResetRequest: () => {
         this.confirmingReset = true;
@@ -348,6 +350,17 @@ export class TutorStore {
     this.changed();
   }
 
+  /**
+   * Switch the reveal timer on or off. changed() re-syncs the hint timer,
+   * which cancels the sign currently on the clock when it goes off and
+   * starts the caret sign's clock when it comes back on.
+   */
+  private toggleRevealTimer(enabled: boolean): void {
+    if (enabled === this.tutor.revealTimer) return;
+    this.tutor = setRevealTimer(this.tutor, enabled);
+    this.changed();
+  }
+
   private dropChordedCells(): void {
     const prompt = this.tutor.prompt;
     if (prompt === null || prompt.completed || prompt.typedUnicode === '') return;
@@ -391,7 +404,12 @@ export class TutorStore {
 
   private resetProgress(): void {
     if (this.storage !== null) clearProgress(this.storage);
-    this.tutor = startSession(this.freshSeed(), this.tutor.policies);
+    // Erasing progress leaves the settings alone: policies and the reveal
+    // timer are preferences, not progress.
+    this.tutor = setRevealTimer(
+      startSession(this.freshSeed(), this.tutor.policies),
+      this.tutor.revealTimer,
+    );
     this.bestFox = null;
     this.lastFox = null;
     this.foxCellsTyped = 0;

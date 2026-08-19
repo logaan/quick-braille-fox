@@ -264,6 +264,15 @@ describe('App rendering', () => {
     expect(html).toContain('id="drill-input"');
   });
 
+  it('renders the reveal timer checkbox, checked until it is switched off', () => {
+    const store = createTutorStore({ seed: 1 });
+    expect(render(store)).toContain('<input type="checkbox" class="reveal-toggle-input" checked=""');
+    store.handlers.onRevealTimerToggle(false);
+    const html = render(store);
+    expect(html).toContain('<input type="checkbox" class="reveal-toggle-input"/>');
+    expect(html).toContain('Reveal timer');
+  });
+
   it('renders the prompt as an aligned grid, one tinted column per unit', () => {
     const store = drillStore();
     const vm = store.viewModel();

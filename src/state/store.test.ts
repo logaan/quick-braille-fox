@@ -299,6 +299,45 @@ describe('progressive hint reveal', () => {
   });
 });
 
+describe('the reveal timer toggle', () => {
+  it('stops every clock while it is off, and starts one again when it is back on', () => {
+    const store = createTutorStore({ storage: midPromptStorage(), seed: 1 });
+    expect(store.viewModel().revealTimer).toBe(true); // on unless switched off
+
+    store.handlers.onRevealTimerToggle(false);
+    vi.advanceTimersByTime(600_000);
+    expect(store.viewModel().hint).toBeNull();
+
+    store.handlers.onRevealTimerToggle(true);
+    vi.advanceTimersByTime(hintDelayMs(0));
+    expect(store.viewModel().hint).toBe('⠮');
+  });
+
+  it('keeps scoring while it is off, without the bonus for beating the clock', () => {
+    const store = createTutorStore({ storage: midPromptStorage(), seed: 1 });
+    const scoreOf = (id: string): number =>
+      store.viewModel().activeSkills.find((s) => s.id === id)?.score ?? 0;
+
+    store.handlers.onRevealTimerToggle(false);
+    typeText(store, 'the d');
+    expect(scoreOf('letter-d')).toBe(1); // 2 with the timer running
+  });
+
+  it('persists across store recreation, and survives an erase', () => {
+    const storage = midPromptStorage();
+    const first = createTutorStore({ storage, seed: 1 });
+    first.handlers.onRevealTimerToggle(false);
+    first.flushSave();
+
+    const second = createTutorStore({ storage, seed: 1 });
+    expect(second.viewModel().revealTimer).toBe(false);
+    second.handlers.onResetRequest();
+    second.handlers.onResetTextChange('reset');
+    second.handlers.onResetConfirm();
+    expect(second.viewModel().revealTimer).toBe(false); // a setting, not progress
+  });
+});
+
 describe('view model rows', () => {
   it('serves a fresh prompt as untouched columns with the caret on the first', () => {
     const store = createTutorStore({ storage: midPromptStorage(), seed: 1 });

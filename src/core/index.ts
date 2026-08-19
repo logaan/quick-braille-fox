@@ -99,5 +99,6 @@ export {
   nextPrompt,
   revealHint,
   serialize,
+  setRevealTimer,
   startSession,
 } from './session';

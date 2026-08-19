@@ -172,6 +172,28 @@ describe('keystroke', () => {
     expect(scoreFor(state, 'letter-t')).toBe(2);
   });
 
+  it('pays the base rate only while the reveal timer is switched off', () => {
+    let state = makeTutorState().set('revealTimer', false);
+    state = withPrompt(state, 'cat', 'letter-c');
+    state = press(state, 'cat'); // typed cold: no hint shown, no mistake made
+    expect(isPromptComplete(state)).toBe(true);
+    // Nothing was on the clock, so there was no clock to beat: points still
+    // accrue, but the extra one for beating it does not.
+    expect(scoreFor(state, 'letter-c')).toBe(1);
+    expect(scoreFor(state, 'letter-a')).toBe(1);
+    expect(scoreFor(state, 'letter-t')).toBe(1);
+  });
+
+  it('still penalises two mistakes with the reveal timer switched off', () => {
+    let state = makeTutorState().set('scores', Map({ 'letter-c': 5 })).set('revealTimer', false);
+    state = withPrompt(state, 'cat', 'letter-c');
+    state = press(state, 'x'); // mistake 1 on c
+    state = press(state, ''); // corrected
+    state = press(state, 'k'); // mistake 2 on c
+    expect(state.prompt?.hintedUnits.toArray()).toEqual([0]); // the rule still reveals
+    expect(shown(state, 'letter-c')).toBe(4);
+  });
+
   it('a single corrected mistake drops that occurrence to one point', () => {
     let state = withPrompt(makeTutorState(), 'cat', 'letter-c');
     state = press(state, 'x'); // mistake on the c occurrence
@@ -532,6 +554,14 @@ describe('serialization', () => {
     );
     const revived = deserialize(JSON.parse(JSON.stringify(serialize(state))));
     expect(is(revived, state)).toBe(true);
+  });
+
+  it('round-trips the reveal timer, and loads an envelope written before it', () => {
+    const off = makeTutorState({ seed: 3 }).set('revealTimer', false);
+    expect(deserialize(JSON.parse(JSON.stringify(serialize(off)))).revealTimer).toBe(false);
+    const raw = serialize(startSession(7)) as unknown as Record<string, unknown>;
+    delete raw.revealTimer;
+    expect(deserialize(raw).revealTimer).toBe(true);
   });
 
   it('rejects garbage', () => {

@@ -103,10 +103,13 @@ export interface PendingHint {
  * still being learned waits hintDelayMs of its weakest unlearnt skill, so
  * the wait stretches as the learner's score on that skill grows. Earlier
  * signs being hinted has no bearing on later ones.
+ *
+ * With state.revealTimer off nothing is ever on the clock, which leaves the
+ * two-mistake rule as the only way a hint appears.
  */
 export function nextHintFor(state: TutorState): PendingHint | null {
   const p = state.prompt;
-  if (!p || p.completed || p.isFox) return null;
+  if (!p || p.completed || p.isFox || !state.revealTimer) return null;
   const caret = judgedPrintCaret(p);
   const units = tryTranslate(p.text)?.units;
   if (units === undefined) return null; // untranslatable: nothing to hint

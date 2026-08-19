@@ -55,6 +55,15 @@ export type Prompt = RecordOf<PromptProps>;
 export interface TutorStateProps {
   scores: Map<string, number>;
   policies: Map<string, SkillPolicy>;
+  /**
+   * Whether the reveal timer runs: with it on, the sign at the caret shows
+   * its cells once its own delay elapses (see hints.ts), and typing a sign
+   * before that happens is what earns CLEAN_AWARD rather than BASE_AWARD.
+   * Switched off, no sign is ever revealed by time — only the two-mistake
+   * rule reveals — and with the clock gone there is nothing to beat, so
+   * the clean bonus goes with it (see scoring.ts).
+   */
+  revealTimer: boolean;
   promptCounter: number;
   prompt: Prompt | null;
   seed: number;
@@ -64,6 +73,7 @@ export const makeTutorState = Record<TutorStateProps>(
   {
     scores: Map<string, number>(),
     policies: Map<string, SkillPolicy>(),
+    revealTimer: true,
     promptCounter: 0,
     prompt: null,
     seed: 1,
