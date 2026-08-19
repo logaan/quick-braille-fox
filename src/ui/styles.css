@@ -938,13 +938,13 @@ input:focus-visible {
 
 /* --- Curriculum page ------------------------------------------------------ */
 
-/* Its own page rather than a modal: the whole curriculum is 258 rows of nine
+/* Its own page rather than a modal: the whole curriculum is 258 rows of seven
    fields, which wants the window's full width and its own scroll, not a
    dialog laid over the drill.
 
    The root font size is derived from the viewport so the *drill card* grows
    to fill it (see the html rule at the top), which is exactly wrong for a
-   dense table — on a 4K display 1rem is 38px and nine columns of that stop
+   dense table — on a 4K display 1rem is 38px and seven columns of that stop
    fitting anywhere. So this page pins its own base size and sizes everything
    below in em, relative to that base rather than to the drill's scale. */
 .app-curriculum {
@@ -1060,39 +1060,43 @@ input:focus-visible {
 
 /* Fixed layout with declared widths, so the columns line up down the whole
    page: thirteen independent tables sized by their own content would put
-   CELLS in a different place in every group. */
+   CELLS in a different place in every group. The widths are in the *header
+   row's* em (thead th is 0.85em of the table), because under fixed layout it
+   is the first row that sizes the columns. */
 .curriculum-table {
   width: 100%;
-  min-width: 81em;
+  min-width: 74.5em;
   table-layout: fixed;
   border-collapse: collapse;
   font-size: 0.85em;
 }
 
+/* No. */
 .curriculum-table th:nth-child(1) {
   width: 4.5em;
 }
+/* Print — wide enough for the longest shortform ("altogether") at the
+   larger mono size the column is set in; it used to be clipped. */
 .curriculum-table th:nth-child(2) {
-  width: 6em;
-}
-.curriculum-table th:nth-child(3) {
-  width: 11em;
-}
-.curriculum-table th:nth-child(4) {
   width: 12em;
 }
+/* Cells — wide enough for the five-cell signs. */
+.curriculum-table th:nth-child(3) {
+  width: 15em;
+}
+/* Id */
+.curriculum-table th:nth-child(4) {
+  width: 17em;
+}
+/* Score */
 .curriculum-table th:nth-child(5) {
-  width: 13em;
-}
-.curriculum-table th:nth-child(6) {
-  width: 14.5em;
-}
-.curriculum-table th:nth-child(7) {
   width: 10.5em;
 }
-.curriculum-table th:nth-child(8) {
-  width: 9.5em;
+/* Status — wide enough for "Learnt, in rotation". */
+.curriculum-table th:nth-child(6) {
+  width: 13em;
 }
+/* Rotation takes whatever is left. */
 
 /* Positioned so the visually-hidden spans inside a cell (the spoken dot
    description, the policy explanations) resolve against the cell rather than
@@ -1149,14 +1153,12 @@ input:focus-visible {
   padding: 0 0.08em;
 }
 
-.skill-dots,
 .skill-id {
   font-family: var(--mono);
   font-size: 0.9em;
   color: var(--dim);
 }
 
-.skill-kind,
 .skill-status {
   color: var(--dim);
 }
@@ -1182,9 +1184,7 @@ input:focus-visible {
 }
 
 .skill-row-block .skill-print,
-.skill-row-block .skill-dots,
 .skill-row-block .skill-id,
-.skill-row-block .skill-kind,
 .skill-row-block .skill-status {
   opacity: 0.55;
   text-decoration: line-through;

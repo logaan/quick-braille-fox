@@ -394,8 +394,6 @@ describe('curriculum page', () => {
     const html = render(curriculumStore());
     expect(html).toContain('>about</th>');
     expect(html).toContain('>shortform-about</td>');
-    expect(html).toContain('>Shortform</td>');
-    expect(html).toContain('>1-12</td>');
     expect(html).toContain('dots 1, dots 1-2');
   });
 

@@ -21,7 +21,7 @@ import {
   learntSkillsIn,
   policyFor,
 } from '../core';
-import type { Skill, SkillGroup, SkillKind } from '../data/skills';
+import type { SkillGroup } from '../data/skills';
 import { skills } from '../data/skills';
 import type { InputMode } from './modes';
 import type { BestFox } from './persistence';
@@ -44,12 +44,10 @@ export type AppPage = 'drill' | 'curriculum';
 
 export interface CurriculumSkillView {
   readonly id: string;
-  readonly kind: SkillKind;
   readonly group: SkillGroup;
   readonly order: number;
   readonly print: string;
   readonly unicode: string;
-  readonly dots: string;
   readonly score: number;
   readonly progress: number;
   readonly learnt: boolean;
@@ -206,10 +204,6 @@ function uniformPolicy(counts: PolicyCounts, total: number): SkillPolicy | null 
   return null;
 }
 
-function dotsLabel(skill: Skill): string {
-  return skill.dots.map((cell) => cell.join('')).join('-');
-}
-
 function curriculumView(
   tutor: TutorState,
   scores: ScoreMap<string, number>,
@@ -236,12 +230,10 @@ function curriculumView(
     totals[policy] += 1;
     entry.skills.push({
       id: s.id,
-      kind: s.kind,
       group: s.group,
       order: s.order,
       print: s.print,
       unicode: s.unicode,
-      dots: dotsLabel(s),
       score,
       progress: Math.min(1, score / LEARNT_THRESHOLD),
       learnt,

@@ -9,7 +9,7 @@ import type {
   PolicyCounts,
 } from '../state';
 import { BrailleCells, describeCells } from './braille';
-import { GROUP_LABELS, KIND_LABELS, POLICY_DESCRIPTIONS, POLICY_LABELS, signLabel } from './labels';
+import { GROUP_LABELS, POLICY_DESCRIPTIONS, POLICY_LABELS, signLabel } from './labels';
 
 export interface CurriculumPageProps {
   readonly vm: AppViewModel;
@@ -105,8 +105,6 @@ function SkillRow(props: {
       e(BrailleCells, { unicode: skill.unicode, size: 'sm' }),
       e('span', { className: 'visually-hidden' }, describeCells(skill.unicode)),
     ),
-    e('td', { className: 'skill-dots' }, skill.dots),
-    e('td', { className: 'skill-kind' }, KIND_LABELS[skill.kind]),
     e('td', { className: 'skill-id' }, skill.id),
     e(
       'td',
@@ -130,17 +128,7 @@ function SkillRow(props: {
   );
 }
 
-const COLUMNS = [
-  'No.',
-  'Print',
-  'Cells',
-  'Dots',
-  'Type',
-  'Id',
-  'Score',
-  'Status',
-  'Rotation',
-];
+const COLUMNS = ['No.', 'Print', 'Cells', 'Id', 'Score', 'Status', 'Rotation'];
 
 function GroupSection(props: {
   readonly group: CurriculumGroupView;

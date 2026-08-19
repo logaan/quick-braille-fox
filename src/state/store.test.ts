@@ -1286,11 +1286,9 @@ describe('curriculum page', () => {
       .find((s) => s.id === 'shortform-about')!;
     expect(row).toMatchObject({
       id: 'shortform-about',
-      kind: 'shortform',
       group: 'shortforms',
       print: 'about',
       unicode: '⠁⠃',
-      dots: '1-12',
       policy: 'allow',
       learnt: false,
       active: false,
