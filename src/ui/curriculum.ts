@@ -1,5 +1,6 @@
 import { createElement as e, useEffect, useRef, type ReactElement } from 'react';
 import { LEARNT_THRESHOLD, SKILL_POLICIES, type SkillPolicy } from '../core';
+import type { SkillGroup } from '../data/skills';
 import type {
   AppHandlers,
   AppViewModel,
@@ -130,6 +131,50 @@ function SkillRow(props: {
 
 const COLUMNS = ['No.', 'Print', 'Cells', 'Id', 'Score', 'Status', 'Rotation'];
 
+function groupId(group: SkillGroup): string {
+  return `curriculum-group-${group}`;
+}
+
+/* One row per category: the name links down to the section, and the batch
+   buttons are the same control as the one in the section's own head — the
+   point of the contents list is to rule a whole category without scrolling
+   to it first. */
+function TableOfContents(props: {
+  readonly groups: readonly CurriculumGroupView[];
+  readonly on: AppHandlers;
+}): ReactElement {
+  const { groups, on } = props;
+  return e(
+    'nav',
+    { className: 'curriculum-toc', 'aria-label': 'Categories' },
+    e('h3', { className: 'curriculum-toc-heading' }, 'Categories'),
+    e(
+      'ul',
+      { className: 'curriculum-toc-list' },
+      groups.map((group) => {
+        const label = GROUP_LABELS[group.group];
+        return e(
+          'li',
+          { key: group.group, className: 'curriculum-toc-item' },
+          e(
+            'a',
+            { className: 'curriculum-toc-link', href: `#${groupId(group.group)}` },
+            label,
+            e('span', { className: 'curriculum-toc-count' }, `${group.learnt}/${group.total}`),
+          ),
+          e(PolicyButtons, {
+            label: `Set rotation for all ${label}`,
+            current: group.policy,
+            onSelect: (policy: SkillPolicy) => {
+              on.onGroupPolicyChange(group.group, policy);
+            },
+          }),
+        );
+      }),
+    ),
+  );
+}
+
 function GroupSection(props: {
   readonly group: CurriculumGroupView;
   readonly on: AppHandlers;
@@ -138,7 +183,7 @@ function GroupSection(props: {
   const label = GROUP_LABELS[group.group];
   return e(
     'section',
-    { className: 'curriculum-group', 'aria-label': label },
+    { className: 'curriculum-group', id: groupId(group.group), 'aria-label': label },
     e(
       'div',
       { className: 'curriculum-group-head' },
@@ -207,6 +252,7 @@ function CurriculumBody(props: {
         onSelect: on.onAllPolicyChange,
       }),
     ),
+    e(TableOfContents, { groups: curriculum.groups, on }),
     curriculum.groups.map((group) => e(GroupSection, { key: group.group, group, on })),
   );
 }

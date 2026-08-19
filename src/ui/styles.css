@@ -1055,7 +1055,81 @@ input:focus-visible {
   font-variant-numeric: tabular-nums;
 }
 
+/* Contents list. Thirteen categories and 258 rows: reaching Shortforms means
+   a long scroll, and ruling a category is the thing most often wanted on the
+   way past, so each entry carries its own Force/Allow/Block beside the link. */
+.curriculum-toc {
+  background: var(--surface);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-md);
+  padding: 0.85em 1.15em 1em;
+  min-width: 0;
+}
+
+.curriculum-toc-heading {
+  margin: 0 0 0.6em;
+  font-size: 0.85em;
+  font-weight: 650;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--dim);
+}
+
+.curriculum-toc-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(21em, 1fr));
+  gap: 0.3em 1.75em;
+}
+
+.curriculum-toc-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75em;
+  min-width: 0;
+}
+
+/* The link fills the row so its click target reaches the batch buttons, with
+   the learnt count pinned to the far end as a right-hand column. */
+.curriculum-toc-link {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.75em;
+  padding: 0.3em 0.4em;
+  margin-left: -0.4em;
+  border-radius: var(--radius-sm);
+  color: var(--text);
+  font-size: 0.9em;
+  text-decoration: none;
+}
+
+.curriculum-toc-link:hover {
+  background: var(--accent-tint);
+  color: var(--accent-deep);
+}
+
+.curriculum-toc-link:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+
+.curriculum-toc-count {
+  color: var(--dim);
+  font-size: 0.85em;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Jumped to from the contents list: the summary bar is sticky at the top of
+   the page, so the target has to clear its height or the heading lands
+   underneath it. */
 .curriculum-group {
+  scroll-margin-top: 4.5em;
   display: flex;
   flex-direction: column;
   gap: 0.6em;

@@ -422,6 +422,27 @@ describe('curriculum page', () => {
     expect(html).toContain('name="policy-letter-b" checked="" value="allow"');
   });
 
+  it('lists every category in a contents list that links to its section', () => {
+    const html = render(curriculumStore());
+    expect(html).toContain('aria-label="Categories"');
+    for (const [group, label] of Object.entries(GROUP_LABELS)) {
+      expect(html).toContain(`href="#curriculum-group-${group}"`);
+      expect(html).toContain(`id="curriculum-group-${group}"`);
+      expect(html).toContain(`>${label}<`);
+    }
+  });
+
+  it('repeats the batch buttons for each category in the contents list', () => {
+    const store = curriculumStore();
+    const html = render(store);
+    expect(html.split('Set rotation for all Letters')).toHaveLength(3);
+
+    store.handlers.onGroupPolicyChange('letters', 'block');
+    const after = render(store);
+    const pressed = after.split('policy-batch-btn policy-block" aria-pressed="true"');
+    expect(pressed.length).toBeGreaterThanOrEqual(3);
+  });
+
   it('leaves the drill behind while it is open, and comes back to it', () => {
     const store = curriculumStore();
     expect(render(store)).not.toContain('class="drill"');
