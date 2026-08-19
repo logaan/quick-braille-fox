@@ -14,8 +14,6 @@ import { skills } from '../data/skills';
 import type { StorageLike, TutorStore } from './index';
 import { STORAGE_KEY, createTutorStore } from './index';
 
-// --- helpers ---------------------------------------------------------------
-
 interface MemoryStorage extends StorageLike {
   readonly data: Map<string, string>;
 }
@@ -41,17 +39,13 @@ function fakeEvent(value: string, inputType: string): ChangeEvent<HTMLInputEleme
   } as unknown as ChangeEvent<HTMLInputElement>;
 }
 
-/** Simulate one input event that inserts text (field now holds `value`). */
 function insert(store: TutorStore, value: string): void {
   store.handlers.onInput(fakeEvent(value, 'insertText'));
 }
 
-/** Simulate a backspace (field now holds `value`). */
 function del(store: TutorStore, value: string): void {
   store.handlers.onInput(fakeEvent(value, 'deleteContentBackward'));
 }
-
-// --- chord-mode helpers ----------------------------------------------------
 
 const DOT_CODE: Record<number, string> = { 1: 'KeyF', 2: 'KeyD', 3: 'KeyS', 4: 'KeyJ', 5: 'KeyK', 6: 'KeyL' };
 
@@ -74,20 +68,17 @@ function keyUp(store: TutorStore, code: string): void {
   store.handlers.onDrillKeyUp(keyEvent(code));
 }
 
-/** Chord one braille cell: press each dot key, then release them all. */
 function chordCell(store: TutorStore, dots: readonly number[]): void {
   const codes = dots.map((d) => DOT_CODE[d]!);
   for (const c of codes) keyDown(store, c);
   for (const c of codes) keyUp(store, c);
 }
 
-/** Chord a space (blank cell). */
 function chordSpace(store: TutorStore): void {
   keyDown(store, 'Space');
   keyUp(store, 'Space');
 }
 
-/** Chord a whole print string using its canonical grade-2 cells. */
 function chordText(store: TutorStore, text: string): void {
   for (const cell of textToCells(text)) {
     if (cell.length === 0) chordSpace(store);
@@ -95,20 +86,14 @@ function chordText(store: TutorStore, text: string): void {
   }
 }
 
-/** Put a store into emulated (chording) mode. */
 function chordMode(store: TutorStore): void {
   store.handlers.onInputModeSelect('emulated');
 }
 
-/** Type `text` one character-insertion at a time. */
 function typeText(store: TutorStore, text: string): void {
   for (let i = 1; i <= text.length; i += 1) insert(store, text.slice(0, i));
 }
 
-/**
- * Type `text` using exactly `insertions` insertion events (the first
- * insertions carry 2 chars each, like VoiceOver committing contractions).
- */
 function typeInChunks(store: TutorStore, text: string, insertions: number): void {
   const doubles = text.length - insertions;
   let pos = 0;
@@ -119,7 +104,6 @@ function typeInChunks(store: TutorStore, text: string, insertions: number): void
   expect(pos).toBe(text.length);
 }
 
-/** Storage whose saved session is mid-prompt on "the dog" (letter-d drill). */
 function midPromptStorage(): MemoryStorage {
   const storage = memoryStorage();
   const state = makeTutorState({
@@ -134,10 +118,6 @@ function midPromptStorage(): MemoryStorage {
   return storage;
 }
 
-/**
- * Storage holding a pre-rename envelope, which spelled the input mode as the
- * boolean `voiceOverInput` rather than today's `inputMode` string.
- */
 function legacyModeStorage(voiceOverInput: boolean): MemoryStorage {
   const storage = memoryStorage();
   const state = makeTutorState({
@@ -152,10 +132,6 @@ function legacyModeStorage(voiceOverInput: boolean): MemoryStorage {
   return storage;
 }
 
-/**
- * Storage whose saved session is one completed prompt into the curriculum,
- * so the store serves an ordinary drill — prompt 0 is the fox challenge.
- */
 function drillReadyStorage(): MemoryStorage {
   const storage = memoryStorage();
   const state = makeTutorState({
@@ -170,7 +146,6 @@ function drillReadyStorage(): MemoryStorage {
   return storage;
 }
 
-/** Storage whose saved session lands the next prompt on the fox challenge. */
 function foxReadyStorage(): MemoryStorage {
   const storage = memoryStorage();
   const state = makeTutorState({
@@ -191,8 +166,6 @@ beforeEach(() => {
 afterEach(() => {
   vi.useRealTimers();
 });
-
-// --- tests -------------------------------------------------------------
 
 describe('TutorStore basics', () => {
   it('starts a fresh session on the fox challenge with five active skills', () => {
@@ -233,10 +206,10 @@ describe('TutorStore basics', () => {
 
     typeText(store, 'the d');
     expect(scoreOf('letter-d')).toBe(2);
-    del(store, 'the '); // backspace over the "d"
+    del(store, 'the ');
     expect(scoreOf('letter-d')).toBe(0);
     typeText(store, 'the dog');
-    expect(scoreOf('letter-d')).toBe(2); // committed on completion
+    expect(scoreOf('letter-d')).toBe(2);
   });
 });
 
@@ -245,7 +218,7 @@ describe('hint timer', () => {
     const store = createTutorStore({ storage: drillReadyStorage(), seed: 1 });
     vi.advanceTimersByTime(399);
     expect(store.viewModel().hint).toBeNull();
-    vi.advanceTimersByTime(1); // score 0 => 400ms
+    vi.advanceTimersByTime(1);
     expect(store.viewModel().hint).not.toBeNull();
   });
 
@@ -253,11 +226,8 @@ describe('hint timer', () => {
     const store = createTutorStore({ storage: drillReadyStorage(), seed: 1 });
     const text = store.viewModel().promptText;
     vi.advanceTimersByTime(200);
-    // A wrong first character (a mistake, but the first one is free) —
-    // guaranteed not to complete even a one-character prompt. The caret has
-    // not moved off the first sign, so its clock keeps running.
     insert(store, text.startsWith('x') ? 'y' : 'x');
-    vi.advanceTimersByTime(200); // 400ms since the sign was reached
+    vi.advanceTimersByTime(200);
     expect(store.viewModel().hint).not.toBeNull();
   });
 });
@@ -265,10 +235,8 @@ describe('hint timer', () => {
 describe('a sign’s countdown starts when the caret reaches it', () => {
   it('does not start the next sign’s clock when a hint is revealed', () => {
     const store = createTutorStore({ storage: midPromptStorage(), seed: 1 });
-    vi.advanceTimersByTime(400); // "the" is hinted after the 400ms delay
+    vi.advanceTimersByTime(400);
     expect(store.viewModel().hint).toBe('⠮');
-    // Go and make a cup of tea. Nothing else uncovers, because the caret is
-    // still sitting on "the" — the rest of the prompt is untouched.
     vi.advanceTimersByTime(600_000);
     expect(store.viewModel().hint).toBe('⠮');
   });
@@ -276,10 +244,8 @@ describe('a sign’s countdown starts when the caret reaches it', () => {
   it('holds the next word’s clock until the space before it is typed', () => {
     const store = createTutorStore({ storage: midPromptStorage(), seed: 1 });
     typeText(store, 'the');
-    vi.advanceTimersByTime(600_000); // dawdle with the caret on the space
+    vi.advanceTimersByTime(600_000);
     expect(store.viewModel().hint).toBeNull();
-    // Only now does "d" start counting — and it gets its full time (its
-    // own skill's delay; earlier hints have no bearing on it).
     insert(store, 'the ');
     vi.advanceTimersByTime(399);
     expect(store.viewModel().hint).toBeNull();
@@ -292,9 +258,9 @@ describe('a sign’s countdown starts when the caret reaches it', () => {
     const scoreOf = (id: string): number =>
       store.viewModel().activeSkills.find((s) => s.id === id)?.score ?? 0;
 
-    vi.advanceTimersByTime(600_000); // ten minutes on "the"; it gets hinted
-    typeText(store, 'the d'); // then "d" typed straight away
-    expect(scoreOf('letter-d')).toBe(2); // full marks, hint or no hint
+    vi.advanceTimersByTime(600_000);
+    typeText(store, 'the d');
+    expect(scoreOf('letter-d')).toBe(2);
   });
 });
 
@@ -302,16 +268,14 @@ describe('progressive hint reveal', () => {
   it('uncovers the caret word one sign at a time, as each is reached', () => {
     const store = createTutorStore({ storage: midPromptStorage(), seed: 1 });
     expect(store.viewModel().hint).toBeNull();
-    vi.advanceTimersByTime(400); // score 0 => auto-hint after 400ms
-    expect(store.viewModel().hint).toBe('⠮'); // "the" is a single sign
+    vi.advanceTimersByTime(400);
+    expect(store.viewModel().hint).toBe('⠮');
 
     typeText(store, 'the ');
-    expect(store.viewModel().hint).toBeNull(); // the next word starts covered
+    expect(store.viewModel().hint).toBeNull();
     vi.advanceTimersByTime(hintDelayMs(0));
     expect(store.viewModel().hint).toBe('⠙');
 
-    // Each further sign waits its own skill's delay, and only from the
-    // moment the sign before it is typed.
     typeText(store, 'the d');
     vi.advanceTimersByTime(hintDelayMs(0));
     expect(store.viewModel().hint).toBe('⠙⠕');
@@ -328,10 +292,8 @@ describe('progressive hint reveal', () => {
 
   it('shows a hint revealed mid-word after a clean start', () => {
     const store = createTutorStore({ storage: midPromptStorage(), seed: 1 });
-    typeText(store, 'the d'); // typed promptly: nothing revealed yet
+    typeText(store, 'the d');
     expect(store.viewModel().hint).toBeNull();
-    // Stall on "o" until its hint fires: the cleanly-typed "d" must not
-    // hide it (the sign is charged as hinted, so it has to actually show).
     vi.advanceTimersByTime(600_000);
     expect(store.viewModel().hint).toBe('⠙⠕');
   });
@@ -368,7 +330,7 @@ describe('view model rows', () => {
   it('marks revealed units so the grid can flip their placeholder cells', () => {
     const store = createTutorStore({ storage: midPromptStorage(), seed: 1 });
     expect(store.viewModel().rows.columns.every((c) => !c.hintRevealed)).toBe(true);
-    vi.advanceTimersByTime(400); // reveals "the", the sign at the caret
+    vi.advanceTimersByTime(400);
     expect(store.viewModel().rows.columns.map((c) => c.hintRevealed)).toEqual([
       true,
       false,
@@ -381,9 +343,9 @@ describe('view model rows', () => {
   it('fills the cell row for whole chorded units in emulated mode', () => {
     const store = createTutorStore({ storage: midPromptStorage(), seed: 1 });
     chordMode(store);
-    chordCell(store, [2, 3, 4, 6]); // ⠮ "the"
+    chordCell(store, [2, 3, 4, 6]);
     chordSpace(store);
-    chordCell(store, [1, 4, 5]); // ⠙ "d"
+    chordCell(store, [1, 4, 5]);
     const rows = store.viewModel().rows;
     expect(rows.columns.map((c) => c.typedUnicode)).toEqual(['⠮', '⠀', '⠙', null, null]);
     expect(rows.columns.map((c) => c.printTyped)).toEqual(['the', ' ', 'd', null, null]);
@@ -403,7 +365,7 @@ describe('view model rows', () => {
     );
     const store = createTutorStore({ storage, seed: 1 });
     chordMode(store);
-    chordCell(store, [6]); // the capital indicator alone: half of "The"'s unit
+    chordCell(store, [6]);
     const rows = store.viewModel().rows;
     expect(rows.columns[0]?.typedUnicode).toBeNull();
     expect(rows.extraUnicode).toBe('⠠');
@@ -412,7 +374,7 @@ describe('view model rows', () => {
   it('never carries chorded cells into the VoiceOver-mode grid', () => {
     const store = createTutorStore({ storage: midPromptStorage(), seed: 1 });
     chordMode(store);
-    chordCell(store, [2, 3, 4, 6]); // ⠮ "the"
+    chordCell(store, [2, 3, 4, 6]);
     store.handlers.onInputModeSelect('voiceover');
     const rows = store.viewModel().rows;
     expect(rows.columns.every((c) => c.typedUnicode === null)).toBe(true);
@@ -476,7 +438,7 @@ describe('persistence', () => {
     store.handlers.onResetRequest();
 
     expect(store.viewModel().canConfirmReset).toBe(false);
-    store.handlers.onResetConfirm(); // no-op while the field is empty
+    store.handlers.onResetConfirm();
     expect(store.viewModel().promptsCompleted).toBe(1);
 
     store.handlers.onResetTextChange('res');
@@ -484,7 +446,6 @@ describe('persistence', () => {
     store.handlers.onResetConfirm();
     expect(store.viewModel().promptsCompleted).toBe(1);
 
-    // Case and surrounding whitespace do not matter.
     store.handlers.onResetTextChange('  RESET ');
     expect(store.viewModel().canConfirmReset).toBe(true);
     store.handlers.onResetConfirm();
@@ -517,7 +478,7 @@ describe('fox challenge', () => {
 
   it('counts one cell per insertion event and awards a badge', () => {
     const store = createTutorStore({ storage: foxReadyStorage(), seed: 1 });
-    typeText(store, FOX_SENTENCE); // 45 single-char insertions
+    typeText(store, FOX_SENTENCE);
     const vm = store.viewModel();
     const expectedPercent = ((FOX_SENTENCE.length - FOX_MIN_CELLS) / FOX_MIN_CELLS) * 100;
     expect(vm.foxResult).toEqual({ kind: 'badge', percentAbove: expectedPercent });
@@ -532,7 +493,7 @@ describe('fox challenge', () => {
 
   it('awards the crown for a minimum-cell run (contraction-sized insertions)', () => {
     const store = createTutorStore({ storage: foxReadyStorage(), seed: 1 });
-    typeInChunks(store, FOX_SENTENCE, FOX_MIN_CELLS); // 36 insertions
+    typeInChunks(store, FOX_SENTENCE, FOX_MIN_CELLS);
     expect(store.viewModel().foxResult).toEqual({ kind: 'crown' });
     expect(store.viewModel().bestFox).toEqual({ kind: 'crown' });
   });
@@ -541,11 +502,10 @@ describe('fox challenge', () => {
     const store = createTutorStore({ storage: foxReadyStorage(), seed: 1 });
     insert(store, 'T');
     insert(store, 'Th');
-    del(store, 'T'); // backspace: count stays at 2
+    del(store, 'T');
     for (let i = 2; i <= FOX_SENTENCE.length; i += 1) insert(store, FOX_SENTENCE.slice(0, i));
     const result = store.viewModel().foxResult;
     expect(result?.kind).toBe('badge');
-    // 2 insertions before the backspace + 44 finishing ('Th' -> full text).
     const cells = FOX_SENTENCE.length + 1;
     if (result?.kind === 'badge') {
       expect(result.percentAbove).toBeCloseTo(((cells - FOX_MIN_CELLS) / FOX_MIN_CELLS) * 100, 6);
@@ -554,11 +514,11 @@ describe('fox challenge', () => {
 
   it('fails instantly on a wrong character and does not record a best', () => {
     const store = createTutorStore({ storage: foxReadyStorage(), seed: 1 });
-    insert(store, 'X'); // expected 'T'
+    insert(store, 'X');
     const vm = store.viewModel();
     expect(vm.foxResult).toEqual({ kind: 'failed' });
     expect(vm.bestFox).toBeNull();
-    expect(vm.promptsCompleted).toBe(FOX_INTERVAL + 1); // a failed fox still counts
+    expect(vm.promptsCompleted).toBe(FOX_INTERVAL + 1);
 
     store.handlers.onFoxContinue();
     expect(store.viewModel().isFox).toBe(false);
@@ -566,11 +526,11 @@ describe('fox challenge', () => {
 
   it('explains a failure with the sign that was due', () => {
     const store = createTutorStore({ storage: foxReadyStorage(), seed: 1 });
-    typeText(store, 'The quick brot'); // "ow" was due
+    typeText(store, 'The quick brot');
     expect(store.viewModel().foxFailure).toEqual({
       expected: '⠪',
       expectedPrint: 'ow',
-      typed: null, // VoiceOver input hands us print, not the cells behind it
+      typed: null,
     });
   });
 
@@ -602,7 +562,6 @@ describe('fox challenge', () => {
     expect(store.viewModel().bestFox).toEqual({ kind: 'crown' });
     store.flushSave();
 
-    // Wind the persisted session forward to the next fox and fumble it.
     const next = createTutorStore({ storage, seed: 1 });
     expect(next.viewModel().bestFox).toEqual({ kind: 'crown' });
   });
@@ -615,9 +574,6 @@ describe('drill input field sync', () => {
     insert(first, 'the ');
     first.flushSave();
 
-    // Reload: the remounted field starts from the persisted typed text (the
-    // UI mounts it with defaultValue vm.typed), so the next VoiceOver commit
-    // reports the whole value, not just the fresh word.
     const store = createTutorStore({ storage, seed: 1 });
     expect(store.viewModel().typed).toBe('the ');
     insert(store, 'the d');
@@ -631,7 +587,7 @@ describe('drill input field sync', () => {
     insert(store, 'z');
     expect(store.viewModel().diverged).toBe(true);
     const before = store.viewModel().promptKey;
-    store.handlers.onInputModeSelect('emulated'); // emulated mode: typing starts over
+    store.handlers.onInputModeSelect('emulated');
     const vm = store.viewModel();
     expect(vm.typed).toBe('');
     expect(vm.promptKey).not.toBe(before);
@@ -649,7 +605,6 @@ describe('drill input field sync', () => {
 });
 
 describe('VoiceOver trailing spaces', () => {
-  /** Storage whose saved session resumes on an in-flight prompt of `text`. */
   function promptStorage(text: string): MemoryStorage {
     const storage = memoryStorage();
     const state = makeTutorState({ seed: 7, promptCounter: 1, prompt: makePrompt({ text }) });
