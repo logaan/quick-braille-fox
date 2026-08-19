@@ -38,7 +38,9 @@ When work on a worktree branch is complete:
    no conflict resolution outside the worktree, so the guard never blocks it.
 4. Rerun any scripts whose output is gitignored (e.g.
    `./scripts/copy-braille-tables.sh` to repopulate `data/`).
-5. Delete the branch and remove the worktree **straight away**, so the next
+5. **Deploy** from the main checkout: `./scripts/deploy`. See "Deploying"
+   below.
+6. Delete the branch and remove the worktree **straight away**, so the next
    session starts from an up-to-date `main` and stale worktrees do not pile up.
 
 Before removing a worktree, check it is not holding lot updates that exist
@@ -102,6 +104,28 @@ Anything listed is real history that exists nowhere else. Copy each file into
 the corresponding Thing's folder in the real vault, renumbering so filenames
 still run in timestamp order (insert and shift the later files rather than
 appending out of order), then confirm with `lot thing get <task-id>`.
+
+## Deploying
+
+The app is published at <http://logpi.local/quick-braille-fox/>. **Finish every
+task by committing the work and deploying it**, so the live site always matches
+`main` — the user checks the change there rather than in a dev server.
+
+Run it from the **main checkout**, after the branch has been merged into `main`
+(step 3 of the worktree workflow above), so what goes live is what `main` says:
+
+```bash
+./scripts/deploy
+```
+
+The script builds first and then rsyncs `dist/` to
+`logan@logpi.local:www/quick-braille-fox/` — never rsync a stale `dist/` by
+hand, as the comments in `scripts/deploy` explain. It needs the Pi to be
+reachable over SSH; if it is not, say so in the final report rather than
+quietly leaving the task undeployed.
+
+A change that ships nothing (a CLAUDE.md-only edit, say) deploys an identical
+build, so skipping the deploy there is fine — when in doubt, deploy.
 
 ## Commands
 
