@@ -1057,7 +1057,7 @@ input:focus-visible {
 
 /* Contents list. Thirteen categories and 258 rows: reaching Shortforms means
    a long scroll, and ruling a category is the thing most often wanted on the
-   way past, so each entry carries its own Force/Allow/Block beside the link. */
+   way past, so each entry carries its own rotation picker beside the link. */
 .curriculum-toc {
   background: var(--surface);
   border-radius: var(--radius-lg);
@@ -1075,13 +1075,21 @@ input:focus-visible {
   color: var(--dim);
 }
 
+/* Two columns, not as many as fit: the entries carry a full segmented picker
+   each, and three across left them cramped. */
 .curriculum-toc-list {
   list-style: none;
   margin: 0;
   padding: 0;
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(21em, 1fr));
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 0.3em 1.75em;
+}
+
+@media (max-width: 52rem) {
+  .curriculum-toc-list {
+    grid-template-columns: minmax(0, 1fr);
+  }
 }
 
 .curriculum-toc-item {
@@ -1092,8 +1100,8 @@ input:focus-visible {
   min-width: 0;
 }
 
-/* The link fills the row so its click target reaches the batch buttons, with
-   the learnt count pinned to the far end as a right-hand column. */
+/* The link fills the row so its click target reaches the picker, with the
+   learnt count pinned to the far end as a right-hand column. */
 .curriculum-toc-link {
   flex: 1 1 auto;
   min-width: 0;
@@ -1117,6 +1125,11 @@ input:focus-visible {
 .curriculum-toc-link:focus-visible {
   outline: 2px solid var(--accent);
   outline-offset: 1px;
+}
+
+/* The picker keeps its full width; the link takes whatever is left. */
+.curriculum-toc-item .policy-picker {
+  flex: none;
 }
 
 .curriculum-toc-count {

@@ -432,15 +432,23 @@ describe('curriculum page', () => {
     }
   });
 
-  it('repeats the batch buttons for each category in the contents list', () => {
+  it('rules a category from the contents list with the Rotation picker', () => {
     const store = curriculumStore();
     const html = render(store);
     expect(html.split('Set rotation for all Letters')).toHaveLength(3);
+    expect(html).toContain('name="policy-group-letters" checked="" value="allow"');
 
     store.handlers.onGroupPolicyChange('letters', 'block');
     const after = render(store);
-    const pressed = after.split('policy-batch-btn policy-block" aria-pressed="true"');
-    expect(pressed.length).toBeGreaterThanOrEqual(3);
+    expect(after).toContain('name="policy-group-letters" checked="" value="block"');
+    expect(after).toContain('name="policy-letter-a" checked="" value="block"');
+  });
+
+  it('lights no segment in the contents list while a category is mixed', () => {
+    const store = curriculumStore();
+    store.handlers.onSkillPolicyChange('letter-a', 'block');
+    const html = render(store);
+    expect(html).not.toContain('name="policy-group-letters" checked=""');
   });
 
   it('leaves the drill behind while it is open, and comes back to it', () => {

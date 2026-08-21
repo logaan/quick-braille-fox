@@ -54,18 +54,19 @@ function PolicyButtons(props: {
   );
 }
 
-function PolicyRadios(props: {
-  readonly skill: CurriculumSkillView;
-  readonly onSelect: (skillId: string, policy: SkillPolicy) => void;
+/* The segmented Force/Allow/Block control: one per skill in the Rotation
+   column, and one per category in the contents list. `current` is null when
+   the members of a group disagree, and then no segment is lit. */
+function PolicyPicker(props: {
+  readonly name: string;
+  readonly label: string;
+  readonly current: SkillPolicy | null;
+  readonly onSelect: (policy: SkillPolicy) => void;
 }): ReactElement {
-  const { skill, onSelect } = props;
+  const { name, label, current, onSelect } = props;
   return e(
     'div',
-    {
-      className: 'policy-picker',
-      role: 'radiogroup',
-      'aria-label': `Rotation for ${signLabel(skill.print)}`,
-    },
+    { className: 'policy-picker', role: 'radiogroup', 'aria-label': label },
     SKILL_POLICIES.map((policy) =>
       e(
         'label',
@@ -73,11 +74,11 @@ function PolicyRadios(props: {
         e('input', {
           type: 'radio',
           className: 'policy-option-input',
-          name: `policy-${skill.id}`,
+          name,
           value: policy,
-          checked: skill.policy === policy,
+          checked: current === policy,
           onChange: () => {
-            onSelect(skill.id, policy);
+            onSelect(policy);
           },
         }),
         e('span', { className: 'policy-option-text' }, POLICY_LABELS[policy]),
@@ -125,7 +126,18 @@ function SkillRow(props: {
       e('span', { className: 'skill-score-value' }, `${skill.score}/${LEARNT_THRESHOLD}`),
     ),
     e('td', { className: 'skill-status' }, statusLabel(skill)),
-    e('td', { className: 'skill-policy' }, e(PolicyRadios, { skill, onSelect })),
+    e(
+      'td',
+      { className: 'skill-policy' },
+      e(PolicyPicker, {
+        name: `policy-${skill.id}`,
+        label: `Rotation for ${signLabel(skill.print)}`,
+        current: skill.policy,
+        onSelect: (policy: SkillPolicy) => {
+          onSelect(skill.id, policy);
+        },
+      }),
+    ),
   );
 }
 
@@ -135,10 +147,10 @@ function groupId(group: SkillGroup): string {
   return `curriculum-group-${group}`;
 }
 
-/* One row per category: the name links down to the section, and the batch
-   buttons are the same control as the one in the section's own head — the
-   point of the contents list is to rule a whole category without scrolling
-   to it first. */
+/* One row per category: the name links down to the section, and beside it the
+   same segmented picker the Rotation column uses, ruling the whole category —
+   the point of the contents list is to rule a category without scrolling to
+   it first. */
 function TableOfContents(props: {
   readonly groups: readonly CurriculumGroupView[];
   readonly on: AppHandlers;
@@ -162,7 +174,8 @@ function TableOfContents(props: {
             label,
             e('span', { className: 'curriculum-toc-count' }, `${group.learnt}/${group.total}`),
           ),
-          e(PolicyButtons, {
+          e(PolicyPicker, {
+            name: `policy-group-${group.group}`,
             label: `Set rotation for all ${label}`,
             current: group.policy,
             onSelect: (policy: SkillPolicy) => {
