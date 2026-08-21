@@ -26,13 +26,17 @@ const BRAND_ROWS = [
   ['⠋', '⠕', '⠭'],
 ];
 
-const BRAND_DOT_ROWS: readonly (readonly boolean[])[] = BRAND_ROWS.flatMap((cells) =>
-  [0, 1, 2].map((r) =>
-    cells.flatMap((cell) => {
-      const dots = (cell.codePointAt(0) ?? 0x2800) - 0x2800;
-      return [r, r + 3].map((bit) => (dots & (1 << bit)) !== 0);
-    }),
-  ),
+/**
+ * The nine cells, each flattened into the reading order of its own 2×3 dot
+ * grid — dots 1 4 / 2 5 / 3 6. Grouping per cell rather than per row of the
+ * whole logo is what lets the cells be spaced apart from one another (see
+ * `.brand-cell`) while the dots inside each stay tight.
+ */
+const BRAND_CELLS: readonly (readonly boolean[])[] = BRAND_ROWS.flatMap((cells) =>
+  cells.map((cell) => {
+    const dots = (cell.codePointAt(0) ?? 0x2800) - 0x2800;
+    return [0, 3, 1, 4, 2, 5].map((bit) => (dots & (1 << bit)) !== 0);
+  }),
 );
 
 function BestFoxBadge(props: { readonly best: BestFox }): ReactElement {
@@ -271,12 +275,16 @@ export function Brand(): ReactElement {
       e(
         'span',
         { className: 'brand-dots', 'aria-hidden': 'true' },
-        BRAND_DOT_ROWS.flatMap((row, r) =>
-          row.map((raised, c) =>
-            e('span', {
-              key: `${r}-${c}`,
-              className: raised ? 'brand-dot brand-dot-raised' : 'brand-dot',
-            }),
+        BRAND_CELLS.map((cell, c) =>
+          e(
+            'span',
+            { key: c, className: 'brand-cell' },
+            cell.map((raised, d) =>
+              e('span', {
+                key: d,
+                className: raised ? 'brand-dot brand-dot-raised' : 'brand-dot',
+              }),
+            ),
           ),
         ),
       ),

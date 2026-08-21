@@ -235,11 +235,10 @@ input:focus-visible {
   padding: 0.4rem 0.6rem;
 }
 
-/* The nine brand cells are drawn as one evenly spaced 6×9 field of dots
-   (see BRAND_DOT_ROWS), not as nine bordered glyph boxes: no containers, no
-   rounded corners, just the shape the dots make. Unraised positions stay
-   visible but faint, so the grid still reads as braille rather than as
-   scattered marks. */
+/* The nine brand cells are drawn as a field of dots (see BRAND_CELLS), not as
+   nine bordered glyph boxes: no borders, no rounded corners, just the shape
+   the dots make. Unraised positions stay visible but faint, so the grid still
+   reads as braille rather than as scattered marks. */
 .brand {
   margin: 0;
   display: inline-flex;
@@ -247,15 +246,33 @@ input:focus-visible {
   line-height: 1;
 }
 
-/* Gap ≈ 60% of the dot diameter, roughly the proportion of embossed braille
-   (1.5mm dots on a 2.5mm pitch), and sized so the logo costs no more header
-   height than the boxed cells it replaced. */
+/* Every dimension is a multiple of --brand-mm, so the whole logo is in the
+   proportions of embossed braille: 1.5mm dots on a 2.5mm dot pitch, cells on
+   a 6mm pitch, lines of cells on a 10mm pitch. The wider gaps between cells
+   are what group the dots into nine readable characters instead of one
+   undifferentiated 6×9 field.
+
+   --brand-mm is chosen so the logo comes out the same height as the evenly
+   spaced grid it replaced (9 × 0.32rem dots + 8 × 0.2rem gaps = 4.48rem), and
+   so still costs no more header height than the boxed cells before that. */
 .brand-dots {
-  --brand-dot-size: 0.32rem;
+  --brand-mm: 0.169rem;
+  --brand-dot-size: calc(1.5 * var(--brand-mm));
   display: grid;
-  grid-template-columns: repeat(6, var(--brand-dot-size));
-  grid-template-rows: repeat(9, var(--brand-dot-size));
-  gap: 0.2rem;
+  grid-template-columns: repeat(3, auto);
+  grid-template-rows: repeat(3, auto);
+  /* 6mm cell pitch − 2.5mm to the cell's far dot column − 1.5mm dot. */
+  column-gap: calc(2 * var(--brand-mm));
+  /* 10mm line pitch − 5mm to the cell's bottom dot row − 1.5mm dot. */
+  row-gap: calc(3.5 * var(--brand-mm));
+}
+
+/* One character: dots 1 4 / 2 5 / 3 6, on the 2.5mm dot pitch. */
+.brand-cell {
+  display: grid;
+  grid-template-columns: repeat(2, var(--brand-dot-size));
+  grid-template-rows: repeat(3, var(--brand-dot-size));
+  gap: var(--brand-mm);
 }
 
 .brand-dot {
