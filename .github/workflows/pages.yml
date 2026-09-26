@@ -1,0 +1,44 @@
+name: Deploy to GitHub Pages
+
+# Publishes dist/ to https://logaan.github.io/quick-braille-fox/ on every push
+# to main. The app is fully bundled at build time (src/data/skills.json is
+# committed), so the runner needs nothing macOS-specific. base is './' in
+# vite.config.ts, so the same build also works under any other subpath.
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  pages: write
+  id-token: write
+
+# One deployment at a time; a newer push supersedes a run still in flight.
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run build
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: dist
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4

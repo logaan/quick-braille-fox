@@ -34,6 +34,10 @@ same in print — the hint then shows the cells being asked for. Only the fox
 challenge accepts any valid grade-1/grade-2 spelling; there, efficiency is
 what the cell count grades.
 
+The app is live at <https://logaan.github.io/quick-braille-fox/>, deployed by
+the GitHub Pages workflow in `.github/workflows/pages.yml` on every push to
+`main`.
+
 Every 50th prompt — starting with your very first — is the fox challenge:
 type "The quick brown fox jumps over the lazy dog." flawlessly, with no
 hints and instant failure on any wrong character. Its rules are shown on
